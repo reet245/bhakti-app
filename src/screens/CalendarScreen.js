@@ -47,6 +47,14 @@ function getFestivalForDate(month, day) {
   return FESTIVALS[`${month}-${day}`] || null;
 }
 
+// Simulated tithi end timing (placeholder)
+function getTithiEndTime(day) {
+  const hour = (day % 12) + 1;
+  const min = ((day * 7) % 60).toString().padStart(2, '0');
+  const ampm = day % 2 === 0 ? 'PM' : 'AM';
+  return `${hour}:${min} ${ampm}`;
+}
+
 // ============================================================
 // CalendarScreen
 // ============================================================
@@ -359,7 +367,7 @@ export default function CalendarScreen() {
           Filter toggle buttons
           --------------------------------------------------------- */}
       <View style={styles.filterRow}>
-        {['All', 'Holidays', 'Fasting'].map((filter) => (
+        {['All', 'Holidays'].map((filter) => (
           <TouchableOpacity
             key={filter}
             style={[
@@ -374,164 +382,121 @@ export default function CalendarScreen() {
                 activeFilter === filter && styles.filterTextActive,
               ]}
             >
-              {filter === 'Holidays' ? '🎉 ' : filter === 'Fasting' ? '🌿 ' : ''}{filter}
+              {filter === 'Holidays' ? '🎉 ' : ''}{filter}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* ---------------------------------------------------------
-          STEP 4: Days of week row (Sun Mon Tue Wed Thu Fri Sat)
-          --------------------------------------------------------- */}
+      {/* Top weekday header row: Sun Mon Tue Wed Thu Fri Sat */}
       <View style={styles.weekRow}>
-        <View style={styles.sidebarSpacer} />
         {weekDays.map((day) => (
           <Text key={day} style={styles.weekDayText}>{day}</Text>
         ))}
       </View>
 
       {/* ---------------------------------------------------------
-          Calendar body: Sidebar + Grid
+          Date grid — full width, 7 equal columns
           --------------------------------------------------------- */}
-      <View style={styles.calendarBody}>
+      <View style={styles.datesGrid}>
+        {/* Empty slots before the 1st of the month */}
+        {emptySlots.map((_, i) => (
+          <View key={`empty-${i}`} style={styles.dateBox} />
+        ))}
 
-        {/* Weekday sidebar strip */}
-        <View style={styles.sidebar}>
-          {[
-            { day: 'SUN', color: '#c0392b' },
-            { day: 'MON', color: '#2c3e7a' },
-            { day: 'TUE', color: '#34495e' },
-            { day: 'WED', color: '#2c3e7a' },
-            { day: 'THU', color: '#34495e' },
-            { day: 'FRI', color: '#2c3e7a' },
-            { day: 'SAT', color: '#34495e' },
-          ].map((item) => (
-            <View
-              key={item.day}
-              style={[styles.sidebarCell, { backgroundColor: item.color }]}
+        {/* Actual date boxes */}
+        {datesArray.map((day) => {
+          const tithi    = getTithiForDate(day);
+          const festival = getFestivalForDate(currentMonth, day);
+          const endTime  = getTithiEndTime(day);
+          const isPurnima  = tithi === 'Purnima';
+          const isAmavasya = tithi === 'Amavasya';
+          const isFestival = !!festival;
+          const isToday    = isViewingCurrentMonth && day === todayDay;
+          const isSelected = day === selectedDate;
+
+          // Filter dimming: hide non-holiday days when 'Holidays' is active
+          const isHoliday = isFestival || isPurnima || isAmavasya;
+          const dimmed    = activeFilter === 'Holidays' && !isHoliday;
+          const matched   = activeFilter === 'Holidays' && isHoliday;
+
+          // Category icon
+          const icon = isFestival ? '🎉' : isPurnima ? '🌕' : isAmavasya ? '🌑' : null;
+
+          return (
+            <TouchableOpacity
+              key={day}
+              style={[
+                styles.dateBox,
+                isFestival  && styles.festivalBox,
+                isPurnima   && styles.purnimaBox,
+                isAmavasya  && styles.amavasyaBox,
+                isToday     && styles.todayDateBox,
+                isSelected  && styles.selectedDateBox,
+                matched     && styles.filterMatchBox,
+                dimmed      && styles.filterDimBox,
+              ]}
+              onPress={async () => {
+                setSelectedDate(day);
+                setLoading(true);
+                setPanchangData(null);
+                const data = await getPanchangFromAPI(
+                  currentYear, currentMonth, day, location
+                );
+                setPanchangData(data);
+                setLoading(false);
+              }}
             >
-              {item.day.split('').map((letter, i) => (
-                <Text key={i} style={styles.sidebarLetter}>{letter}</Text>
-              ))}
-            </View>
-          ))}
-        </View>
+              {/* Sunrise time — top-left corner */}
+              <Text style={styles.sunriseText}>🌅{endTime}</Text>
 
-        {/* Dates grid */}
-        <View style={styles.datesGrid}>
+              {/* Category icon — top-right corner */}
+              {icon && <Text style={styles.categoryIcon}>{icon}</Text>}
 
-          {/* Empty boxes before day 1 */}
-          {emptySlots.map((_, index) => (
-            <View key={'empty-' + index} style={styles.dateBox} />
-          ))}
-
-          {/* Actual date buttons */}
-          {datesArray.map((date) => {
-            const isSelected = date === selectedDate;
-            const isToday = isViewingCurrentMonth && date === todayDay;
-            const dateStrForGrid = `${date} ${monthName} ${currentYear}`;
-            const isBookmarked = bookmarkedDates.includes(dateStrForGrid);
-
-            // Filter logic: check if this date matches the active filter
-            const tithi = getTithiForDate(date);
-            const festival = getFestivalForDate(currentMonth, date);
-            const isFastingDay = tithi === 'Ekadashi' || tithi === 'Chaturthi'
-              || tithi === 'Purnima' || tithi === 'Amavasya';
-            const isHoliday = !!festival;
-
-            const matchesFilter =
-              activeFilter === 'All' ||
-              (activeFilter === 'Holidays' && isHoliday) ||
-              (activeFilter === 'Fasting' && isFastingDay);
-
-            return (
-              <TouchableOpacity
-                key={date}
+              {/* Date number */}
+              <Text
                 style={[
-                  styles.dateBox,
-                  // Category-based background (applied BEFORE selected/today)
-                  !isSelected && isHoliday && styles.festivalBox,
-                  !isSelected && !isHoliday && tithi === 'Purnima' && styles.purnimaBox,
-                  !isSelected && !isHoliday && tithi === 'Amavasya' && styles.amavasyaBox,
-                  !isSelected && !isHoliday && (tithi === 'Ekadashi' || tithi === 'Chaturthi') && styles.fastingBox,
-                  // Today and selected override everything
-                  isSelected && styles.selectedDateBox,
-                  isToday && !isSelected && styles.todayDateBox,
-                  // Filter emphasis
-                  activeFilter !== 'All' && matchesFilter && !isSelected && styles.filterMatchBox,
-                  activeFilter !== 'All' && !matchesFilter && !isSelected && styles.filterDimBox,
+                  styles.dateNum,
+                  isToday    && styles.todayDateText,
+                  isSelected && styles.selectedDateText,
+                  isPurnima  && styles.auspiciousText,
+                  isAmavasya && styles.amavasText,
                 ]}
-                onPress={async () => {
-                  setSelectedDate(date);
-                  if (!location) { return; }
-                  setLoading(true);
-                  setPanchangData(null);
-                  const data = await getPanchangFromAPI(
-                    date,
-                    location.latitude,
-                    location.longitude,
-                  );
-                  setPanchangData(data);
-                  setLoading(false);
-                }}
               >
-                {/* --- Panchang-style cell content --- */}
-                {(() => {
-                  const tithi = getTithiForDate(date);
-                  const festival = getFestivalForDate(currentMonth, date);
-                  const isFasting = tithi === 'Ekadashi' || tithi === 'Chaturthi';
-                  const isAuspicious = tithi === 'Purnima';
-                  const isDark = tithi === 'Amavasya';
-                  return (
-                    <>
-                      {/* Tiny spiritual icon in top-right */}
-                      {!isSelected && (
-                        <Text style={styles.categoryIcon}>
-                          {festival ? '🪩' : isFasting ? '🌿' : isAuspicious ? '🌕' : isDark ? '🌑' : ''}
-                        </Text>
-                      )}
-                      <Text
-                        style={[
-                          styles.dateNum,
-                          isSelected && styles.selectedDateText,
-                          isToday && !isSelected && styles.todayDateText,
-                        ]}
-                      >
-                        {date}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.tithiText,
-                          isFasting && styles.fastingText,
-                          isAuspicious && styles.auspiciousText,
-                          isDark && styles.amavasText,
-                          isSelected && styles.selectedSubText,
-                        ]}
-                      >
-                        {tithi.length > 7 ? tithi.substring(0, 6) + '.' : tithi}
-                      </Text>
-                      {festival && (
-                        <Text
-                          style={[
-                            styles.festivalText,
-                            isSelected && styles.selectedSubText,
-                          ]}
-                        >
-                          {festival}
-                        </Text>
-                      )}
-                    </>
-                  );
-                })()}
+                {day}
+              </Text>
 
-                {/* Bookmark indicator */}
-                {isBookmarked && (
-                  <Text style={styles.bookmarkDot}>⭐</Text>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+              {/* Tithi name */}
+              <Text
+                style={[
+                  styles.tithiText,
+                  (isPurnima || isFestival) && styles.auspiciousText,
+                  isAmavasya && styles.amavasText,
+                  isSelected && styles.selectedSubText,
+                ]}
+              >
+                {tithi}
+              </Text>
+
+              {/* Festival label */}
+              {festival && (
+                <Text style={styles.festivalText} numberOfLines={1}>
+                  {festival}
+                </Text>
+              )}
+
+              {/* Tithi end time */}
+              <Text style={styles.tithiEndText}>ends {endTime}</Text>
+
+              {/* Bookmark dot */}
+              {bookmarkedDates.includes(
+                `${day} ${monthNames[currentMonth]} ${currentYear}`
+              ) && (
+                <Text style={styles.bookmarkDot}>⭐</Text>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* ---------------------------------------------------------
@@ -709,50 +674,25 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // --- STEP 4: Week day row (Sun Mon Tue...) ---
+  // --- STEP 4: Week day header row (Sun Mon Tue...) ---
   weekRow: {
     flexDirection: 'row',
     marginBottom: 4,
   },
-  sidebarSpacer: {
-    width: 22,
-  },
+
+  // Each cell in the weekday header — 1/7 of full width, centred
   weekDayText: {
-    flex: 1,
+    width: '14.28%',
     textAlign: 'center',
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
-    color: '#6c63ff',
-  },
-
-  // --- Dates grid (sits inside calendarBody alongside sidebar) ---
-  calendarBody: {
-    flexDirection: 'row',
-    marginBottom: 4,
-  },
-
-  // --- Weekday sidebar ---
-  sidebar: {
-    width: 22,
-    marginRight: 2,
-  },
-  sidebarCell: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 3,
-    marginBottom: 2,
-    paddingVertical: 2,
-  },
-  sidebarLetter: {
-    fontSize: 7,
-    color: '#ffffff',
-    fontWeight: 'bold',
-    lineHeight: 9,
+    color: '#6c63a8',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    paddingVertical: 4,
   },
 
   datesGrid: {
-    flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
@@ -760,31 +700,56 @@ const styles = StyleSheet.create({
   // --- Each date box (Panchang-style) ---
   dateBox: {
     width: '14.28%',
-    paddingVertical: 6,
+    height: 60,
+    paddingVertical: 4,
     paddingHorizontal: 2,
     alignItems: 'center',
     justifyContent: 'flex-start',
     marginBottom: 2,
-    minHeight: 58,
+    overflow: 'hidden',
     borderWidth: 0.5,
     borderColor: '#1e2a4a',
     borderRadius: 6,
   },
 
+  // --- Sunrise / Sunset timings ---
+  sunriseText: {
+    position: 'absolute',
+    top: 1,
+    left: 3,
+    fontSize: 6,
+    color: 'rgba(196, 154, 42, 0.7)',
+    letterSpacing: -0.2,
+  },
+  sunsetText: {
+    position: 'absolute',
+    bottom: 1,
+    fontSize: 6,
+    color: 'rgba(139, 105, 20, 0.6)',
+    letterSpacing: -0.2,
+  },
+
   dateNum: {
-    fontSize: 14,
+    fontSize: 15.5,
     color: '#e0d7ff',
-    fontWeight: '700',
+    fontWeight: '800',
+    lineHeight: 18,
+    marginTop: 6,
+  },
+
+  tithiEndText: {
+    fontSize: 5.8,
+    color: 'rgba(196, 154, 42, 0.55)',
+    fontStyle: 'italic',
+    lineHeight: 7.5,
   },
 
   tithiText: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: '#6c63a8',
+    fontWeight: '400',
+    lineHeight: 9,
     marginTop: 1,
-  },
-
-  fastingText: {
-    color: '#4ade80',
   },
 
   auspiciousText: {
@@ -796,9 +761,10 @@ const styles = StyleSheet.create({
   },
 
   festivalText: {
-    fontSize: 6,
+    fontSize: 5.5,
     color: '#f87171',
-    fontWeight: 'bold',
+    fontWeight: '600',
+    lineHeight: 7,
     marginTop: 1,
     textAlign: 'center',
   },
@@ -819,11 +785,6 @@ const styles = StyleSheet.create({
   festivalBox: {
     backgroundColor: 'rgba(239, 68, 68, 0.12)',
     borderColor: '#ef4444',
-    borderWidth: 1,
-  },
-  fastingBox: {
-    backgroundColor: 'rgba(74, 222, 128, 0.08)',
-    borderColor: 'rgba(74, 222, 128, 0.4)',
     borderWidth: 1,
   },
   purnimaBox: {
