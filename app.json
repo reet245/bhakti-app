@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "SpiritualApp",
-    "slug": "SpiritualApp",
+    "name": "Bhakti",
+    "slug": "bhakti",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,6 +16,8 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.hreetp.bhaktiapp",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -24,6 +26,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "owner": "hreetp",
+    "extra": {
+      "eas": {
+        "projectId": "96b3fd78-f2e0-4df0-ba4e-9cc85865417a"
+      }
     }
   }
 }
