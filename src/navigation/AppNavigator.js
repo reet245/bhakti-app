@@ -1,4 +1,7 @@
+import { useContext } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { ThemeContext } from '../../App';
+
 import HomeScreen from '../screens/HomeScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import CalendarScreen from '../screens/CalendarScreen';
@@ -6,6 +9,7 @@ import KundliScreen from '../screens/KundliScreen';
 import KundliResultScreen from '../screens/KundliResultScreen';
 import KundliMatchScreen from '../screens/KundliMatchScreen';
 import PujaScreen from '../screens/PujaScreen';
+import MantrasScreen from '../screens/MantrasScreen';
 
 // Create a Stack Navigator
 // Think of it like a stack of cards - you put new screens "on top" and go back by removing the top card
@@ -13,6 +17,15 @@ const Stack = createNativeStackNavigator();
 
 // This component defines which screens exist in our app and how they connect
 export default function AppNavigator() {
+  // -------------------------------------------------------
+  // THEME-AWARE HEADER
+  // -------------------------------------------------------
+  // Reading from ThemeContext so the navigation header
+  // instantly updates whenever the user toggles light/dark
+  // mode from SettingsScreen — no restart required.
+  // -------------------------------------------------------
+  const { theme } = useContext(ThemeContext);
+
   return (
     <Stack.Navigator
       initialRouteName="Home"
@@ -20,10 +33,10 @@ export default function AppNavigator() {
       screenOptions={{
         // These options apply to ALL screens
         headerStyle: {
-          backgroundColor: '#0f1528',
+          backgroundColor: theme.headerBg,
           // Darker header for more depth and contrast
         },
-        headerTintColor: '#e0d7ff',
+        headerTintColor: theme.headerText,
         // Header text and back arrow color (light purple)
         headerTitleStyle: {
           fontWeight: 'bold',
@@ -82,6 +95,13 @@ export default function AppNavigator() {
         name="Puja"
         component={PujaScreen}
         options={{ title: '🪔 Puja' }}
+      />
+
+      {/* Screen 6: Mantras */}
+      <Stack.Screen
+        name="Mantras"
+        component={MantrasScreen}
+        options={{ title: '🕉️ Mantras' }}
       />
     </Stack.Navigator>
   );

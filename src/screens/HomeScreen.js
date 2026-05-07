@@ -1,221 +1,228 @@
 import { useContext } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  Image,
+  TouchableOpacity,
+  ImageBackground,
+  SafeAreaView,
+  StatusBar,
+} from 'react-native';
 
 // Pull in the global theme context created in App.js
 import { ThemeContext } from '../../App';
 
+// -------------------------------------------------------
+// Background image — resolved at bundle time by Metro
+// Image lives at: assets/home-bg.jpeg (flat assets folder)
+// -------------------------------------------------------
+const BG_IMAGE = require('../../assets/home-bg.png');
+
+// -------------------------------------------------------
+// Custom devotional icon assets
+// Folder: assets/icon/ (note: singular "icon", not "icons")
+// Note: calendar file on disk is spelled "calender.png"
+// require() resolves at bundle time — Metro packs them into the app
+// -------------------------------------------------------
+const ICONS = {
+  calendar: require('../../assets/icon/calender.png'),   // disk spelling: calender
+  kundli:   require('../../assets/icon/kundli.png'),
+  puja:     require('../../assets/icon/puja.png'),
+  mantras:  require('../../assets/icon/mantras.png'),
+  fasting:  require('../../assets/icon/fasting.png'),
+};
+
+// Feature buttons — each carries a pre-resolved image source
+const FEATURES = [
+  { label: 'Panchang',     icon: ICONS.calendar, screen: 'Calendar' },
+  { label: 'Kundli',       icon: ICONS.kundli,   screen: 'Kundli'   },
+  { label: 'Puja',         icon: ICONS.puja,     screen: 'Puja'     },
+  { label: 'Mantras',      icon: ICONS.mantras,  screen: 'Mantras'  },
+  { label: 'Fasting Days', icon: ICONS.fasting,  screen: 'Calendar' },
+];
+
 // This is the Home Screen - the first screen users see when they open the app
 export default function HomeScreen({ navigation }) {
   // "navigation" is given to us automatically by React Navigation
-  // It lets us move between screens
 
-  // -------------------------------------------------------
-  // THEME CONTEXT
-  // -------------------------------------------------------
-  // "theme" is either darkTheme or lightTheme from App.js.
-  // Any time the user toggles in Settings, App re-renders,
-  // ThemeContext pushes the new object, and this component
-  // re-renders automatically — no extra wiring needed.
-  // -------------------------------------------------------
-  const { theme, isDark } = useContext(ThemeContext);
+  // ThemeContext kept wired — toggle still works when screens are themed later
+  useContext(ThemeContext);
 
-  // --- Get today's date ---
-  // We create a Date object and format it as "5 May 2026"
-  const today = new Date();
-  const day = today.getDate(); // e.g. 5
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
-  ];
-  const month = monthNames[today.getMonth()]; // e.g. "May"
-  const year = today.getFullYear(); // e.g. 2026
-  const formattedDate = `${day} ${month} ${year}`; // e.g. "5 May 2026"
-
-  // -------------------------------------------------------
-  // DYNAMIC COLOUR TOKENS
-  // -------------------------------------------------------
-  // These values swap instantly when isDark changes.
-  // Everything else (padding, font sizes, radii) stays in
-  // the static StyleSheet below — untouched.
-  // -------------------------------------------------------
-
-  // Button surface — slightly lighter than background in both modes
-  const buttonBg         = isDark ? '#1e2a4a' : '#ffffff';
-  const buttonBorder     = isDark ? '#2e3a5e' : '#e2d9f3';
-  const buttonShadow     = isDark ? '#6c63ff' : '#a89ec9';
-
-  // Settings pill surface
-  const settingsBg       = isDark ? '#0f1528' : '#f0ebff';
-  const settingsBorder   = isDark ? '#2e3a5e' : '#d8cff0';
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    // ImageBackground stretches to fill the screen behind all children
+    <ImageBackground
+      source={BG_IMAGE}
+      style={styles.bgImage}
+      resizeMode="cover"
+    >
+      {/* Very subtle dark scrim — just enough for text legibility
+          without dimming the artwork. Opacity kept at 0.22.        */}
+      <View style={styles.overlay} pointerEvents="none" />
 
-      {/* Today's date at the top */}
-      <Text style={[styles.dateText, { color: theme.mutedText }]}>
-        📆 {formattedDate}
-      </Text>
+      <SafeAreaView style={styles.safeArea}>
 
-      {/* Main heading */}
-      <Text style={styles.emoji}>🙏</Text>
-      <Text style={[styles.heading, { color: theme.text }]}>SpiritualApp</Text>
-      <Text style={[styles.subtitle, { color: theme.mutedText }]}>
-        Your spiritual journey starts here
-      </Text>
+        {/* -------------------------------------------------------
+            TOP BAR — settings icon pinned to top-right
+            ------------------------------------------------------- */}
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            style={styles.settingsIcon}
+            onPress={() => navigation.navigate('Settings')}
+            accessibilityLabel="Settings"
+          >
+            <Text style={styles.settingsIconText}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* Divider — accent colour in both modes */}
-      <View style={[styles.divider, { backgroundColor: theme.accent }]} />
+        {/* -------------------------------------------------------
+            SPACER — lets the artwork breathe above the buttons.
+            Flex:1 pushes the button section toward the bottom.
+            ------------------------------------------------------- */}
+        <View style={styles.spacer} />
 
-      {/* Navigation buttons */}
-      <TouchableOpacity
-        style={[styles.button, {
-          backgroundColor: buttonBg,
-          borderColor: buttonBorder,
-          shadowColor: buttonShadow,
-        }]}
-        onPress={() => navigation.navigate('Calendar')}
-        // Goes to the Calendar screen when tapped
-      >
-        <Text style={[styles.buttonText, { color: theme.text }]}>📅 Calendar</Text>
-      </TouchableOpacity>
+        {/* -------------------------------------------------------
+            BOTTOM CONTENT — app name + feature buttons
+            Positioned in the lower-middle third of the screen so
+            deity faces and the Om symbol remain fully visible.
+            ------------------------------------------------------- */}
+        <View style={styles.bottomContent}>
 
-      <TouchableOpacity
-        style={[styles.button, {
-          backgroundColor: buttonBg,
-          borderColor: buttonBorder,
-          shadowColor: buttonShadow,
-        }]}
-        onPress={() => navigation.navigate('Kundli')}
-        // Goes to the Kundli screen when tapped
-      >
-        <Text style={[styles.buttonText, { color: theme.text }]}>🔮 Kundli</Text>
-      </TouchableOpacity>
+          {/* Feature buttons — 2-column grid */}
+          <View style={styles.buttonGrid}>
+            {FEATURES.map((item) => (
+              <TouchableOpacity
+                key={item.label}
+                style={styles.glassButton}
+                onPress={() => navigation.navigate(item.screen)}
+                activeOpacity={0.78}
+              >
+                {/* Local PNG icon — resizeMode="contain" preserves
+                    transparency and prevents stretching on any button size */}
+                <Image
+                  source={item.icon}
+                  style={styles.featureIcon}
+                  resizeMode="contain"
+                />
+                <Text style={styles.glassButtonLabel}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-      <TouchableOpacity
-        style={[styles.button, {
-          backgroundColor: buttonBg,
-          borderColor: buttonBorder,
-          shadowColor: buttonShadow,
-        }]}
-        onPress={() => navigation.navigate('KundliMatch')}
-        // Goes to the Kundli Matching screen when tapped
-      >
-        <Text style={[styles.buttonText, { color: theme.text }]}>❤️ Match Kundli</Text>
-      </TouchableOpacity>
+        </View>
 
-      <TouchableOpacity
-        style={[styles.button, {
-          backgroundColor: buttonBg,
-          borderColor: buttonBorder,
-          shadowColor: buttonShadow,
-        }]}
-        onPress={() => navigation.navigate('Puja')}
-        // Goes to the Puja screen when tapped
-      >
-        <Text style={[styles.buttonText, { color: theme.text }]}>🪔 Puja</Text>
-      </TouchableOpacity>
-
-      {/* Settings button (smaller, at the bottom) */}
-      <TouchableOpacity
-        style={[styles.settingsButton, {
-          backgroundColor: settingsBg,
-          borderColor: settingsBorder,
-        }]}
-        onPress={() => navigation.navigate('Settings')}
-      >
-        <Text style={[styles.settingsButtonText, { color: theme.mutedText }]}>
-          ⚙️ Settings
-        </Text>
-      </TouchableOpacity>
-
-    </View>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
-// -------------------------------------------------------
-// STATIC STYLES
-// -------------------------------------------------------
-// Only non-colour properties live here — padding, font sizes,
-// border radii, layout. Colours are applied inline above so
-// they react to theme changes on every render.
-// -------------------------------------------------------
 const styles = StyleSheet.create({
-  container: {
+
+  // --- Full-screen image container ---
+  bgImage: {
     flex: 1,
-    // backgroundColor → theme.background (inline)
+    width: '100%',
+    height: '100%',
+  },
+
+  // --- Very subtle translucent scrim (22% black) ---
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.22)',
+  },
+
+  // --- SafeAreaView sits above the scrim ---
+  safeArea: {
+    flex: 1,
+    paddingTop: StatusBar.currentHeight ?? 0,
+  },
+
+  // --- Top bar: settings icon pinned to top-right ---
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingHorizontal: 22,   // extra breathing room from edge
+    paddingTop: 14,          // comfortable distance from status bar
+  },
+
+  // Minimal bare icon — no heavy circle, no dark overlay
+  // A tiny warm-cream frost is enough to lift it off busy artwork
+  settingsIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 248, 220, 0.18)', // barely-there warm frost
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 28,
   },
-  dateText: {
-    fontSize: 14,
-    // color → theme.mutedText (inline)
-    marginBottom: 28,
-    textAlign: 'center',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+  settingsIconText: {
+    fontSize: 20,
   },
-  emoji: {
-    fontSize: 60,
-    marginBottom: 12,
+
+  // --- Flex spacer — pushes buttons to the bottom ---
+  spacer: {
+    flex: 1,
   },
-  heading: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    // color → theme.text (inline)
-    textAlign: 'center',
-    marginBottom: 6,
-    letterSpacing: 1.5,
+
+  // --- Bottom section — buttons float in the lower quarter ---
+  bottomContent: {
+    paddingHorizontal: 22,   // matches topBar horizontal rhythm
+    paddingBottom: 44,       // generous floor so buttons don't crowd the very edge
+    paddingTop: 8,           // small gap between spacer and grid
+    alignItems: 'center',
   },
-  subtitle: {
-    fontSize: 14,
-    // color → theme.mutedText (inline)
-    textAlign: 'center',
-    marginBottom: 32,
-    fontStyle: 'italic',
-    letterSpacing: 0.5,
-  },
-  divider: {
-    width: 80,
-    height: 2,
-    // backgroundColor → theme.accent (inline)
-    borderRadius: 2,
-    marginBottom: 32,
-  },
-  button: {
-    // backgroundColor, borderColor, shadowColor → inline
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 14,
-    marginBottom: 12,
+
+  // --- 2-column flex-wrap button grid ---
+  buttonGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,                  // tighter gap = more composed, less scattered
     width: '100%',
+  },
+
+  // Sacred cream-gold floating button
+  glassButton: {
+    width: '44%',               // ~2 per row with gap
+    // Warm ivory — cream with the faintest gold warmth, ~70% opaque
+    // so the artwork glows softly through without muddying
+    backgroundColor: 'rgba(255, 248, 224, 0.72)',
+    borderRadius: 18,
+    paddingVertical: 15,
+    paddingHorizontal: 12,
     alignItems: 'center',
     borderWidth: 1,
-    // Shadow for Android
-    elevation: 4,
-    // Shadow for iOS
+    // Soft warm-gold border — present but never harsh
+    borderColor: 'rgba(200, 150, 40, 0.55)',
+    // Amber glow shadow — feels warm, not cold
+    shadowColor: '#c8962a',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowOpacity: 0.30,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  buttonText: {
-    // color → theme.text (inline)
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 0.5,
+
+  // Custom PNG icon — fixed square keeps all icons visually identical
+  // resizeMode="contain" (set inline) scales within this box without cropping
+  featureIcon: {
+    width: 36,
+    height: 36,
+    marginBottom: 6,
   },
-  settingsButton: {
-    marginTop: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 20,
-    borderWidth: 1,
-    // backgroundColor, borderColor → inline
-  },
-  settingsButtonText: {
-    // color → theme.mutedText (inline)
+
+  glassButtonLabel: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '700',
+    // Warm dark brown — readable against the cream background
+    // and harmonises with the gold border and artwork palette
+    color: '#5c3a0e',
     letterSpacing: 0.5,
+    textAlign: 'center',
+    // Very light warm shadow lifts the text cleanly off the button
+    textShadowColor: 'rgba(255, 235, 160, 0.6)',
+    textShadowOffset: { width: 0, height: 0.5 },
+    textShadowRadius: 2,
   },
 });

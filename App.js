@@ -20,19 +20,85 @@ import AppNavigator from './src/navigation/AppNavigator';
 // ============================================================
 
 export const darkTheme = {
+  // Base tokens (original 5)
   background: '#0f1528',
   card:       '#1a2240',
   text:       '#e0d7ff',
   accent:     '#e8b849',
   mutedText:  '#6c63a8',
+
+  // Extended tokens — surfaces & borders
+  cardBorder:  '#2e3a5e',
+  cardAlt:     '#16213e',       // alternate card surface
+  divider:     '#e8b849',       // gold divider lines
+  border:      '#1e2a4a',       // subtle inner borders
+
+  // Inputs
+  inputBg:     '#1a1a2e',
+  inputBorder: '#2e3a5e',
+  placeholder: '#5a5282',
+
+  // Accent secondary (purple glow in dark, purple in light)
+  accent2:     '#6c63ff',
+
+  // Navigation header
+  headerBg:    '#0f1528',
+  headerText:  '#e0d7ff',
+
+  // Text variants
+  textSecondary: '#c8c0e0',     // slightly muted body text
+  textTertiary:  '#a89ec9',     // even more muted
+  textHint:      '#4a4370',     // hint / italic text
+
+  // Interactive
+  buttonBg:    '#4a4370',
+  activeHighlight: '#1e2a4a',   // active state backgrounds
+
+  // Chart / special
+  chartBg:     '#0a0f1e',
+  chartBorder: 'rgba(232, 184, 73, 0.4)',
+  goldGlow:    'rgba(232, 184, 73, 0.12)',
 };
 
 export const lightTheme = {
+  // Base tokens (original 5)
   background: '#f4f0ff',
   card:       '#ffffff',
   text:       '#1a1040',
   accent:     '#7c3aed',
   mutedText:  '#7c6caf',
+
+  // Extended tokens — surfaces & borders
+  cardBorder:  '#e2d9f3',
+  cardAlt:     '#f8f4ff',       // alternate card surface
+  divider:     '#7c3aed',       // purple divider in light
+  border:      '#e2d9f3',       // subtle inner borders
+
+  // Inputs
+  inputBg:     '#f8f4ff',
+  inputBorder: '#d0c8e8',
+  placeholder: '#b0a8cc',
+
+  // Accent secondary
+  accent2:     '#7c3aed',
+
+  // Navigation header
+  headerBg:    '#f4f0ff',
+  headerText:  '#1a1040',
+
+  // Text variants
+  textSecondary: '#4a3a70',
+  textTertiary:  '#7c6caf',
+  textHint:      '#9080c0',
+
+  // Interactive
+  buttonBg:    '#7c3aed',
+  activeHighlight: '#ece4ff',
+
+  // Chart / special
+  chartBg:     '#f8f4ff',
+  chartBorder: 'rgba(124, 58, 237, 0.3)',
+  goldGlow:    'rgba(124, 58, 237, 0.08)',
 };
 
 // ============================================================
