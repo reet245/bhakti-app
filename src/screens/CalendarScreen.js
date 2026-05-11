@@ -440,11 +440,25 @@ export default function CalendarScreen() {
                 setSelectedDate(day);
                 setLoading(true);
                 setPanchangData(null);
-                const data = await getPanchangFromAPI(
-                  currentYear, currentMonth, day, location
-                );
-                setPanchangData(data);
-                setLoading(false);
+                const { latitude, longitude } = location || {
+                  latitude: 28.6139,
+                  longitude: 77.2090,
+                };
+
+                try {
+                  const data = await getPanchangFromAPI({
+                    year: currentYear,
+                    month: currentMonth,
+                    day,
+                    latitude,
+                    longitude,
+                  });
+                  setPanchangData(data);
+                } catch (error) {
+                  console.warn('CalendarScreen: Panchang fetch failed.', error);
+                } finally {
+                  setLoading(false);
+                }
               }}
             >
               {/* Sunrise time — top-left corner */}

@@ -17,7 +17,7 @@ import { ThemeContext } from '../../App';
 // Background image — resolved at bundle time by Metro
 // Image lives at: assets/home-bg.jpeg (flat assets folder)
 // -------------------------------------------------------
-const BG_IMAGE = require('../../assets/home-bg.png');
+const BG_IMAGE = require('../../assets/home-bg.jpeg');
 
 // -------------------------------------------------------
 // Custom devotional icon assets

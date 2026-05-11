@@ -180,19 +180,25 @@ function getDummyTithiAndFestival(date) {
 //   https://api.sunrise-sunset.org
 //
 // Parameters:
-//   date      → day number the user tapped (e.g. 5)
-//   latitude  → device latitude  (e.g. 28.6139 for New Delhi)
-//   longitude → device longitude (e.g. 77.2090 for New Delhi)
+//   { year, month, day, latitude, longitude }
+//   month is the JavaScript Date month (0-11), so we convert it
+//   to a calendar month (1-12) before calling the API.
 //
 // Returns:
 //   { tithi, festival, sunrise, sunset }
 // ------------------------------------------------------------
-async function getPanchangFromAPI(date, latitude, longitude) {
+async function getPanchangFromAPI({ year, month, day, latitude, longitude }) {
+  const apiMonth = month + 1;
+  const dateString = [
+    year,
+    String(apiMonth).padStart(2, '0'),
+    String(day).padStart(2, '0'),
+  ].join('-');
 
   // ----------------------------------------------------------
   // STEP 2: Build the API URL
   // ----------------------------------------------------------
-  // We plug latitude and longitude into the URL.
+  // We plug latitude, longitude, and YYYY-MM-DD date into the URL.
   // formatted=0 tells the API to give us raw UTC times (not
   // pre-formatted strings), so we can convert them ourselves.
   //
@@ -200,7 +206,7 @@ async function getPanchangFromAPI(date, latitude, longitude) {
   // inside a string cleanly.
   // ----------------------------------------------------------
   const url =
-    `https://api.sunrise-sunset.org/json?lat=${latitude}&lng=${longitude}&formatted=0`;
+    `https://api.sunrise-sunset.org/json?lat=${latitude}&lng=${longitude}&date=${dateString}&formatted=0`;
 
   // ----------------------------------------------------------
   // STEP 5: Wrap everything in try/catch for error handling
@@ -271,7 +277,7 @@ async function getPanchangFromAPI(date, latitude, longitude) {
     // --------------------------------------------------------
     // STEP 4: Combine real API data + placeholder tithi/festival
     // --------------------------------------------------------
-    const { tithi, festival } = getDummyTithiAndFestival(date);
+    const { tithi, festival } = getDummyTithiAndFestival(day);
 
     // Return the final object to CalendarScreen
     return {
@@ -297,7 +303,7 @@ async function getPanchangFromAPI(date, latitude, longitude) {
     // --------------------------------------------------------
     console.warn('panchangService: API call failed, using fallback.', error.message);
 
-    const { tithi, festival } = getDummyTithiAndFestival(date);
+    const { tithi, festival } = getDummyTithiAndFestival(day);
 
     return {
       tithi,
