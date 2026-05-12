@@ -8,33 +8,34 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  Vibration,
   View,
 } from 'react-native';
-import { Audio } from 'expo-av';
-import * as ExpoAV from 'expo-av';
+import { Audio, ResizeMode, Video } from 'expo-av';
 
-import { deities, pujaItems, pujaModes } from '../data/pujaData';
+import { deities, pujaItems } from '../data/pujaData';
 
-const homeBackground = require('../../assets/home-bg.jpeg');
 const categories = ['All', 'Popular', 'Shiva', 'Shakti', 'Vishnu'];
-
 export default function PujaScreen() {
-  const [viewMode, setViewMode] = useState('landing');
-  const [selectedPujaMode, setSelectedPujaMode] = useState(null);
+  const [viewMode, setViewMode] = useState('chooseDeity');
   const [selectedDeity, setSelectedDeity] = useState(null);
   const [activeCategory, setActiveCategory] = useState('All');
   const [flowers, setFlowers] = useState([]);
-  const [diyas, setDiyas] = useState([]);
-  const [showAgarbatti, setShowAgarbatti] = useState(false);
-  const [showPrasad, setShowPrasad] = useState(false);
+  const [diyaActive, setDiyaActive] = useState(false);
+  const [agarbattiActive, setAgarbattiActive] = useState(false);
+  const [prasadVisible, setPrasadVisible] = useState(false);
   const [bellActive, setBellActive] = useState(false);
   const [aartiActive, setAartiActive] = useState(false);
-  const flowerAnimValues = useRef({});
   const diyaFlickerValue = useRef(new Animated.Value(0)).current;
-  const agarbattiSmokeValue = useRef(new Animated.Value(0)).current;
+  const smoke1 = useRef(new Animated.Value(0)).current;
+  const smoke2 = useRef(new Animated.Value(0)).current;
+  const smoke3 = useRef(new Animated.Value(0)).current;
+  const smoke4 = useRef(new Animated.Value(0)).current;
+  const smoke5 = useRef(new Animated.Value(0)).current;
   const bellSwingValue = useRef(new Animated.Value(0)).current;
   const aartiMotionValue = useRef(new Animated.Value(0)).current;
   const aartiSoundRef = useRef(null);
+  const bellSoundRef = useRef(null);
   const aartiSessionRef = useRef(0);
 
   const visibleDeities =
@@ -43,7 +44,7 @@ export default function PujaScreen() {
       : deities.filter(deity => deity.category === activeCategory);
 
   useEffect(() => {
-    if (diyas.length === 0) {
+    if (!diyaActive) {
       diyaFlickerValue.stopAnimation();
       diyaFlickerValue.setValue(0);
       return;
@@ -53,13 +54,13 @@ export default function PujaScreen() {
       Animated.sequence([
         Animated.timing(diyaFlickerValue, {
           toValue: 1,
-          duration: 1400,
+          duration: 950,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
         Animated.timing(diyaFlickerValue, {
           toValue: 0,
-          duration: 1500,
+          duration: 820,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
@@ -70,48 +71,68 @@ export default function PujaScreen() {
     return () => {
       flicker.stop();
     };
-  }, [diyas.length, diyaFlickerValue]);
+  }, [diyaActive, diyaFlickerValue]);
+
+  function startSmokeLoop(value, delay = 0, duration = 4200) {
+    value.setValue(0);
+    return Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(value, {
+          toValue: 1,
+          duration,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+  }
 
   useEffect(() => {
-    if (!showAgarbatti) {
-      agarbattiSmokeValue.stopAnimation();
-      agarbattiSmokeValue.setValue(0);
+    const smokeValues = [smoke1, smoke2, smoke3, smoke4, smoke5];
+
+    if (!agarbattiActive) {
+      smokeValues.forEach(value => {
+        value.stopAnimation();
+        value.setValue(0);
+      });
       return;
     }
 
-    const smoke = Animated.loop(
-      Animated.timing(agarbattiSmokeValue, {
-        toValue: 1,
-        duration: 3600,
-        easing: Easing.inOut(Easing.ease),
-        useNativeDriver: true,
-      })
-    );
-    smoke.start();
+    const smokeLoops = [
+      startSmokeLoop(smoke1, 0, 4200),
+      startSmokeLoop(smoke2, 700, 4200),
+      startSmokeLoop(smoke3, 1400, 4200),
+      startSmokeLoop(smoke4, 2100, 4200),
+      startSmokeLoop(smoke5, 2800, 5000),
+    ];
+    smokeLoops.forEach(loop => loop.start());
 
     return () => {
-      smoke.stop();
+      smokeLoops.forEach(loop => loop.stop());
     };
-  }, [agarbattiSmokeValue, showAgarbatti]);
+  }, [agarbattiActive, smoke1, smoke2, smoke3, smoke4, smoke5]);
 
   useEffect(() => {
     if (!bellActive) {
       bellSwingValue.stopAnimation();
       bellSwingValue.setValue(0);
+      stopBellAudio();
       return;
     }
 
+    playBellAudio();
     const swing = Animated.loop(
       Animated.sequence([
         Animated.timing(bellSwingValue, {
           toValue: 1,
-          duration: 1200,
+          duration: 130,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
         Animated.timing(bellSwingValue, {
           toValue: 0,
-          duration: 1200,
+          duration: 130,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
@@ -132,12 +153,20 @@ export default function PujaScreen() {
     }
 
     const aarti = Animated.loop(
-      Animated.timing(aartiMotionValue, {
-        toValue: 1,
-        duration: 5200,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
+      Animated.sequence([
+        Animated.timing(aartiMotionValue, {
+          toValue: 1,
+          duration: 1200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(aartiMotionValue, {
+          toValue: 0,
+          duration: 1200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
     );
     aarti.start();
 
@@ -155,24 +184,16 @@ export default function PujaScreen() {
   useEffect(() => {
     return () => {
       diyaFlickerValue.stopAnimation();
-      agarbattiSmokeValue.stopAnimation();
+      [smoke1, smoke2, smoke3, smoke4, smoke5].forEach(value => {
+        value.stopAnimation();
+        value.setValue(0);
+      });
       bellSwingValue.stopAnimation();
       aartiMotionValue.stopAnimation();
+      stopBellAudio();
       stopAartiAudio();
     };
-  }, [agarbattiSmokeValue, aartiMotionValue, bellSwingValue, diyaFlickerValue]);
-
-  function choosePujaMode(mode) {
-    setSelectedPujaMode(mode);
-    setViewMode('chooseDeity');
-  }
-
-  function openPreviousPuja(deity) {
-    resetPuja();
-    setSelectedPujaMode('full');
-    setSelectedDeity(deity);
-    setViewMode('temple');
-  }
+  }, [aartiMotionValue, bellSwingValue, diyaFlickerValue, smoke1, smoke2, smoke3, smoke4, smoke5]);
 
   function openTemple(deity) {
     resetPuja();
@@ -180,82 +201,71 @@ export default function PujaScreen() {
     setViewMode('temple');
   }
 
-  function backToLanding() {
-    setSelectedPujaMode(null);
-    setSelectedDeity(null);
-    setActiveCategory('All');
-    setViewMode('landing');
-    resetPuja();
-  }
-
   function backToChooseDeity() {
     resetPuja();
+    setSelectedDeity(null);
     setViewMode('chooseDeity');
   }
 
+  function handleTempleBack() {
+    if (aartiActive && selectedDeity?.aartiVideo) {
+      setAartiActive(false);
+      stopAartiAudio();
+      return;
+    }
+
+    backToChooseDeity();
+  }
+
   function resetPuja() {
-    flowerAnimValues.current = {};
     setFlowers([]);
-    setDiyas([]);
-    setShowAgarbatti(false);
-    setShowPrasad(false);
+    setDiyaActive(false);
+    setAgarbattiActive(false);
+    setPrasadVisible(false);
     setBellActive(false);
     setAartiActive(false);
+    stopBellAudio();
     stopAartiAudio();
   }
 
+  function handleFlowerPress() {
+    console.log('FLOWER PRESSED');
+    setFlowers([
+      {
+        id: `${Date.now()}-${Math.random()}`,
+        offsetX: 0,
+        offsetY: 0,
+        rotation: 0,
+      },
+    ]);
+  }
+
+  function handleDiyaPress() {
+    setDiyaActive(value => !value);
+  }
+
+  function handleAgarbattiPress() {
+    setAgarbattiActive(value => !value);
+  }
+
+  function handlePrasadPress() {
+    console.log('PRASAD PRESSED');
+    setPrasadVisible(prev => !prev);
+  }
+
   function handlePujaAction(actionId) {
-    if (actionId === 'flower') {
-      const id = Date.now() + Math.random();
-      flowerAnimValues.current[id] = new Animated.Value(0);
-      setFlowers(currentFlowers => {
-        const nextIndex = currentFlowers.length;
-        const row = Math.floor(nextIndex / 7);
-        const column = nextIndex % 7;
-        const centerOffset = column - 3;
-
-        return [
-          ...currentFlowers,
-          {
-            id,
-            xOffset: centerOffset * 18 + (Math.random() * 8 - 4),
-            yOffset: row * 10 + Math.random() * 6,
-            rotation: `${Math.random() * 28 - 14}deg`,
-            scale: 0.82 + Math.random() * 0.22,
-          },
-        ];
-      });
-      Animated.timing(flowerAnimValues.current[id], {
-        toValue: 1,
-        duration: 360,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }).start();
-      return;
-    }
-
-    if (actionId === 'diya') {
-      setDiyas(currentDiyas =>
-        currentDiyas.length >= 2
-          ? []
-          : [...currentDiyas, { id: `${Date.now()}-${currentDiyas.length}` }]
-      );
-      return;
-    }
-
-    if (actionId === 'agarbatti') {
-      setShowAgarbatti(value => !value);
-      return;
-    }
-
-    if (actionId === 'prasad') {
-      setShowPrasad(value => !value);
-      return;
-    }
-
+    if (actionId === 'flower') return handleFlowerPress();
+    if (actionId === 'diya') return handleDiyaPress();
+    if (actionId === 'agarbatti') return handleAgarbattiPress();
+    if (actionId === 'prasad') return handlePrasadPress();
     if (actionId === 'bell') {
-      setBellActive(value => !value);
-      return;
+      setBellActive(value => {
+        const nextValue = !value;
+        if (nextValue) {
+          Vibration.vibrate(35);
+        }
+        return nextValue;
+      });
     }
 
     if (actionId === 'aarti') {
@@ -266,6 +276,37 @@ export default function PujaScreen() {
       }
 
       setAartiActive(true);
+    }
+  }
+
+  async function stopBellAudio() {
+    try {
+      if (bellSoundRef.current) {
+        await bellSoundRef.current.stopAsync();
+        await bellSoundRef.current.unloadAsync();
+        bellSoundRef.current = null;
+      }
+    } catch (error) {
+      console.log('Bell audio cleanup failed:', error);
+      bellSoundRef.current = null;
+    }
+  }
+
+  async function playBellAudio() {
+    try {
+      await stopBellAudio();
+
+      if (!pujaItems.bell?.audio) return;
+
+      const { sound } = await Audio.Sound.createAsync(pujaItems.bell.audio, {
+        shouldPlay: true,
+        isLooping: true,
+        volume: 0.55,
+      });
+      bellSoundRef.current = sound;
+    } catch (error) {
+      console.log('Bell audio failed:', error);
+      bellSoundRef.current = null;
     }
   }
 
@@ -323,58 +364,12 @@ export default function PujaScreen() {
     }
   }
 
-  function renderLanding() {
-    const previousDeities = deities.filter(deity => deity.id === 'shiv' || deity.id === 'durga');
-
-    return (
-      <ScrollView style={styles.screen} contentContainerStyle={styles.landingContent}>
-        <Text style={styles.title}>Puja</Text>
-        <Text style={styles.subtitle}>Connect with divine energy</Text>
-
-        <ImageBackground source={homeBackground} style={styles.heroCard} imageStyle={styles.heroImage}>
-          <View style={styles.heroOverlay}>
-            <Text style={styles.heroTitle}>Begin Your Sacred Puja</Text>
-            <Text style={styles.heroText}>A peaceful space for prayer, offerings, and devotion.</Text>
-          </View>
-        </ImageBackground>
-
-        <Text style={styles.sectionTitle}>How would you like to worship?</Text>
-        <View style={styles.modeRow}>
-          <PujaModeCard
-            title="Quick Puja"
-            subtitle="A short devotional ritual"
-            onPress={() => choosePujaMode('quick')}
-          />
-          <PujaModeCard
-            title="Full Puja"
-            subtitle="A complete worship flow"
-            onPress={() => choosePujaMode('full')}
-          />
-        </View>
-
-        <Text style={styles.sectionTitle}>Previous Puja</Text>
-        <View style={styles.previousList}>
-          {previousDeities.map(deity => (
-            <PreviousPujaCard key={deity.id} deity={deity} onPress={() => openPreviousPuja(deity)} />
-          ))}
-        </View>
-      </ScrollView>
-    );
-  }
-
   function renderChooseDeity() {
-    const subtitle =
-      selectedPujaMode === 'quick' ? 'Choose deity for quick puja' : 'Choose deity for full puja';
-
     return (
       <ScrollView style={styles.screen} contentContainerStyle={styles.chooseContent}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={backToLanding} activeOpacity={0.8}>
-            <Text style={styles.backText}>{'<'}</Text>
-          </TouchableOpacity>
           <View style={styles.headerText}>
             <Text style={styles.title}>Choose Your Deity</Text>
-            <Text style={styles.subtitle}>{subtitle}</Text>
           </View>
         </View>
 
@@ -412,333 +407,394 @@ export default function PujaScreen() {
 
   function renderTemple() {
     const deity = selectedDeity || deities[0];
-    const mode = selectedPujaMode ? pujaModes[selectedPujaMode] : pujaModes.full;
-    const actionIds = mode?.actions || [];
-    const hasFullScreenAartiVideo = aartiActive && Boolean(deity.aartiVideo);
-
+    const showAartiVideo = aartiActive && deity?.aartiVideo;
+    const bellTwist = bellSwingValue.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: ['-10deg', '10deg', '-10deg'],
+    });
     return (
       <View style={styles.templeScreen}>
-        <ImageBackground
-          source={deity.image}
-          style={[
-            styles.templeImageBackground,
-            hasFullScreenAartiVideo && styles.templeImageBackgroundHidden,
-          ]}
-          imageStyle={styles.templeImageFull}
-          resizeMode="cover"
-        >
-          <View style={styles.stageGlow} />
-          <View style={styles.topGarland}>
-            <View style={styles.garlandDot} />
-            <View style={[styles.garlandDot, styles.garlandDotSmall]} />
-            <View style={styles.garlandDot} />
-            <View style={[styles.garlandDot, styles.garlandDotSmall]} />
-            <View style={styles.garlandDot} />
-          </View>
-          <View style={styles.decorBellLeft}>
-            <View style={styles.decorBellString} />
-            <Animated.View
-              style={[
-                styles.decorBellShape,
-                bellActive && {
-                  transform: [
-                    {
-                      rotate: bellSwingValue.interpolate({
-                        inputRange: [0, 0.5, 1],
-                        outputRange: ['-4deg', '5deg', '-4deg'],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            />
-          </View>
-          <View style={styles.decorBellRight}>
-            <View style={styles.decorBellString} />
-            <Animated.View
-              style={[
-                styles.decorBellShape,
-                bellActive && {
-                  transform: [
-                    {
-                      rotate: bellSwingValue.interpolate({
-                        inputRange: [0, 0.5, 1],
-                        outputRange: ['4deg', '-5deg', '4deg'],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            />
-          </View>
-          <View style={styles.sideLampLeft}>
-            <View style={styles.lampFlame} />
-            <View style={styles.lampBowl} />
-          </View>
-          <View style={styles.sideLampRight}>
-            <View style={styles.lampFlame} />
-            <View style={styles.lampBowl} />
-          </View>
-
-          <View style={styles.offeringLayer} pointerEvents="none">
-            {flowers.map(flower => (
-              <Animated.Image
-                key={flower.id}
-                source={pujaItems.flower.image}
-                style={[
-                  styles.flowerOffering,
-                  {
-                    left: '50%',
-                    bottom: 164 + flower.yOffset,
-                    opacity: flowerAnimValues.current[flower.id] || 1,
-                    transform: [
-                      { translateX: flower.xOffset },
-                      {
-                        scale: flowerAnimValues.current[flower.id]
-                          ? flowerAnimValues.current[flower.id].interpolate({
-                              inputRange: [0, 1],
-                              outputRange: [0.7, flower.scale],
-                            })
-                          : flower.scale,
-                      },
-                      { rotate: flower.rotation },
-                    ],
-                  },
-                ]}
-              />
-            ))}
-            {diyas.map((diya, index) => (
-              <View
-                key={diya.id}
-                style={[styles.diyaOfferingWrap, index === 0 ? styles.diyaOfferingLeft : styles.diyaOfferingRight]}
-              >
-                <Animated.View
-                  style={[
-                    styles.diyaGlow,
-                    {
-                      opacity: diyaFlickerValue.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.28, 0.48],
-                      }),
-                      transform: [
-                        {
-                          scale: diyaFlickerValue.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0.92, 1.08],
-                          }),
-                        },
-                      ],
-                    },
-                  ]}
-                />
-                <Animated.Image
-                  source={pujaItems.diya.image}
-                  style={[
-                    styles.diyaOffering,
-                    {
-                      opacity: diyaFlickerValue.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.92, 1],
-                      }),
-                      transform: [
-                        {
-                          scale: diyaFlickerValue.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0.98, 1.03],
-                          }),
-                        },
-                      ],
-                    },
-                  ]}
-                />
-              </View>
-            ))}
-            {showAgarbatti && (
-              <View style={styles.agarbattiWrap}>
-                <Animated.View
-                  style={[
-                    styles.smokeWisp,
-                    {
-                      opacity: agarbattiSmokeValue.interpolate({
-                        inputRange: [0, 0.3, 1],
-                        outputRange: [0, 0.28, 0],
-                      }),
-                      transform: [
-                        {
-                          translateY: agarbattiSmokeValue.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [24, -42],
-                          }),
-                        },
-                        {
-                          translateX: agarbattiSmokeValue.interpolate({
-                            inputRange: [0, 0.5, 1],
-                            outputRange: [0, -8, 5],
-                          }),
-                        },
-                      ],
-                    },
-                  ]}
-                />
-                <Image source={pujaItems.agarbatti.image} style={styles.agarbattiOffering} />
-              </View>
-            )}
-            {showPrasad && (
-              <Image source={pujaItems.prasad.image} style={styles.prasadOffering} />
-            )}
-            {aartiActive && !deity.aartiVideo && (
-              <Animated.View
-                style={[
-                  styles.aartiOfferingWrap,
-                  {
-                    transform: [
-                      {
-                        translateX: aartiMotionValue.interpolate({
-                          inputRange: [0, 0.25, 0.5, 0.75, 1],
-                          outputRange: [0, -18, 0, 18, 0],
-                        }),
-                      },
-                      {
-                        translateY: aartiMotionValue.interpolate({
-                          inputRange: [0, 0.25, 0.5, 0.75, 1],
-                          outputRange: [0, -10, -18, -10, 0],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              >
-                <Animated.View
-                  style={[
-                    styles.aartiGlow,
-                    {
-                      opacity: aartiMotionValue.interpolate({
-                        inputRange: [0, 0.5, 1],
-                        outputRange: [0.24, 0.42, 0.24],
-                      }),
-                    },
-                  ]}
-                />
-                <Animated.Image
-                  source={pujaItems.aartiThali.image}
-                  style={[
-                    styles.aartiOffering,
-                    {
-                      transform: [
-                        {
-                          rotate: aartiMotionValue.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: ['0deg', '360deg'],
-                          }),
-                        },
-                      ],
-                    },
-                  ]}
-                />
-              </Animated.View>
-            )}
-          </View>
-        </ImageBackground>
-
-        {hasFullScreenAartiVideo && (
-          <ExpoAV.Video
-            source={deity.aartiVideo}
-            style={styles.aartiVideo}
+        {!showAartiVideo && (
+          <ImageBackground
+            source={deity.image}
+            style={styles.templeImageBackground}
+            imageStyle={styles.templeImageFull}
             resizeMode="cover"
-            shouldPlay={aartiActive}
-            isLooping
-            isMuted
-            pointerEvents="none"
           />
         )}
 
-        <View style={styles.templeTopBar}>
-          <TouchableOpacity style={styles.templeBackButton} onPress={backToChooseDeity} activeOpacity={0.8}>
-            <Text style={styles.backText}>{'<'}</Text>
-          </TouchableOpacity>
-          <View style={styles.templeTitleWrap}>
-            <Text style={styles.templeDeityName}>{deity.name}</Text>
-            <Text style={styles.templeModeName}>{mode?.name || 'Puja'}</Text>
-          </View>
-        </View>
+        {showAartiVideo && (
+          <Video
+            source={deity.aartiVideo}
+            style={styles.aartiVideo}
+            resizeMode={ResizeMode.COVER}
+            shouldPlay
+            isLooping
+            isMuted
+          />
+        )}
 
-        <View style={styles.actionTray}>
-          {bellActive && (
-            <View style={styles.bellStatus}>
-              <Text style={styles.bellStatusText}>Bell selected</Text>
+        {!showAartiVideo && (
+        <View style={styles.offeringsLayer} pointerEvents="none">
+          {flowers.map((flower, index) => (
+            <OfferingImage
+              key={flower.id}
+              source={pujaItems.flower.image}
+              scale={1.8}
+              style={[
+                styles.flowerOfferingFrame,
+                {
+                  transform: [
+                    { translateX: flower.offsetX + index * 3 },
+                    { translateY: -flower.offsetY },
+                    { rotate: `${flower.rotation}deg` },
+                  ],
+                },
+              ]}
+            />
+          ))}
+          {diyaActive && (
+            <Animated.View
+              style={[
+                styles.diyaOfferingWrap,
+                {
+                  opacity: diyaFlickerValue.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.92, 1],
+                  }),
+                  transform: [
+                    {
+                      scale: diyaFlickerValue.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.98, 1.03],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <OfferingImage
+                source={pujaItems.diya.image}
+                scale={2.0}
+                flipX
+                style={[
+                  styles.offeringFill,
+                ]}
+              />
+            </Animated.View>
+          )}
+          {agarbattiActive && (
+            <View style={styles.agarbattiWrap}>
+              <Animated.View
+                style={[
+                  styles.smokeWisp,
+                  styles.smokeWisp1,
+                  {
+                    opacity: smoke1.interpolate({
+                      inputRange: [0, 0.2, 0.75, 1],
+                      outputRange: [0, 0.65, 0.38, 0],
+                    }),
+                    transform: [
+                      {
+                        translateY: smoke1.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [20, -120],
+                        }),
+                      },
+                      {
+                        translateX: smoke1.interpolate({
+                          inputRange: [0, 0.5, 1],
+                          outputRange: [0, -12, 8],
+                        }),
+                      },
+                      {
+                        scale: smoke1.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.8, 1.25],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+              <Animated.View
+                style={[
+                  styles.smokeWisp,
+                  styles.smokeWispSoft,
+                  styles.smokeWisp2,
+                  {
+                    opacity: smoke2.interpolate({
+                      inputRange: [0, 0.2, 0.75, 1],
+                      outputRange: [0, 0.56, 0.32, 0],
+                    }),
+                    transform: [
+                      {
+                        translateY: smoke2.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [20, -112],
+                        }),
+                      },
+                      {
+                        translateX: smoke2.interpolate({
+                          inputRange: [0, 0.5, 1],
+                          outputRange: [4, 14, -10],
+                        }),
+                      },
+                      {
+                        scale: smoke2.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.75, 1.12],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+              <Animated.View
+                style={[
+                  styles.smokeWisp,
+                  styles.smokeWisp3,
+                  {
+                    opacity: smoke3.interpolate({
+                      inputRange: [0, 0.2, 0.75, 1],
+                      outputRange: [0, 0.58, 0.34, 0],
+                    }),
+                    transform: [
+                      {
+                        translateY: smoke3.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [20, -116],
+                        }),
+                      },
+                      {
+                        translateX: smoke3.interpolate({
+                          inputRange: [0, 0.5, 1],
+                          outputRange: [-4, -16, 6],
+                        }),
+                      },
+                      {
+                        scale: smoke3.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.72, 1.16],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+              <Animated.View
+                style={[
+                  styles.smokeWisp,
+                  styles.smokeWispSoft,
+                  styles.smokeWisp4,
+                  {
+                    opacity: smoke4.interpolate({
+                      inputRange: [0, 0.2, 0.75, 1],
+                      outputRange: [0, 0.46, 0.24, 0],
+                    }),
+                    transform: [
+                      {
+                        translateY: smoke4.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [20, -104],
+                        }),
+                      },
+                      {
+                        translateX: smoke4.interpolate({
+                          inputRange: [0, 0.5, 1],
+                          outputRange: [8, 0, 18],
+                        }),
+                      },
+                      {
+                        scale: smoke4.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.68, 1.05],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+              <Animated.View
+                style={[
+                  styles.smokeWisp,
+                  styles.smokeWisp5,
+                  {
+                    opacity: smoke5.interpolate({
+                      inputRange: [0, 0.2, 0.75, 1],
+                      outputRange: [0, 0.52, 0.28, 0],
+                    }),
+                    transform: [
+                      {
+                        translateY: smoke5.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [20, -128],
+                        }),
+                      },
+                      {
+                        translateX: smoke5.interpolate({
+                          inputRange: [0, 0.5, 1],
+                          outputRange: [-8, 10, -18],
+                        }),
+                      },
+                      {
+                        scale: smoke5.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.8, 1.32],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+              <OfferingImage
+                source={pujaItems.agarbatti.image}
+                scale={2.2}
+                style={styles.offeringFill}
+              />
             </View>
           )}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.actionTrayContent}
-          >
-            {actionIds.map(actionId => (
-              <PujaActionButton
-                key={actionId}
-                item={actionId === 'aarti' ? pujaItems.aartiThali : pujaItems[actionId]}
-                label={actionId === 'aarti' ? (aartiActive ? 'Stop' : 'Aarti') : null}
-                active={isActionActive(actionId, {
-                  flowers,
-                  diyas,
-                  showAgarbatti,
-                  showPrasad,
-                  bellActive,
-                  aartiActive,
-                })}
-                onPress={() => handlePujaAction(actionId)}
-              />
-            ))}
-          </ScrollView>
-          <TouchableOpacity style={styles.resetButton} onPress={resetPuja} activeOpacity={0.82}>
-            <Text style={styles.resetButtonText}>Reset Puja</Text>
-          </TouchableOpacity>
+          {prasadVisible && (
+            <OfferingImage
+              source={pujaItems.prasad.image}
+              scale={1.3}
+              style={styles.prasadOfferingFrame}
+            />
+          )}
+          {aartiActive && !deity?.aartiVideo && (
+            <Animated.View
+              style={[
+                styles.aartiOfferingWrap,
+                {
+                  transform: [
+                    {
+                      translateX: aartiMotionValue.interpolate({
+                        inputRange: [0, 0.5, 1],
+                        outputRange: [-16, 16, -16],
+                      }),
+                    },
+                    {
+                      translateY: aartiMotionValue.interpolate({
+                        inputRange: [0, 0.5, 1],
+                        outputRange: [10, -12, 10],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <Animated.View style={styles.aartiGlow} />
+              <Image source={pujaItems.aartiThali.image} style={styles.aartiOffering} />
+            </Animated.View>
+          )}
         </View>
+        )}
+
+        <View style={[styles.templeTopBar, showAartiVideo && styles.templeTopBarVideo]}>
+          <TouchableOpacity
+            style={[styles.templeBackButton, showAartiVideo && styles.templeBackButtonVideo]}
+            onPress={handleTempleBack}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.backText, showAartiVideo && styles.backTextVideo]}>{'<'}</Text>
+          </TouchableOpacity>
+          {!showAartiVideo && (
+            <View style={styles.templeTitleWrap}>
+              <Text style={styles.templeDeityName}>{deity.name}</Text>
+            </View>
+          )}
+        </View>
+
+        {!showAartiVideo && (
+          <>
+            <TouchableOpacity
+              style={[styles.floatingBellButton, bellActive && styles.floatingBellButtonActive]}
+              onPress={() => handlePujaAction('bell')}
+              activeOpacity={0.86}
+            >
+              <Animated.Image
+                source={pujaItems.bell.image}
+                style={[
+                  styles.floatingBellImage,
+                  bellActive && {
+                    transform: [{ scale: 2.1 }, { rotate: bellTwist }],
+                  },
+                ]}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.aartiButton, aartiActive && styles.aartiButtonActive]}
+              onPress={() => handlePujaAction('aarti')}
+              activeOpacity={0.86}
+            >
+              <View style={styles.aartiButtonGlow} />
+              <View style={styles.aartiImageCenterBox}>
+                <Image source={pujaItems.aartiThali.image} style={styles.aartiButtonImage} />
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.actionTray}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.actionTrayContent}
+              >
+                <PujaActionButton
+                  label="Flower"
+                  image={pujaItems.flower.image}
+                  active={isActionActive('flower', { flowers })}
+                  onPress={handleFlowerPress}
+                />
+                <PujaActionButton
+                  label="Diya"
+                  image={pujaItems.diya.image}
+                  active={isActionActive('diya', { diyaActive })}
+                  onPress={handleDiyaPress}
+                />
+                <PujaActionButton
+                  label="Agarbatti"
+                  image={pujaItems.agarbatti.image}
+                  active={isActionActive('agarbatti', { agarbattiActive })}
+                  onPress={handleAgarbattiPress}
+                />
+                <PujaActionButton
+                  label="Prasad"
+                  image={pujaItems.prasad.image}
+                  active={isActionActive('prasad', { prasadVisible })}
+                  onPress={handlePrasadPress}
+                />
+              </ScrollView>
+              <TouchableOpacity style={styles.resetButton} onPress={resetPuja} activeOpacity={0.82}>
+                <Text style={styles.resetButtonText}>Reset Puja</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </View>
     );
   }
 
   if (viewMode === 'chooseDeity') return renderChooseDeity();
   if (viewMode === 'temple') return renderTemple();
-  return renderLanding();
-}
-
-function PujaModeCard({ title, subtitle, onPress }) {
-  return (
-    <TouchableOpacity style={styles.modeCard} onPress={onPress} activeOpacity={0.86}>
-      <View style={styles.goldMark} />
-      <Text style={styles.modeTitle}>{title}</Text>
-      <Text style={styles.modeSubtitle}>{subtitle}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function PreviousPujaCard({ deity, onPress }) {
-  return (
-    <TouchableOpacity style={styles.previousCard} onPress={onPress} activeOpacity={0.86}>
-      <Image source={deity.image} style={styles.previousImage} />
-      <View style={styles.previousCopy}>
-        <Text style={styles.previousName}>{deity.name}</Text>
-        <Text style={styles.previousMeta}>Full Puja</Text>
-      </View>
-    </TouchableOpacity>
-  );
+  return renderChooseDeity();
 }
 
 function isActionActive(actionId, state) {
   if (actionId === 'flower') return state.flowers.length > 0;
-  if (actionId === 'diya') return state.diyas.length > 0;
-  if (actionId === 'agarbatti') return state.showAgarbatti;
-  if (actionId === 'prasad') return state.showPrasad;
+  if (actionId === 'diya') return state.diyaActive;
+  if (actionId === 'agarbatti') return state.agarbattiActive;
+  if (actionId === 'prasad') return state.prasadVisible;
   if (actionId === 'bell') return state.bellActive;
   if (actionId === 'aarti') return state.aartiActive;
   return false;
 }
 
-function PujaActionButton({ item, label, active, onPress }) {
-  if (!item) return null;
+function PujaActionButton({ item, image, label, active, animatedStyle, onPress }) {
+  if (!item && !image) return null;
 
-  const fallback = item.name
+  const actionLabel = label || item?.name || '';
+  const fallback = actionLabel
     .split(' ')
     .map(word => word[0])
     .join('')
@@ -746,15 +802,43 @@ function PujaActionButton({ item, label, active, onPress }) {
 
   return (
     <TouchableOpacity style={styles.pujaActionButton} onPress={onPress} activeOpacity={0.82}>
-      <View style={[styles.pujaActionIcon, active && styles.pujaActionIconActive]}>
-        {item.image ? (
-          <Image source={item.image} style={styles.pujaActionImage} />
+      <Animated.View style={[styles.pujaActionIcon, active && styles.pujaActionIconActive, animatedStyle]}>
+        {image || item?.image ? (
+          <ScaledPujaIcon source={image || item.image} scale={2.2} />
         ) : (
           <Text style={styles.pujaActionFallback}>{fallback}</Text>
         )}
-      </View>
-      <Text style={styles.pujaActionLabel}>{label || item.name}</Text>
+      </Animated.View>
+      <Text style={styles.pujaActionLabel}>{actionLabel}</Text>
     </TouchableOpacity>
+  );
+}
+
+function ScaledPujaIcon({ source, scale = 1.8 }) {
+  return (
+    <Image
+      source={source}
+      style={[
+        styles.scaledPujaIcon,
+        { transform: [{ scale }] },
+      ]}
+    />
+  );
+}
+
+function OfferingImage({ source, style, scale = 2.4, flipX = false }) {
+  const transform = flipX ? [{ scaleX: -1 }, { scale }] : [{ scale }];
+
+  return (
+    <View style={[styles.offeringFrame, style]}>
+      <Image
+        source={source}
+        style={[
+          styles.offeringImageScaled,
+          { transform },
+        ]}
+      />
+    </View>
   );
 }
 
@@ -762,11 +846,6 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#F8EFD9',
-  },
-  landingContent: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 34,
   },
   chooseContent: {
     paddingHorizontal: 18,
@@ -784,110 +863,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
-    marginTop: 4,
-  },
-  heroCard: {
-    height: 236,
-    borderRadius: 24,
-    overflow: 'hidden',
-    marginTop: 24,
-    backgroundColor: '#FFF7E8',
-    borderWidth: 1,
-    borderColor: '#E8C982',
-  },
-  heroImage: {
-    borderRadius: 24,
-    resizeMode: 'cover',
-  },
-  heroOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    padding: 22,
-    backgroundColor: 'rgba(248, 239, 217, 0.34)',
-  },
-  heroTitle: {
-    color: '#3A220D',
-    fontSize: 24,
-    fontWeight: '900',
-  },
-  heroText: {
-    color: '#5A3518',
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: '700',
-    marginTop: 7,
-    maxWidth: 270,
-  },
-  sectionTitle: {
-    color: '#3A220D',
-    fontSize: 18,
-    fontWeight: '900',
-    marginTop: 24,
-    marginBottom: 12,
-  },
-  modeRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modeCard: {
-    flex: 1,
-    minHeight: 138,
-    borderRadius: 18,
-    padding: 16,
-    backgroundColor: '#FFF7E8',
-    borderWidth: 1,
-    borderColor: '#E8C982',
-  },
-  goldMark: {
-    width: 42,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#C8942E',
-    marginBottom: 18,
-  },
-  modeTitle: {
-    color: '#3A220D',
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  modeSubtitle: {
-    color: '#8B6A3E',
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: '700',
-    marginTop: 7,
-  },
-  previousList: {
-    gap: 12,
-  },
-  previousCard: {
-    minHeight: 96,
-    borderRadius: 18,
-    padding: 10,
-    backgroundColor: '#FFF7E8',
-    borderWidth: 1,
-    borderColor: '#E8C982',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  previousImage: {
-    width: 76,
-    height: 76,
-    borderRadius: 14,
-    backgroundColor: '#F4DFAC',
-  },
-  previousCopy: {
-    marginLeft: 14,
-  },
-  previousName: {
-    color: '#3A220D',
-    fontSize: 17,
-    fontWeight: '900',
-  },
-  previousMeta: {
-    color: '#8B6A3E',
-    fontSize: 12,
-    fontWeight: '800',
     marginTop: 4,
   },
   header: {
@@ -916,6 +891,9 @@ const styles = StyleSheet.create({
     fontSize: 24,
     lineHeight: 28,
     fontWeight: '900',
+  },
+  backTextVideo: {
+    color: '#FFF7E8',
   },
   categoryRow: {
     gap: 10,
@@ -976,11 +954,19 @@ const styles = StyleSheet.create({
   templeImageBackground: {
     ...StyleSheet.absoluteFillObject,
   },
-  templeImageBackgroundHidden: {
-    opacity: 0,
-  },
   templeImageFull: {
     resizeMode: 'cover',
+  },
+  aartiVideo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#000000',
+    zIndex: 100,
   },
   templeTopBar: {
     position: 'absolute',
@@ -992,7 +978,10 @@ const styles = StyleSheet.create({
     paddingTop: 26,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    zIndex: 6,
+    zIndex: 50,
+  },
+  templeTopBarVideo: {
+    zIndex: 120,
   },
   templeBackButton: {
     width: 40,
@@ -1006,175 +995,84 @@ const styles = StyleSheet.create({
     marginTop: 3,
     zIndex: 2,
   },
+  templeBackButtonVideo: {
+    backgroundColor: 'rgba(0, 0, 0, 0.38)',
+    borderColor: 'rgba(255, 247, 232, 0.5)',
+    zIndex: 121,
+  },
   templeTitleWrap: {
     position: 'absolute',
     left: 76,
     right: 76,
-    top: 25,
-    minHeight: 58,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(255, 247, 232, 0.78)',
-    borderWidth: 1,
-    borderColor: 'rgba(232, 201, 130, 0.84)',
+    top: 31,
     alignItems: 'center',
   },
   templeDeityName: {
-    color: '#3A220D',
-    fontSize: 22,
+    color: '#FFF7E8',
+    fontSize: 19,
     fontWeight: '900',
     textAlign: 'center',
-  },
-  templeModeName: {
-    color: '#5A3518',
-    fontSize: 12,
-    fontWeight: '800',
-    marginTop: 3,
-    textAlign: 'center',
-  },
-  stageGlow: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(248, 218, 154, 0.18)',
-  },
-  topGarland: {
-    position: 'absolute',
-    top: 104,
-    left: 52,
-    right: 52,
-    height: 18,
-    borderTopWidth: 2,
-    borderColor: 'rgba(200, 148, 46, 0.76)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    zIndex: 2,
-  },
-  garlandDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#C8942E',
-    marginTop: -8,
-  },
-  garlandDotSmall: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: '#E8C982',
-  },
-  decorBellLeft: {
-    position: 'absolute',
-    top: 124,
-    left: 28,
-    alignItems: 'center',
-  },
-  decorBellRight: {
-    position: 'absolute',
-    top: 124,
-    right: 28,
-    alignItems: 'center',
-  },
-  decorBellString: {
-    width: 2,
-    height: 28,
-    backgroundColor: '#C8942E',
-  },
-  decorBellShape: {
-    width: 24,
-    height: 22,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 8,
-    backgroundColor: '#C8942E',
-    borderWidth: 1,
-    borderColor: '#FFF7E8',
-  },
-  sideLampLeft: {
-    position: 'absolute',
-    left: 22,
-    bottom: 170,
-    alignItems: 'center',
-  },
-  sideLampRight: {
-    position: 'absolute',
-    right: 22,
-    bottom: 170,
-    alignItems: 'center',
-  },
-  lampFlame: {
-    width: 12,
-    height: 18,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-    borderBottomLeftRadius: 8,
-    backgroundColor: '#F2B544',
-    transform: [{ rotate: '45deg' }],
-  },
-  lampBowl: {
-    width: 34,
-    height: 14,
-    borderBottomLeftRadius: 17,
-    borderBottomRightRadius: 17,
-    backgroundColor: '#5A3518',
-    marginTop: -2,
+    textShadowColor: 'rgba(58, 34, 13, 0.78)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
   },
   actionTray: {
     position: 'absolute',
-    left: 12,
-    right: 12,
-    bottom: 24,
-    minHeight: 96,
-    borderRadius: 34,
-    paddingTop: 9,
-    paddingBottom: 10,
-    backgroundColor: 'rgba(255, 247, 232, 0.55)',
+    left: 22,
+    right: 22,
+    bottom: 18,
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    borderRadius: 22,
+    backgroundColor: 'rgba(45, 25, 8, 0.32)',
     borderWidth: 1,
-    borderColor: 'rgba(216, 168, 74, 0.55)',
-    zIndex: 7,
-    shadowColor: '#5A3518',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.16,
-    shadowRadius: 18,
+    borderColor: 'rgba(255, 215, 140, 0.42)',
+    zIndex: 35,
+    shadowColor: '#D6A84A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
     elevation: 7,
   },
   actionTrayContent: {
     gap: 8,
-    paddingHorizontal: 11,
+    paddingHorizontal: 0,
     alignItems: 'center',
+    justifyContent: 'space-around',
+    minWidth: '100%',
   },
   pujaActionButton: {
     width: 58,
-    minHeight: 70,
+    minHeight: 63,
     alignItems: 'center',
   },
   pujaActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 220, 150, 0.18)',
     borderWidth: 1,
-    borderColor: 'rgba(232, 201, 130, 0.62)',
+    borderColor: 'rgba(255, 215, 140, 0.55)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#C8942E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    elevation: 3,
   },
   pujaActionIconActive: {
-    backgroundColor: 'rgba(248, 223, 172, 0.62)',
-    borderColor: 'rgba(200, 148, 46, 0.92)',
-    shadowColor: '#C8942E',
-    shadowOpacity: 0.28,
-    shadowRadius: 10,
-    elevation: 4,
+    backgroundColor: 'rgba(255, 220, 150, 0.28)',
+    borderColor: 'rgba(255, 215, 140, 0.88)',
+    shadowColor: '#D6A84A',
+    shadowOpacity: 0.42,
+    shadowRadius: 15,
+    elevation: 7,
   },
-  pujaActionImage: {
-    width: 31,
-    height: 31,
+  scaledPujaIcon: {
+    width: '100%',
+    height: '100%',
     resizeMode: 'contain',
   },
   pujaActionFallback: {
@@ -1183,140 +1081,240 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   pujaActionLabel: {
-    color: '#5A3518',
-    fontSize: 10.5,
-    lineHeight: 13,
+    color: '#FFE8B0',
+    fontSize: 9,
+    lineHeight: 12,
     fontWeight: '900',
     textAlign: 'center',
-    marginTop: 5,
+    marginTop: 2,
   },
-  offeringLayer: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 3,
-  },
-  flowerOffering: {
+  offeringsLayer: {
     position: 'absolute',
-    width: 30,
-    height: 30,
-    marginLeft: -15,
-    resizeMode: 'contain',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 80,
+    elevation: 80,
+    overflow: 'visible',
+    pointerEvents: 'none',
   },
-  diyaOffering: {
-    width: 54,
-    height: 54,
-    resizeMode: 'contain',
-  },
-  diyaOfferingWrap: {
+  offeringFrame: {
     position: 'absolute',
-    bottom: 170,
-    width: 62,
-    height: 62,
+    overflow: 'visible',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  diyaOfferingLeft: {
-    left: 74,
-  },
-  diyaOfferingRight: {
-    right: 74,
-  },
-  diyaGlow: {
-    position: 'absolute',
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: '#F2B544',
-  },
-  agarbattiWrap: {
-    position: 'absolute',
-    right: 52,
-    bottom: 214,
-    width: 64,
-    height: 116,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  agarbattiOffering: {
-    width: 54,
-    height: 92,
+  offeringImageScaled: {
+    width: '100%',
+    height: '100%',
     resizeMode: 'contain',
   },
-  smokeWisp: {
-    position: 'absolute',
-    top: 2,
-    width: 26,
-    height: 54,
-    borderLeftWidth: 2,
-    borderColor: '#8B6A3E',
-    borderRadius: 20,
-  },
-  prasadOffering: {
-    position: 'absolute',
-    alignSelf: 'center',
-    bottom: 184,
-    width: 70,
-    height: 56,
-    resizeMode: 'contain',
-  },
-  aartiOffering: {
-    width: 72,
-    height: 72,
-    resizeMode: 'contain',
-  },
-  aartiOfferingWrap: {
-    position: 'absolute',
-    alignSelf: 'center',
-    bottom: 244,
-    width: 82,
-    height: 82,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  aartiGlow: {
-    position: 'absolute',
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    backgroundColor: '#F2B544',
-  },
-  aartiVideo: {
-    position: 'absolute',
+  offeringFill: {
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
     width: '100%',
     height: '100%',
-    zIndex: 4,
   },
-  bellStatus: {
-    alignSelf: 'center',
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    marginBottom: 5,
-    backgroundColor: 'rgba(255, 247, 232, 0.48)',
+  flowerOfferingFrame: {
+    left: '28%',
+    bottom: '24%',
+    width: '44%',
+    aspectRatio: 1,
+    zIndex: 90,
+    elevation: 90,
+  },
+  aartiOffering: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
+  },
+  aartiOfferingWrap: {
+    position: 'absolute',
+    left: '20%',
+    bottom: '18%',
+    width: '60%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 48,
+  },
+  aartiGlow: {
+    position: 'absolute',
+    width: '74%',
+    height: '74%',
+    borderRadius: 999,
+    backgroundColor: '#F2B544',
+  },
+  diyaOfferingWrap: {
+    position: 'absolute',
+    left: '2%',
+    bottom: '24%',
+    width: '30%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 88,
+    elevation: 88,
+  },
+  agarbattiWrap: {
+    position: 'absolute',
+    right: '2%',
+    bottom: '19%',
+    width: '38%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    zIndex: 89,
+    elevation: 89,
+    overflow: 'visible',
+  },
+  smokeWisp: {
+    position: 'absolute',
+    bottom: '62%',
+    width: 34,
+    height: 110,
+    borderLeftWidth: 3,
+    borderColor: 'rgba(255, 245, 220, 0.65)',
+    borderRadius: 40,
+    zIndex: 120,
+    elevation: 120,
+  },
+  smokeWispSoft: {
+    borderLeftWidth: 2,
+    borderColor: 'rgba(255, 245, 220, 0.45)',
+  },
+  smokeWisp1: {
+    right: '38%',
+    height: 118,
+  },
+  smokeWisp2: {
+    right: '30%',
+    bottom: '63%',
+    width: 36,
+    height: 116,
+  },
+  smokeWisp3: {
+    right: '46%',
+    bottom: '64%',
+    width: 30,
+    height: 108,
+    borderColor: 'rgba(255, 245, 220, 0.58)',
+  },
+  smokeWisp4: {
+    right: '25%',
+    bottom: '61%',
+    width: 28,
+    height: 100,
+  },
+  smokeWisp5: {
+    right: '36%',
+    bottom: '65%',
+    width: 34,
+    height: 128,
+    borderColor: 'rgba(255, 245, 220, 0.52)',
+  },
+  prasadOfferingFrame: {
+    right: '7%',
+    bottom: '32%',
+    width: '26%',
+    aspectRatio: 1,
+    zIndex: 92,
+    elevation: 92,
+  },
+  floatingBellButton: {
+    position: 'absolute',
+    right: 16,
+    top: '45%',
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(45, 25, 8, 0.42)',
     borderWidth: 1,
-    borderColor: 'rgba(232, 201, 130, 0.58)',
+    borderColor: 'rgba(255, 215, 140, 0.65)',
+    shadowColor: '#D6A84A',
+    shadowOffset: { width: 0, height: 7 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 12,
+    zIndex: 45,
   },
-  bellStatusText: {
-    color: '#8B6A3E',
-    fontSize: 10,
-    fontWeight: '900',
+  floatingBellButtonActive: {
+    backgroundColor: 'rgba(66, 38, 12, 0.58)',
+    borderColor: 'rgba(255, 225, 150, 0.95)',
+    shadowOpacity: 0.55,
+    shadowRadius: 18,
+    elevation: 14,
+  },
+  floatingBellImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
+    transform: [{ scale: 2.1 }],
+  },
+  aartiButton: {
+    position: 'absolute',
+    alignSelf: 'center',
+    bottom: 115,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(45, 25, 8, 0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 140, 0.75)',
+    shadowColor: '#D6A84A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.36,
+    shadowRadius: 16,
+    elevation: 10,
+    zIndex: 50,
+    overflow: 'hidden',
+  },
+  aartiButtonActive: {
+    backgroundColor: 'rgba(66, 38, 12, 0.62)',
+    borderColor: 'rgba(255, 225, 150, 0.96)',
+    shadowOpacity: 0.52,
+  },
+  aartiButtonGlow: {
+    position: 'absolute',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(242, 181, 68, 0.16)',
+  },
+  aartiImageCenterBox: {
+    width: 72,
+    height: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  aartiButtonImage: {
+    width: 68,
+    height: 68,
+    resizeMode: 'contain',
+    alignSelf: 'center',
   },
   resetButton: {
     alignSelf: 'center',
-    marginTop: 6,
+    marginTop: 3,
     borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.32)',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    backgroundColor: 'rgba(255, 220, 150, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(232, 201, 130, 0.54)',
+    borderColor: 'rgba(255, 215, 140, 0.38)',
   },
   resetButtonText: {
-    color: '#5A3518',
-    fontSize: 10.5,
+    color: '#FFE8B0',
+    fontSize: 10,
     fontWeight: '900',
   },
 });

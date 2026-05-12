@@ -61,7 +61,7 @@ const deities = [
     subtitle: 'Shri • Prosperity and grace',
     mantra: 'Om Shreem Mahalakshmiyei Namaha',
     image: require('../../assets/deities/laxmi-ma.png'),
-    aartiAudio: require('../../assets/sounds/lakshmi-aarti.mp3'),
+    aartiAudio: null,
     aartiVideo: null,
     preferredPrasad: 'Kheer',
   },
@@ -91,8 +91,8 @@ const pujaItems = {
   bell: {
     id: 'bell',
     name: 'Bell',
-    // Missing asset: standalone bell image not found in assets.
-    image: null,
+    image: require('../../assets/puja-items/bell.png'),
+    audio: require('../../assets/sounds/bell.mp3'),
   },
   aartiThali: {
     id: 'aarti',
