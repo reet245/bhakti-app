@@ -1,11 +1,12 @@
 import { useState, useContext } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { ThemeContext } from '../../App';
+import { useLanguage } from '../context/LanguageContext';
 
 // ---------------------------------------------------------
 // Compatibility calculation (logic unchanged)
 // ---------------------------------------------------------
-function calculateCompatibility(dob1, dob2) {
+function calculateCompatibility(dob1, dob2, t) {
   const day1 = parseInt(dob1) || 1;
   const day2 = parseInt(dob2) || 1;
   const difference = Math.abs(day1 - day2);
@@ -15,15 +16,16 @@ function calculateCompatibility(dob1, dob2) {
   if (score < 30)  score = 30;
   score = Math.round(score);
   let message = '', emoji = '';
-  if (score >= 80)      { message = 'Excellent Match! Stars are strongly aligned in your favor.'; emoji = '💕'; }
-  else if (score >= 60) { message = 'Good Compatibility. A harmonious bond with some adjustments needed.'; emoji = '💛'; }
-  else if (score >= 45) { message = 'Medium Compatibility. Understanding and effort will strengthen this bond.'; emoji = '🤝'; }
-  else                  { message = 'Low Compatibility. Patience and communication are key.'; emoji = '🌱'; }
+  if (score >= 80)      { message = t('excellentMatch'); emoji = '💕'; }
+  else if (score >= 60) { message = t('goodCompatibility'); emoji = '💛'; }
+  else if (score >= 45) { message = t('mediumCompatibility'); emoji = '🤝'; }
+  else                  { message = t('lowCompatibility'); emoji = '🌱'; }
   return { score, message, emoji };
 }
 
 export default function KundliMatchScreen() {
   const { theme, isDark } = useContext(ThemeContext);
+  const { t } = useLanguage();
 
   const [nameA, setNameA] = useState('');
   const [dobA,  setDobA]  = useState('');
@@ -46,10 +48,10 @@ export default function KundliMatchScreen() {
 
   function handleMatch() {
     if (!nameA || !dobA || !nameB || !dobB) {
-      Alert.alert('Missing Details', 'Please fill in all fields for both persons.');
+      Alert.alert(t('missingDetails'), t('fillBothPersons'));
       return;
     }
-    setResult(calculateCompatibility(dobA, dobB));
+    setResult(calculateCompatibility(dobA, dobB, t));
   }
 
   return (
@@ -57,14 +59,14 @@ export default function KundliMatchScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
 
         <Text style={styles.emoji}>❤️</Text>
-        <Text style={[styles.heading, { color: theme.text }]}>Kundli Matching</Text>
-        <Text style={[styles.subtitle, { color: theme.mutedText }]}>Compare two birth charts</Text>
+        <Text style={[styles.heading, { color: theme.text }]}>{t('kundliMatching')}</Text>
+        <Text style={[styles.subtitle, { color: theme.mutedText }]}>{t('compareBirthCharts')}</Text>
 
         {/* Person A */}
         <View style={[styles.personCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <Text style={[styles.personTitle, { color: theme.text }]}>👤 Person A</Text>
+          <Text style={[styles.personTitle, { color: theme.text }]}>?? {t('personA')}</Text>
           <View style={[styles.cardDivider, { backgroundColor: dividerColor }]} />
-          <Text style={[styles.label, { color: theme.mutedText }]}>Full Name</Text>
+          <Text style={[styles.label, { color: theme.mutedText }]}>{t('fullName')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: inputBg, borderColor: inputBorder, color: theme.text }]}
             placeholder="e.g. Arjun"
@@ -72,7 +74,7 @@ export default function KundliMatchScreen() {
             value={nameA}
             onChangeText={setNameA}
           />
-          <Text style={[styles.label, { color: theme.mutedText }]}>Date of Birth</Text>
+          <Text style={[styles.label, { color: theme.mutedText }]}>{t('dateOfBirth')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: inputBg, borderColor: inputBorder, color: theme.text }]}
             placeholder="DD/MM/YYYY"
@@ -84,9 +86,9 @@ export default function KundliMatchScreen() {
 
         {/* Person B */}
         <View style={[styles.personCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <Text style={[styles.personTitle, { color: theme.text }]}>👤 Person B</Text>
+          <Text style={[styles.personTitle, { color: theme.text }]}>?? {t('personB')}</Text>
           <View style={[styles.cardDivider, { backgroundColor: dividerColor }]} />
-          <Text style={[styles.label, { color: theme.mutedText }]}>Full Name</Text>
+          <Text style={[styles.label, { color: theme.mutedText }]}>{t('fullName')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: inputBg, borderColor: inputBorder, color: theme.text }]}
             placeholder="e.g. Priya"
@@ -94,7 +96,7 @@ export default function KundliMatchScreen() {
             value={nameB}
             onChangeText={setNameB}
           />
-          <Text style={[styles.label, { color: theme.mutedText }]}>Date of Birth</Text>
+          <Text style={[styles.label, { color: theme.mutedText }]}>{t('dateOfBirth')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: inputBg, borderColor: inputBorder, color: theme.text }]}
             placeholder="DD/MM/YYYY"
@@ -105,19 +107,19 @@ export default function KundliMatchScreen() {
         </View>
 
         <TouchableOpacity style={[styles.matchButton, { backgroundColor: matchBg }]} onPress={handleMatch}>
-          <Text style={styles.matchButtonText}>💫 Check Compatibility</Text>
+          <Text style={styles.matchButtonText}>💫 {t('checkCompatibility')}</Text>
         </TouchableOpacity>
 
         {result && (
           <View style={[styles.resultCard, { backgroundColor: resultCardBg, borderColor: resultCardBorder }]}>
             <Text style={styles.resultEmoji}>{result.emoji}</Text>
             <Text style={[styles.resultScore, { color: resultScoreColor }]}>{result.score}%</Text>
-            <Text style={[styles.resultLabel, { color: theme.mutedText }]}>Compatibility Score</Text>
+            <Text style={[styles.resultLabel, { color: theme.mutedText }]}>{t('compatibilityScore')}</Text>
             <View style={[styles.cardDivider, { backgroundColor: dividerColor }]} />
             <Text style={[styles.resultNames, { color: theme.text }]}>{nameA} & {nameB}</Text>
             <Text style={[styles.resultMessage, { color: theme.mutedText }]}>{result.message}</Text>
             <Text style={[styles.disclaimer, { color: disclaimerColor }]}>
-              ⚠️ Simulated result for demonstration purposes.
+              ?? {t('simulatedResult')}
             </Text>
           </View>
         )}

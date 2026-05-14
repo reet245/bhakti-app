@@ -10,6 +10,8 @@ import KundliResultScreen from '../screens/KundliResultScreen';
 import KundliMatchScreen from '../screens/KundliMatchScreen';
 import PujaScreen from '../screens/PujaScreen';
 import MantrasScreen from '../screens/MantrasScreen';
+import UpcomingFestivalsScreen from '../screens/UpcomingFestivalsScreen';
+import DailyHoroscopeScreen from '../screens/DailyHoroscopeScreen';
 
 // Create a Stack Navigator
 // Think of it like a stack of cards - you put new screens "on top" and go back by removing the top card
@@ -102,6 +104,18 @@ export default function AppNavigator() {
         name="Mantras"
         component={MantrasScreen}
         options={{ title: '🕉️ Mantras' }}
+      />
+
+      <Stack.Screen
+        name="UpcomingFestivals"
+        component={UpcomingFestivalsScreen}
+        options={{ title: 'Upcoming Festivals' }}
+      />
+
+      <Stack.Screen
+        name="DailyHoroscope"
+        component={DailyHoroscopeScreen}
+        options={{ title: 'Daily Horoscope' }}
       />
     </Stack.Navigator>
   );

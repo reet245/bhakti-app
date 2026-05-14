@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import { useLanguage } from '../context/LanguageContext';
 
 // ============================================================
 // HELPER FUNCTIONS (outside component for performance)
@@ -91,7 +92,7 @@ function generateKundliData(dob, tob) {
 }
 
 // ---------------------------------------------------------
-// STEP 5: Kundli Details — Lagna, Moon Sign, Sun Sign
+// STEP 5: {t('kundliDetails')} — Lagna, Moon Sign, Sun Sign
 // ---------------------------------------------------------
 // The 12 Zodiac signs (Rashis) in Vedic order
 const RASHIS = [
@@ -138,6 +139,7 @@ function getKundliDetails(dob, tob) {
 // COMPONENT
 // ============================================================
 export default function KundliResultScreen({ route }) {
+  const { t } = useLanguage();
   const {
     name = "Unknown",
     dob = "Unknown",
@@ -195,29 +197,29 @@ export default function KundliResultScreen({ route }) {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.emoji}>📜</Text>
-        <Text style={styles.heading}>Kundli Result</Text>
-        <Text style={styles.subtitle}>Your celestial blueprint</Text>
+        <Text style={styles.heading}>{t('kundli')}</Text>
+        <Text style={styles.subtitle}>{t('celestialBlueprint')}</Text>
 
         {/* =====================================================
             BIRTH DETAILS CARD (kept from original)
             ===================================================== */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Birth Details</Text>
+          <Text style={styles.cardTitle}>{t('birthDetails')}</Text>
           <View style={styles.divider} />
           <View style={styles.row}>
-            <Text style={styles.label}>Name:</Text>
+            <Text style={styles.label}>{t('name')}:</Text>
             <Text style={styles.value}>{name}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Date of Birth:</Text>
+            <Text style={styles.label}>{t('dateOfBirth')}:</Text>
             <Text style={styles.value}>{dob}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Time of Birth:</Text>
+            <Text style={styles.label}>{t('timeOfBirth')}:</Text>
             <Text style={styles.value}>{tob}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Place:</Text>
+            <Text style={styles.label}>{t('placeOfBirth')}:</Text>
             <Text style={styles.value}>{place}</Text>
           </View>
         </View>
@@ -226,23 +228,26 @@ export default function KundliResultScreen({ route }) {
             TAB BAR
             ===================================================== */}
         <View style={styles.tabRow}>
-          {['Chart', 'Predictions', 'Planets', 'Dosha'].map((tab) => (
+          {[
+            { id: 'Chart', labelKey: 'chart' },
+            { id: 'Predictions', labelKey: 'predictions' },
+            { id: 'Planets', labelKey: 'planets' },
+            { id: 'Dosha', labelKey: 'dosha' },
+          ].map((tab) => (
             <TouchableOpacity
-              key={tab}
+              key={tab.id}
               style={[
                 styles.tabButton,
-                activeTab === tab && styles.tabButtonActive,
+                activeTab === tab.id && styles.tabButtonActive,
               ]}
-              onPress={() => setActiveTab(tab)}
+              onPress={() => setActiveTab(tab.id)}
             >
               <Text
                 style={[
                   styles.tabText,
-                  activeTab === tab && styles.tabTextActive,
+                  activeTab === tab.id && styles.tabTextActive,
                 ]}
-              >
-                {tab}
-              </Text>
+              >{t(tab.labelKey)}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -269,8 +274,8 @@ export default function KundliResultScreen({ route }) {
             House 1 (Ascendant) at top-center.
             ===================================================== */}
         <View style={styles.chartWrapper}>
-          <Text style={styles.chartTitle}>🕉️ Birth Chart (Janma Kundli)</Text>
-          <Text style={styles.chartSubtitle}>North Indian Style • Lagna: {details.lagna}</Text>
+          <Text style={styles.chartTitle}>🕉️ {t('birthChart')}</Text>
+          <Text style={styles.chartSubtitle}>{t('northIndianStyle')} ? Lagna: {details.lagna}</Text>
 
           <View style={styles.chartContainer}>
             {/* --- Top Row: Houses 12, 1, 2, 3 --- */}
@@ -315,7 +320,7 @@ export default function KundliResultScreen({ route }) {
 
           {/* Planet legend — 3 columns */}
           <View style={styles.legendContainer}>
-            <Text style={styles.legendTitle}>NAVAGRAHA LEGEND</Text>
+            <Text style={styles.legendTitle}>{t('navagrahaLegend')}</Text>
             <View style={styles.legendGrid}>
               <Text style={styles.legendItem}>☉ Su = Sun</Text>
               <Text style={styles.legendItem}>☽ Mo = Moon</Text>
@@ -334,19 +339,19 @@ export default function KundliResultScreen({ route }) {
             STEP 5: KUNDLI DETAILS CARD
             ===================================================== */}
         <View style={styles.detailsCard}>
-          <Text style={styles.detailsTitle}>🌙 Kundli Details</Text>
+          <Text style={styles.detailsTitle}>?? {t('kundliDetails')}</Text>
           <View style={styles.divider} />
 
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Ascendant (Lagna):</Text>
+            <Text style={styles.detailLabel}>{t('ascendantLagna')}:</Text>
             <Text style={styles.detailValue}>{details.lagna} ({details.lagnaHindi})</Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Moon Sign (Rashi):</Text>
+            <Text style={styles.detailLabel}>{t('moonSignRashi')}:</Text>
             <Text style={styles.detailValue}>{details.moonSign} ({details.moonSignHindi})</Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Sun Sign:</Text>
+            <Text style={styles.detailLabel}>{t('sunSign')}:</Text>
             <Text style={styles.detailValue}>{details.sunSign} ({details.sunSignHindi})</Text>
           </View>
         </View>
@@ -360,21 +365,21 @@ export default function KundliResultScreen({ route }) {
             KUNDLI INSIGHTS (kept from original)
             ===================================================== */}
         <View style={styles.insightsCard}>
-          <Text style={styles.insightsTitle}>🔮 Kundli Insights</Text>
+          <Text style={styles.insightsTitle}>🔮 {t('kundliInsights')}</Text>
           <View style={styles.divider} />
 
           <View style={styles.insightBlock}>
-            <Text style={styles.insightLabel}>💼 Career</Text>
+            <Text style={styles.insightLabel}>💼 {t('career')}</Text>
             <Text style={styles.insightText}>{predictions.career}</Text>
           </View>
 
           <View style={styles.insightBlock}>
-            <Text style={styles.insightLabel}>🏥 Health</Text>
+            <Text style={styles.insightLabel}>🏥 {t('health')}</Text>
             <Text style={styles.insightText}>{predictions.health}</Text>
           </View>
 
           <View style={styles.insightBlock}>
-            <Text style={styles.insightLabel}>❤️ Relationship</Text>
+            <Text style={styles.insightLabel}>❤️ {t('relationship')}</Text>
             <Text style={styles.insightText}>{predictions.relationship}</Text>
           </View>
         </View>
@@ -384,7 +389,7 @@ export default function KundliResultScreen({ route }) {
         {/* Show planets list ONLY when Planets tab is active */}
         {activeTab === 'Planets' && (
         <View style={styles.planetsCard}>
-          <Text style={styles.planetsTitle}>🪐 Planetary Positions</Text>
+          <Text style={styles.planetsTitle}>🪐 {t('planetaryPositions')}</Text>
           <View style={styles.divider} />
 
           {/* Build list: for each planet, find which house it's in */}
@@ -411,7 +416,7 @@ export default function KundliResultScreen({ route }) {
                   <Text style={styles.planetFullName}>{planet.full}</Text>
                 </View>
                 <View style={styles.planetRowRight}>
-                  <Text style={styles.planetHouse}>House {houseNum}</Text>
+                  <Text style={styles.planetHouse}>{t('house')} {houseNum}</Text>
                   <Text style={styles.planetSignText}>{sign}</Text>
                 </View>
               </View>
@@ -423,10 +428,10 @@ export default function KundliResultScreen({ route }) {
         {/* Show dosha analysis ONLY when Dosha tab is active */}
         {activeTab === 'Dosha' && (
         <View style={styles.doshaContainer}>
-          <Text style={styles.doshaMainTitle}>⚠️ Dosha Analysis</Text>
+          <Text style={styles.doshaMainTitle}>⚠️ {t('doshaAnalysis')}</Text>
           <View style={styles.divider} />
 
-          {/* --- Mangal Dosha --- */}
+          {/* --- {t('mangalDosha')} --- */}
           {(() => {
             // Mangal Dosha: Mars in houses 1, 2, 4, 7, 8, or 12 = Manglik
             const marsHouse = Number(Object.keys(houses).find(
@@ -437,12 +442,12 @@ export default function KundliResultScreen({ route }) {
               <View style={[styles.doshaCard, isManglik && styles.doshaCardActive]}>
                 <View style={styles.doshaHeader}>
                   <Text style={styles.doshaIcon}>♂</Text>
-                  <Text style={styles.doshaName}>Mangal Dosha</Text>
+                  <Text style={styles.doshaName}>{t('mangalDosha')}</Text>
                   <View style={[styles.doshaStatus, isManglik ? styles.statusActive : styles.statusClear]}>
-                    <Text style={styles.doshaStatusText}>{isManglik ? 'ACTIVE' : 'CLEAR'}</Text>
+                    <Text style={styles.doshaStatusText}>{isManglik ? t('active') : t('clear')}</Text>
                   </View>
                 </View>
-                <Text style={styles.doshaDetail}>Mars is in House {marsHouse} ({getHouseSign(marsHouse)})</Text>
+                <Text style={styles.doshaDetail}>Mars is in {t('house')} {marsHouse} ({getHouseSign(marsHouse)})</Text>
                 <Text style={styles.doshaDesc}>
                   {isManglik
                     ? 'Mangal Dosha is present. Mars in this house may affect marriage and relationships. Remedies include Hanuman Chalisa and visiting Mangal temples.'
@@ -452,7 +457,7 @@ export default function KundliResultScreen({ route }) {
             );
           })()}
 
-          {/* --- Shani Influence --- */}
+          {/* --- {t('shaniInfluence')} --- */}
           {(() => {
             // Shani in houses 1, 4, 7, 8, 10, 12 = strong influence
             const saturnHouse = Number(Object.keys(houses).find(
@@ -463,12 +468,12 @@ export default function KundliResultScreen({ route }) {
               <View style={[styles.doshaCard, isStrong && styles.doshaCardActive]}>
                 <View style={styles.doshaHeader}>
                   <Text style={styles.doshaIcon}>♄</Text>
-                  <Text style={styles.doshaName}>Shani Influence</Text>
+                  <Text style={styles.doshaName}>{t('shaniInfluence')}</Text>
                   <View style={[styles.doshaStatus, isStrong ? styles.statusActive : styles.statusClear]}>
-                    <Text style={styles.doshaStatusText}>{isStrong ? 'STRONG' : 'MILD'}</Text>
+                    <Text style={styles.doshaStatusText}>{isStrong ? t('strong') : t('mild')}</Text>
                   </View>
                 </View>
-                <Text style={styles.doshaDetail}>Saturn is in House {saturnHouse} ({getHouseSign(saturnHouse)})</Text>
+                <Text style={styles.doshaDetail}>Saturn is in {t('house')} {saturnHouse} ({getHouseSign(saturnHouse)})</Text>
                 <Text style={styles.doshaDesc}>
                   {isStrong
                     ? 'Saturn has a strong influence from this house. This may bring delays but also discipline and long-term rewards. Shani Puja is recommended.'
@@ -478,7 +483,7 @@ export default function KundliResultScreen({ route }) {
             );
           })()}
 
-          {/* --- Rahu-Ketu Effect --- */}
+          {/* --- {t('rahuKetuEffect')} --- */}
           {(() => {
             const rahuHouse = Number(Object.keys(houses).find(
               (h) => houses[h].includes('Ra')
@@ -492,12 +497,12 @@ export default function KundliResultScreen({ route }) {
               <View style={[styles.doshaCard, isIntense && styles.doshaCardActive]}>
                 <View style={styles.doshaHeader}>
                   <Text style={styles.doshaIcon}>☊</Text>
-                  <Text style={styles.doshaName}>Rahu-Ketu Effect</Text>
+                  <Text style={styles.doshaName}>{t('rahuKetuEffect')}</Text>
                   <View style={[styles.doshaStatus, isIntense ? styles.statusActive : styles.statusClear]}>
-                    <Text style={styles.doshaStatusText}>{isIntense ? 'INTENSE' : 'NORMAL'}</Text>
+                    <Text style={styles.doshaStatusText}>{isIntense ? t('intense') : t('normal')}</Text>
                   </View>
                 </View>
-                <Text style={styles.doshaDetail}>Rahu → House {rahuHouse} • Ketu → House {ketuHouse}</Text>
+                <Text style={styles.doshaDetail}>Rahu ? {t('house')} {rahuHouse} ? Ketu ? {t('house')} {ketuHouse}</Text>
                 <Text style={styles.doshaDesc}>
                   {isIntense
                     ? 'Rahu is in a significant house, amplifying desires and ambitions. Ketu opposite brings detachment. Rahu-Ketu Puja and Naga Dosha remedies may help.'
@@ -512,9 +517,7 @@ export default function KundliResultScreen({ route }) {
         {/* Disclaimer */}
         <View style={styles.disclaimerBox}>
           <Text style={styles.disclaimerText}>
-            ⚠️ This is a simulated kundli for demonstration purposes.
-            In a real app, planetary positions would be calculated using
-            an astronomical ephemeris based on exact birth coordinates.
+            ?? {t('simulatedKundliDisclaimer')}
           </Text>
         </View>
 

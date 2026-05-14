@@ -1,164 +1,229 @@
-import { useContext } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { useContext, useState } from 'react';
+import { Modal, ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 
-// Pull in the global theme context created in App.js
 import { ThemeContext } from '../../App';
+import { useLanguage } from '../context/LanguageContext';
+import { languages } from '../i18n/translations';
 
-// This is the Settings Screen - users come here when they tap "Go to Settings"
 export default function SettingsScreen({ navigation }) {
-  // "navigation" is given to us automatically by React Navigation
-  // We use navigation.goBack() to go back to the previous screen
-
-  // -------------------------------------------------------
-  // THEME CONTEXT
-  // -------------------------------------------------------
-  // theme      → the active theme object (darkTheme or lightTheme)
-  // isDark     → boolean, true = dark mode
-  // toggleTheme → flips isDark in App.js, instantly propagates
-  //               to every ThemeContext consumer in the tree
-  // -------------------------------------------------------
   const { theme, isDark, toggleTheme } = useContext(ThemeContext);
+  const { currentLanguage, setLanguage, t } = useLanguage();
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
 
-  // -------------------------------------------------------
-  // DERIVED COLOUR TOKENS
-  // -------------------------------------------------------
-  // Values that aren't in the five base tokens but differ
-  // between dark and light mode for this screen specifically.
-  // -------------------------------------------------------
+  const selectedLanguage = languages.find((language) => language.code === currentLanguage) ?? languages[0];
 
-  // Card / section surface inside the screen
-  const cardBg      = isDark ? '#16213e' : '#ffffff';
-  const cardBorder  = isDark ? '#2e3a5e' : '#e2d9f3';
+  const cardBg = isDark ? '#16213e' : '#fffaf0';
+  const cardBorder = isDark ? '#2e3a5e' : '#e9d39a';
 
-  // "Go Back" button
-  const btnBg       = isDark ? '#4a4370' : '#7c3aed';
-  const btnShadow   = isDark ? '#4a4370' : '#7c3aed';
+  const btnBg = isDark ? '#4a4370' : '#7c3aed';
+  const btnShadow = isDark ? '#4a4370' : '#7c3aed';
 
-  // Inactive toggle pill
-  const pillBg      = isDark ? '#1a1a2e' : '#f0ebff';
-  const pillBorder  = isDark ? '#4a4370' : '#c4b5e8';
-  const pillText    = isDark ? '#6c63a8' : '#7c6caf';
+  const pillBg = isDark ? '#1a1a2e' : '#fff7df';
+  const pillBorder = isDark ? '#4a4370' : '#e4c879';
+  const pillText = isDark ? '#a89ec9' : '#7a5a19';
 
-  // Active toggle pill (same purple glow in both modes)
-  const pillActiveBg     = isDark ? '#6c63ff' : '#7c3aed';
+  const pillActiveBg = isDark ? '#6c63ff' : '#7c3aed';
   const pillActiveBorder = isDark ? '#6c63ff' : '#7c3aed';
+  const gold = '#e8b849';
+  const sheetBg = isDark ? '#141c35' : '#fff9ea';
+  const sheetBorder = isDark ? '#2e3a5e' : '#ead28a';
+  const rowBg = isDark ? '#1a2240' : '#fffdf7';
+
+  const handleLanguageSelect = async (languageCode) => {
+    await setLanguage(languageCode);
+    setLanguageModalVisible(false);
+  };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-
-      {/* Main heading */}
-      <Text style={styles.emoji}>⚙️</Text>
-      <Text style={[styles.heading, { color: theme.text }]}>Settings</Text>
-      <Text style={[styles.subtitle, { color: theme.mutedText }]}>
-        Configure your preferences
-      </Text>
-
-      {/* Divider */}
-      <View style={[styles.divider, { backgroundColor: theme.accent }]} />
-
-      {/* -------------------------------------------------------
-          THEME SECTION
-          -------------------------------------------------------
-          The card surface, labels, and toggle pills all read from
-          the live theme object so the whole screen repaints the
-          moment toggleTheme() is called — no navigation required.
-          ------------------------------------------------------- */}
-      <View style={[styles.themeSection, {
-        backgroundColor: cardBg,
-        borderColor: cardBorder,
-      }]}>
-
-        {/* Section label */}
-        <Text style={[styles.sectionLabel, { color: theme.mutedText }]}>
-          🎨  Theme
-        </Text>
-
-        {/* Active theme badge */}
-        <Text style={[styles.activeThemeText, { color: theme.text }]}>
-          Currently active: {isDark ? '🌙 Dark Mode' : '☀️ Light Mode'}
-        </Text>
-
-        {/* Toggle row — two pill buttons, active one highlighted */}
-        <View style={styles.toggleRow}>
-
-          {/* Dark pill */}
-          <TouchableOpacity
-            style={[
-              styles.toggleButton,
-              {
-                backgroundColor: isDark ? pillActiveBg   : pillBg,
-                borderColor:     isDark ? pillActiveBorder : pillBorder,
-              },
-              isDark && styles.toggleButtonActiveShadow,
-            ]}
-            onPress={() => { if (!isDark) toggleTheme(); }}
-            accessibilityLabel="Switch to Dark Mode"
-          >
-            <Text style={[
-              styles.toggleButtonText,
-              { color: isDark ? '#ffffff' : pillText },
-            ]}>
-              🌙  Dark
-            </Text>
-          </TouchableOpacity>
-
-          {/* Light pill */}
-          <TouchableOpacity
-            style={[
-              styles.toggleButton,
-              {
-                backgroundColor: !isDark ? pillActiveBg    : pillBg,
-                borderColor:     !isDark ? pillActiveBorder : pillBorder,
-              },
-              !isDark && styles.toggleButtonActiveShadow,
-            ]}
-            onPress={() => { if (isDark) toggleTheme(); }}
-            accessibilityLabel="Switch to Light Mode"
-          >
-            <Text style={[
-              styles.toggleButtonText,
-              { color: !isDark ? '#ffffff' : pillText },
-            ]}>
-              ☀️  Light
-            </Text>
-          </TouchableOpacity>
-
-        </View>
-      </View>
-
-      {/* Divider */}
-      <View style={[styles.divider, { backgroundColor: theme.accent }]} />
-
-      {/* Button to go back to Home */}
-      <TouchableOpacity
-        style={[styles.button, {
-          backgroundColor: btnBg,
-          shadowColor: btnShadow,
-        }]}
-        onPress={() => navigation.goBack()}
-        // When pressed, this goes back to the previous screen (Home)
+    <>
+      <ScrollView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.buttonText}>← Go Back</Text>
-      </TouchableOpacity>
+        <Text style={styles.emoji}>⚙️</Text>
+        <Text style={[styles.heading, { color: theme.text }]}>{t('settings')}</Text>
+        <Text style={[styles.subtitle, { color: theme.mutedText }]}>
+          {t('configurePreferences')}
+        </Text>
 
-    </View>
+        <View style={[styles.divider, { backgroundColor: theme.accent }]} />
+
+        <View style={[styles.section, {
+          backgroundColor: cardBg,
+          borderColor: cardBorder,
+        }]}>
+          <Text style={[styles.sectionLabel, { color: theme.mutedText }]}>
+            {t('appearance')}
+          </Text>
+
+          <Text style={[styles.activeText, { color: theme.text }]}>
+            {isDark ? t('darkMode') : t('lightMode')}
+          </Text>
+
+          <View style={styles.toggleRow}>
+            <TouchableOpacity
+              style={[
+                styles.toggleButton,
+                {
+                  backgroundColor: isDark ? pillActiveBg : pillBg,
+                  borderColor: isDark ? pillActiveBorder : pillBorder,
+                },
+                isDark && styles.toggleButtonActiveShadow,
+              ]}
+              onPress={() => { if (!isDark) toggleTheme(); }}
+              accessibilityLabel={t('darkMode')}
+            >
+              <Text style={[
+                styles.toggleButtonText,
+                { color: isDark ? '#ffffff' : pillText },
+              ]}>
+                {t('darkMode')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.toggleButton,
+                {
+                  backgroundColor: !isDark ? pillActiveBg : pillBg,
+                  borderColor: !isDark ? pillActiveBorder : pillBorder,
+                },
+                !isDark && styles.toggleButtonActiveShadow,
+              ]}
+              onPress={() => { if (isDark) toggleTheme(); }}
+              accessibilityLabel={t('lightMode')}
+            >
+              <Text style={[
+                styles.toggleButtonText,
+                { color: !isDark ? '#ffffff' : pillText },
+              ]}>
+                {t('lightMode')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={[styles.divider, { backgroundColor: theme.accent }]} />
+
+        <TouchableOpacity
+          style={[styles.languageRow, {
+            backgroundColor: cardBg,
+            borderColor: cardBorder,
+          }]}
+          onPress={() => setLanguageModalVisible(true)}
+          activeOpacity={0.82}
+          accessibilityLabel={t('chooseLanguage')}
+        >
+          <View style={styles.languageRowText}>
+            <Text style={[styles.languageRowTitle, { color: theme.text }]}>
+              {t('language')}
+            </Text>
+            <Text style={[styles.languageRowValue, { color: theme.mutedText }]}>
+              {selectedLanguage.nativeName} · {selectedLanguage.label}
+            </Text>
+          </View>
+          <Text style={[styles.chevron, { color: gold }]}>›</Text>
+        </TouchableOpacity>
+
+        <View style={[styles.divider, { backgroundColor: theme.accent }]} />
+
+        <TouchableOpacity
+          style={[styles.button, {
+            backgroundColor: btnBg,
+            shadowColor: btnShadow,
+          }]}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.buttonText}>? {t('goBack')}</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      <Modal
+        visible={languageModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setLanguageModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setLanguageModalVisible(false)}
+        >
+          <TouchableOpacity
+            style={[styles.bottomSheet, {
+              backgroundColor: sheetBg,
+              borderColor: sheetBorder,
+              shadowColor: gold,
+            }]}
+            activeOpacity={1}
+          >
+            <View style={styles.sheetHandle} />
+
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { color: theme.text }]}>
+                {t('chooseLanguage')}
+              </Text>
+              <TouchableOpacity
+                style={[styles.closeButton, { borderColor: sheetBorder }]}
+                onPress={() => setLanguageModalVisible(false)}
+                accessibilityLabel={t('close')}
+              >
+                <Text style={[styles.closeButtonText, { color: theme.mutedText }]}>×</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.languageList}>
+              {languages.map((language) => {
+                const isSelected = language.code === currentLanguage;
+
+                return (
+                  <TouchableOpacity
+                    key={language.code}
+                    style={[
+                      styles.languageOption,
+                      {
+                        backgroundColor: isSelected ? theme.activeHighlight : rowBg,
+                        borderColor: isSelected ? gold : sheetBorder,
+                      },
+                    ]}
+                    onPress={() => handleLanguageSelect(language.code)}
+                    activeOpacity={0.78}
+                    accessibilityLabel={`Select ${language.label}`}
+                  >
+                    <View style={styles.languageOptionText}>
+                      <Text style={[styles.languageNativeName, { color: theme.text }]}>
+                        {language.nativeName}
+                      </Text>
+                      <Text style={[styles.languageLabel, { color: theme.mutedText }]}>
+                        {language.label}
+                      </Text>
+                    </View>
+
+                    {isSelected && (
+                      <Text style={[styles.checkmark, { color: gold }]}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+    </>
   );
 }
 
-// -------------------------------------------------------
-// STATIC STYLES
-// -------------------------------------------------------
-// Only layout-invariant properties live here: padding, font
-// sizes, border radii, spacing. Every colour is applied
-// inline above so it recomputes on every theme-driven render.
-// -------------------------------------------------------
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // backgroundColor → theme.background (inline)
+  },
+  contentContainer: {
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 30,
+    paddingVertical: 36,
   },
   emoji: {
     fontSize: 56,
@@ -167,25 +232,92 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 28,
     fontWeight: 'bold',
-    // color → theme.text (inline)
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    // color → theme.mutedText (inline)
     textAlign: 'center',
     marginBottom: 30,
   },
   divider: {
     width: 120,
     height: 2,
-    // backgroundColor → theme.accent (inline)
     borderRadius: 1,
-    marginBottom: 30,
+    marginBottom: 26,
+  },
+  section: {
+    width: '100%',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 26,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  activeText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  toggleButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    borderWidth: 1.5,
+  },
+  toggleButtonActiveShadow: {
+    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+  },
+  toggleButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  languageRow: {
+    width: '100%',
+    minHeight: 78,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    marginBottom: 26,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  languageRowText: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  languageRowTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 5,
+  },
+  languageRowValue: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  chevron: {
+    fontSize: 32,
+    fontWeight: '300',
   },
   button: {
-    // backgroundColor, shadowColor → inline
     paddingVertical: 14,
     paddingHorizontal: 32,
     borderRadius: 12,
@@ -200,54 +332,83 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-
-  // --- Theme section card ---
-  themeSection: {
-    width: '100%',
-    // backgroundColor, borderColor → inline
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 28,
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.52)',
+  },
+  bottomSheet: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     borderWidth: 1,
-    alignItems: 'center',
+    borderBottomWidth: 0,
+    paddingHorizontal: 22,
+    paddingTop: 10,
+    paddingBottom: 28,
+    elevation: 16,
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
   },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    // color → theme.mutedText (inline)
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 10,
-  },
-  activeThemeText: {
-    fontSize: 14,
-    // color → theme.text (inline)
-    fontWeight: '500',
+  sheetHandle: {
+    alignSelf: 'center',
+    width: 48,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(232, 184, 73, 0.55)',
     marginBottom: 16,
   },
-
-  // --- Pill toggle ---
-  toggleRow: {
+  sheetHeader: {
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
-  toggleButton: {
+  sheetTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  closeButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeButtonText: {
+    fontSize: 24,
+    lineHeight: 26,
+    fontWeight: '300',
+  },
+  languageList: {
+    gap: 9,
+  },
+  languageOption: {
+    minHeight: 58,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 24,
-    borderWidth: 1.5,
-    // backgroundColor, borderColor → inline
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  // Shadow applied only to the active pill (static non-colour props)
-  toggleButtonActiveShadow: {
-    elevation: 4,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
+  languageOptionText: {
+    flex: 1,
+    paddingRight: 12,
   },
-  toggleButtonText: {
-    fontSize: 14,
+  languageNativeName: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  languageLabel: {
+    fontSize: 12,
     fontWeight: '600',
-    // color → inline
+  },
+  checkmark: {
+    fontSize: 22,
+    fontWeight: '800',
   },
 });

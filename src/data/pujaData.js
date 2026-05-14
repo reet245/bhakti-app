@@ -2,6 +2,7 @@ const deities = [
   {
     id: 'shiv',
     name: 'Shiv Ji',
+    labelKey: 'shivJi',
     category: 'Shiva',
     subtitle: 'Mahadev • Destroyer of negativity',
     mantra: 'Om Namah Shivaya',
@@ -13,6 +14,7 @@ const deities = [
   {
     id: 'durga',
     name: 'Durga Ma',
+    labelKey: 'durgaMa',
     category: 'Shakti',
     subtitle: 'Shakti • Protector and mother',
     mantra: 'Om Dum Durgaye Namaha',
@@ -24,6 +26,7 @@ const deities = [
   {
     id: 'ganesh',
     name: 'Ganesh Ji',
+    labelKey: 'ganeshJi',
     category: 'Popular',
     subtitle: 'Vighnaharta • Remover of obstacles',
     mantra: 'Om Gan Ganapataye Namaha',
@@ -35,6 +38,7 @@ const deities = [
   {
     id: 'krishna',
     name: 'Krishna Ji',
+    labelKey: 'krishnaJi',
     category: 'Vishnu',
     subtitle: 'Govind • Love and divine wisdom',
     mantra: 'Hare Krishna Hare Rama',
@@ -46,6 +50,7 @@ const deities = [
   {
     id: 'hanuman',
     name: 'Hanuman Ji',
+    labelKey: 'hanumanJi',
     category: 'Popular',
     subtitle: 'Bhakti • Strength and devotion',
     mantra: 'Om Hanumate Namaha',
@@ -57,6 +62,7 @@ const deities = [
   {
     id: 'lakshmi',
     name: 'Lakshmi Ma',
+    labelKey: 'lakshmiMa',
     category: 'Shakti',
     subtitle: 'Shri • Prosperity and grace',
     mantra: 'Om Shreem Mahalakshmiyei Namaha',

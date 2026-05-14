@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import { useLanguage } from '../context/LanguageContext';
 
 // ============================================================
 // MantrasScreen — dedicated screen for sacred mantras
@@ -9,36 +10,38 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-nati
 const MANTRAS = [
   {
     id: 'gayatri',
-    name: 'Gayatri Mantra',
-    deity: 'Surya / Savitri',
+    nameKey: 'gayatriMantra',
+    deityKey: 'suryaSavitri',
     icon: '☀️',
     sanskrit: 'ॐ भूर्भुवः स्वः\nतत्सवितुर्वरेण्यं\nभर्गो देवस्य धीमहि\nधियो यो नः प्रचोदयात्',
     transliteration: 'Om Bhūr Bhuvaḥ Svaḥ\nTat Savitur Vareṇyaṁ\nBhargo Devasya Dhīmahi\nDhiyo Yo Naḥ Prachodayāt',
-    meaning: 'We meditate on the divine light of the Sun. May it illuminate our intellect and inspire us toward truth.',
+    meaningKey: 'gayatriMeaning',
     benefit: 'Wisdom · Clarity · Spiritual awakening',
   },
   {
     id: 'hanuman',
-    name: 'Hanuman Chalisa',
-    deity: 'Hanuman',
+    nameKey: 'hanumanChalisa',
+    deityKey: 'hanuman',
     icon: '🚩',
     sanskrit: 'श्रीगुरु चरन सरोज रज\nनिज मनु मुकुरु सुधारि\nबरनउँ रघुबर बिमल जसु\nजो दायकु फल चारि',
     transliteration: 'Shri Guru Charan Saroj Raj\nNija Manu Mukuru Sudhari\nBaranaun Raghubar Bimal Jasu\nJo Daayaku Phala Chari',
-    meaning: 'With the dust of my Guru\'s lotus feet, I cleanse the mirror of my mind. I narrate the pure glory of Shri Rama, which bestows the four fruits of life.',
+    meaningKey: 'hanumanMeaning',
     benefit: 'Courage · Protection · Devotion',
   },
 ];
 
 export default function MantrasScreen({ navigation }) {
+  const { t } = useLanguage();
+
   return (
     <View style={styles.container}>
 
       {/* Screen header */}
       <View style={styles.header}>
         <Text style={styles.headerEmoji}>🕉️</Text>
-        <Text style={styles.headerTitle}>Sacred Mantras</Text>
+        <Text style={styles.headerTitle}>{t('sacredMantras')}</Text>
         <Text style={styles.headerSubtitle}>
-          Ancient vibrations for inner peace
+          {t('ancientVibrations')}
         </Text>
         <View style={styles.headerDivider} />
       </View>
@@ -55,28 +58,28 @@ export default function MantrasScreen({ navigation }) {
               {/* Card top — deity icon + mantra name */}
               <View style={styles.cardHeader}>
                 <Text style={styles.cardIcon}>{mantra.icon}</Text>
-                <Text style={styles.cardName}>{mantra.name}</Text>
-                <Text style={styles.cardDeity}>{mantra.deity}</Text>
+                <Text style={styles.cardName}>{t(mantra.nameKey)}</Text>
+                <Text style={styles.cardDeity}>{t(mantra.deityKey)}</Text>
               </View>
 
               {/* Gold divider */}
               <View style={styles.cardDivider} />
 
               {/* Sanskrit text */}
-              <Text style={styles.sanskritLabel}>Sanskrit</Text>
+              <Text style={styles.sanskritLabel}>{t('sanskrit')}</Text>
               <Text style={styles.sanskritText}>{mantra.sanskrit}</Text>
 
               {/* Transliteration */}
-              <Text style={styles.translitLabel}>Transliteration</Text>
+              <Text style={styles.translitLabel}>{t('transliteration')}</Text>
               <Text style={styles.translitText}>{mantra.transliteration}</Text>
 
               {/* Meaning */}
-              <Text style={styles.meaningLabel}>Meaning</Text>
-              <Text style={styles.meaningText}>{mantra.meaning}</Text>
+              <Text style={styles.meaningLabel}>{t('meaning')}</Text>
+              <Text style={styles.meaningText}>{t(mantra.meaningKey)}</Text>
 
               {/* Benefit chip */}
               <View style={styles.benefitChip}>
-                <Text style={styles.benefitText}>{mantra.benefit}</Text>
+                <Text style={styles.benefitText}>{t(mantra.benefitKey)}</Text>
               </View>
 
             </View>

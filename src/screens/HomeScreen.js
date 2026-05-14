@@ -12,6 +12,7 @@ import {
 
 // Pull in the global theme context created in App.js
 import { ThemeContext } from '../../App';
+import { useLanguage } from '../context/LanguageContext';
 
 // -------------------------------------------------------
 // Background image — resolved at bundle time by Metro
@@ -31,15 +32,18 @@ const ICONS = {
   puja:     require('../../assets/icon/puja.png'),
   mantras:  require('../../assets/icon/mantras.png'),
   fasting:  require('../../assets/icon/fasting.png'),
+  horoscope: require('../../assets/icon/kundli.png'),
 };
 
 // Feature buttons — each carries a pre-resolved image source
 const FEATURES = [
-  { label: 'Panchang',     icon: ICONS.calendar, screen: 'Calendar' },
-  { label: 'Kundli',       icon: ICONS.kundli,   screen: 'Kundli'   },
-  { label: 'Puja',         icon: ICONS.puja,     screen: 'Puja'     },
-  { label: 'Mantras',      icon: ICONS.mantras,  screen: 'Mantras'  },
-  { label: 'Fasting Days', icon: ICONS.fasting,  screen: 'Calendar' },
+  { labelKey: 'panchang',    icon: ICONS.calendar, screen: 'Calendar' },
+  { labelKey: 'kundli',      icon: ICONS.kundli,   screen: 'Kundli'   },
+  { labelKey: 'puja',        icon: ICONS.puja,     screen: 'Puja'     },
+  { labelKey: 'mantras',     icon: ICONS.mantras,  screen: 'Mantras'  },
+  { labelKey: 'fastingDays', icon: ICONS.fasting,  screen: 'Calendar' },
+  { labelKey: 'upcomingFestivals', icon: ICONS.fasting, screen: 'UpcomingFestivals' },
+  { labelKey: 'dailyHoroscope', icon: ICONS.horoscope, screen: 'DailyHoroscope' },
 ];
 
 // This is the Home Screen - the first screen users see when they open the app
@@ -48,6 +52,7 @@ export default function HomeScreen({ navigation }) {
 
   // ThemeContext kept wired — toggle still works when screens are themed later
   useContext(ThemeContext);
+  const { t } = useLanguage();
 
 
   return (
@@ -70,7 +75,7 @@ export default function HomeScreen({ navigation }) {
           <TouchableOpacity
             style={styles.settingsIcon}
             onPress={() => navigation.navigate('Settings')}
-            accessibilityLabel="Settings"
+            accessibilityLabel={t('settings')}
           >
             <Text style={styles.settingsIconText}>⚙️</Text>
           </TouchableOpacity>
@@ -93,7 +98,7 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.buttonGrid}>
             {FEATURES.map((item) => (
               <TouchableOpacity
-                key={item.label}
+                key={item.labelKey}
                 style={styles.glassButton}
                 onPress={() => navigation.navigate(item.screen)}
                 activeOpacity={0.78}
@@ -105,7 +110,7 @@ export default function HomeScreen({ navigation }) {
                   style={styles.featureIcon}
                   resizeMode="contain"
                 />
-                <Text style={styles.glassButtonLabel}>{item.label}</Text>
+                <Text style={styles.glassButtonLabel}>{t(item.labelKey)}</Text>
               </TouchableOpacity>
             ))}
           </View>

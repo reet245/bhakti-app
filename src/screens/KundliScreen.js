@@ -4,9 +4,11 @@ import {
   KeyboardAvoidingView, Platform, ScrollView, Alert,
 } from 'react-native';
 import { ThemeContext } from '../../App';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function KundliScreen({ navigation }) {
   const { theme, isDark } = useContext(ThemeContext);
+  const { t } = useLanguage();
 
   const [name, setName]   = useState('');
   const [dob, setDob]     = useState('');
@@ -23,7 +25,7 @@ export default function KundliScreen({ navigation }) {
 
   function handleGenerate() {
     if (!name || !dob || !tob || !place) {
-      Alert.alert('Missing Details', 'Please fill in all fields to generate your Kundli.');
+      Alert.alert(t('missingDetails'), t('fillAllFieldsKundli'));
       return;
     }
     navigation.navigate('KundliResult', { name, dob, tob, place });
@@ -36,12 +38,12 @@ export default function KundliScreen({ navigation }) {
     >
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <Text style={styles.emoji}>🔮</Text>
-        <Text style={[styles.heading, { color: theme.text }]}>Generate Kundli</Text>
-        <Text style={[styles.subtitle, { color: theme.mutedText }]}>Enter your birth details</Text>
+        <Text style={[styles.heading, { color: theme.text }]}>{t('generateKundli')}</Text>
+        <Text style={[styles.subtitle, { color: theme.mutedText }]}>{t('enterBirthDetails')}</Text>
 
         <View style={[styles.formContainer, { backgroundColor: cardBg, borderColor: cardBorder }]}>
 
-          <Text style={[styles.label, { color: theme.mutedText }]}>Full Name</Text>
+          <Text style={[styles.label, { color: theme.mutedText }]}>{t('fullName')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: inputBg, borderColor: inputBorder, color: theme.text }]}
             placeholder="e.g. Arjun Sharma"
@@ -50,7 +52,7 @@ export default function KundliScreen({ navigation }) {
             onChangeText={setName}
           />
 
-          <Text style={[styles.label, { color: theme.mutedText }]}>Date of Birth</Text>
+          <Text style={[styles.label, { color: theme.mutedText }]}>{t('dateOfBirth')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: inputBg, borderColor: inputBorder, color: theme.text }]}
             placeholder="DD/MM/YYYY"
@@ -59,7 +61,7 @@ export default function KundliScreen({ navigation }) {
             onChangeText={setDob}
           />
 
-          <Text style={[styles.label, { color: theme.mutedText }]}>Time of Birth</Text>
+          <Text style={[styles.label, { color: theme.mutedText }]}>{t('timeOfBirth')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: inputBg, borderColor: inputBorder, color: theme.text }]}
             placeholder="HH:MM AM/PM"
@@ -68,7 +70,7 @@ export default function KundliScreen({ navigation }) {
             onChangeText={setTob}
           />
 
-          <Text style={[styles.label, { color: theme.mutedText }]}>Place of Birth</Text>
+          <Text style={[styles.label, { color: theme.mutedText }]}>{t('placeOfBirth')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: inputBg, borderColor: inputBorder, color: theme.text }]}
             placeholder="City, State"
@@ -81,7 +83,7 @@ export default function KundliScreen({ navigation }) {
             style={[styles.submitButton, { backgroundColor: submitBg }]}
             onPress={handleGenerate}
           >
-            <Text style={styles.submitButtonText}>Generate Kundli</Text>
+            <Text style={styles.submitButtonText}>{t('generateKundli')}</Text>
           </TouchableOpacity>
 
         </View>

@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 // import * as Notifications from 'expo-notifications';  // <-- Temporarily disabled for Expo Go compatibility
 import AppNavigator from './src/navigation/AppNavigator';
+import { LanguageProvider } from './src/context/LanguageContext';
 
 // ============================================================
 // THEME SYSTEM
@@ -187,13 +188,15 @@ export default function App() {
     // available to every screen in the tree without prop drilling.
     // Screens access it with: useContext(ThemeContext)
     <ThemeContext.Provider value={{ theme, isDark, toggleTheme }}>
-      <NavigationContainer>
-        {/* StatusBar style tracks the active theme */}
-        <StatusBar style={isDark ? 'light' : 'dark'} />
+      <LanguageProvider>
+        <NavigationContainer>
+          {/* StatusBar style tracks the active theme */}
+          <StatusBar style={isDark ? 'light' : 'dark'} />
 
-        {/* AppNavigator contains all our screens (Home, Settings) */}
-        <AppNavigator />
-      </NavigationContainer>
+          {/* AppNavigator contains all our screens (Home, Settings) */}
+          <AppNavigator />
+        </NavigationContainer>
+      </LanguageProvider>
     </ThemeContext.Provider>
   );
 }

@@ -2,323 +2,542 @@
 // src/services/panchangService.js
 // ============================================================
 //
-// WHY THIS FILE EXISTS:
-//   A screen file should only handle WHAT TO SHOW (the UI).
-//   It should NOT handle WHERE THE DATA COMES FROM.
-//   This file owns all data-fetching so CalendarScreen stays
-//   clean. To swap APIs in future, only this file changes.
+// Panchang data foundation for the Bhakti Calendar screen.
 //
-// CURRENT STATE → Real sunrise/sunset from sunrise-sunset.org
-//                 Tithi & festival still use placeholder logic
-//                 (a real Panchang API can replace that later)
+// IMPORTANT:
+//   Only sunrise and sunset currently come from a real API
+//   (sunrise-sunset.org). All lunar Panchang values below
+//   are deterministic local placeholders. They are NOT
+//   astronomically accurate yet.
+//
+//   Later, getBasicPanchangForDate can be replaced with a real
+//   Panchang API while keeping the returned object shape stable.
 // ============================================================
 
+const TITHIS = [
+  'Pratipada', 'Dwitiya', 'Tritiya', 'Chaturthi', 'Panchami',
+  'Shashthi', 'Saptami', 'Ashtami', 'Navami', 'Dashami',
+  'Ekadashi', 'Dwadashi', 'Trayodashi', 'Chaturdashi', 'Purnima',
+  'Pratipada', 'Dwitiya', 'Tritiya', 'Chaturthi', 'Panchami',
+  'Shashthi', 'Saptami', 'Ashtami', 'Navami', 'Dashami',
+  'Ekadashi', 'Dwadashi', 'Trayodashi', 'Chaturdashi', 'Amavasya',
+];
 
-// ------------------------------------------------------------
-// Helper: formatUTCtoLocalTime
-// ------------------------------------------------------------
-// The API returns times in UTC format, e.g.:
-//   "2026-05-05T00:05:56+00:00"
-//
-// We need to show the user their LOCAL time, e.g.:
-//   "5:35 AM"
-//
-// HOW IT WORKS:
-//   new Date(utcString) converts the UTC string into a
-//   JavaScript Date object. The Date object always knows
-//   the correct local time for the device's timezone.
-//   .toLocaleTimeString() then formats it as a readable string.
-//
-// Parameters:
-//   utcString → the raw UTC time string from the API
-//
-// Returns:
-//   A readable local time string like "5:35 AM"
-// ------------------------------------------------------------
+const NAKSHATRAS = [
+  'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira',
+  'Ardra', 'Punarvasu', 'Pushya', 'Ashlesha', 'Magha',
+  'Purva Phalguni', 'Uttara Phalguni', 'Hasta', 'Chitra', 'Swati',
+  'Vishakha', 'Anuradha', 'Jyeshtha', 'Mula', 'Purva Ashadha',
+  'Uttara Ashadha', 'Shravana', 'Dhanishta', 'Shatabhisha',
+  'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati',
+];
+
+const YOGAS = [
+  'Vishkambha', 'Priti', 'Ayushman', 'Saubhagya', 'Shobhana',
+  'Atiganda', 'Sukarma', 'Dhriti', 'Shoola', 'Ganda',
+  'Vriddhi', 'Dhruva', 'Vyaghata', 'Harshana', 'Vajra',
+  'Siddhi', 'Vyatipata', 'Variyan', 'Parigha', 'Shiva',
+  'Siddha', 'Sadhya', 'Shubha', 'Shukla', 'Brahma',
+  'Indra', 'Vaidhriti',
+];
+
+const KARANAS = [
+  'Bava', 'Balava', 'Kaulava', 'Taitila', 'Garaja',
+  'Vanija', 'Vishti', 'Shakuni', 'Chatushpada', 'Naga', 'Kimstughna',
+];
+
+const MASA_NAMES = [
+  'Chaitra', 'Vaishakha', 'Jyeshtha', 'Ashadha', 'Shravana', 'Bhadrapada',
+  'Ashwin', 'Kartika', 'Margashirsha', 'Pausha', 'Magha', 'Phalguna',
+];
+
+const WEEKDAY_RULES = {
+  0: {
+    recommendedPuja: 'Surya Prayer',
+    recommendedDeityId: null,
+    recommendedMantra: 'Gayatri Mantra',
+    mantraMeaning: 'A prayer for divine light, wisdom, and clarity.',
+  },
+  1: {
+    recommendedPuja: 'Shiv Ji Puja',
+    recommendedDeityId: 'shiv',
+    recommendedMantra: 'Om Namah Shivaya',
+    mantraMeaning: 'I bow to Lord Shiva, the auspicious and compassionate one.',
+  },
+  2: {
+    recommendedPuja: 'Hanuman Ji Puja',
+    recommendedDeityId: 'hanuman',
+    recommendedMantra: 'Om Hanumate Namaha',
+    mantraMeaning: 'I bow to Hanuman Ji, source of strength, courage, and devotion.',
+  },
+  3: {
+    recommendedPuja: 'Ganesh Ji Puja',
+    recommendedDeityId: 'ganesh',
+    recommendedMantra: 'Om Gan Ganapataye Namaha',
+    mantraMeaning: 'I bow to Lord Ganesha, remover of obstacles.',
+  },
+  4: {
+    recommendedPuja: 'Vishnu/Krishna Puja',
+    recommendedDeityId: 'krishna',
+    recommendedMantra: 'Om Namo Bhagavate Vasudevaya',
+    mantraMeaning: 'I bow to Lord Vasudeva, the divine presence within all.',
+  },
+  5: {
+    recommendedPuja: 'Lakshmi Ma Puja',
+    recommendedDeityId: 'lakshmi',
+    recommendedMantra: 'Om Shreem Mahalakshmiyei Namaha',
+    mantraMeaning: 'I bow to Mahalakshmi, source of grace, abundance, and auspiciousness.',
+  },
+  6: {
+    recommendedPuja: 'Hanuman Ji Puja',
+    recommendedDeityId: 'hanuman',
+    recommendedMantra: 'Om Hanumate Namaha',
+    mantraMeaning: 'I bow to Hanuman Ji, source of strength, courage, and devotion.',
+  },
+};
+
 function formatUTCtoLocalTime(utcString) {
   const date = new Date(utcString);
-  // toLocaleTimeString formats the time based on the device's locale
-  // { hour: '2-digit', minute: '2-digit' } = show hours and minutes only
-  // e.g. "05:35 AM" or "5:35 AM" depending on device settings
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-
-// ------------------------------------------------------------
-// Helper: getTithi
-// ------------------------------------------------------------
-// WHAT IS A TITHI?
-//   A Tithi is a lunar day in the Hindu calendar.
-//   A lunar month has exactly 30 tithis — 15 in the bright
-//   half (Shukla Paksha, new moon → full moon) and 15 in the
-//   dark half (Krishna Paksha, full moon → new moon).
-//
-// HOW THE SIMULATION WORKS:
-//   A real Tithi requires knowing the exact angle between the
-//   Sun and Moon — that needs an astronomy API.
-//   For now we simulate by mapping each calendar date (1–31)
-//   to one of the 30 Tithi names using the modulo (%) operator.
-//
-//   date % 30  gives a number from 0 to 29
-//   We use that number as an index into the TITHIS array.
-//
-//   Example:
-//     date 1  → 1 % 30 = 1  → "Dwitiya"
-//     date 15 → 15 % 30 = 15 → "Purnima"
-//     date 30 → 30 % 30 = 0  → "Pratipada"
-//
-// WHY NOT A REAL ASTROLOGY API YET?
-//   Free astrology APIs are rare and often require sign-up,
-//   API keys, or paid plans. This simulation keeps the app
-//   working beautifully while we evaluate which API to use.
-//   When ready, only THIS function needs to change.
-// ------------------------------------------------------------
-
-// All 30 Tithi names in order (Shukla 1–15, then Krishna 1–15)
-const TITHIS = [
-  'Pratipada',   //  0 / 30 — 1st lunar day (new moon)
-  'Dwitiya',     //  1
-  'Tritiya',     //  2
-  'Chaturthi',   //  3
-  'Panchami',    //  4
-  'Shashthi',    //  5
-  'Saptami',     //  6
-  'Ashtami',     //  7
-  'Navami',      //  8
-  'Dashami',     //  9
-  'Ekadashi',    // 10 — auspicious fasting day
-  'Dwadashi',    // 11
-  'Trayodashi',  // 12
-  'Chaturdashi', // 13
-  'Purnima',     // 14 — full moon
-  'Pratipada',   // 15 — start of dark half
-  'Dwitiya',     // 16
-  'Tritiya',     // 17
-  'Chaturthi',   // 18
-  'Panchami',    // 19
-  'Shashthi',    // 20
-  'Saptami',     // 21
-  'Ashtami',     // 22
-  'Navami',      // 23
-  'Dashami',     // 24
-  'Ekadashi',    // 25 — second Ekadashi of the month
-  'Dwadashi',    // 26
-  'Trayodashi',  // 27
-  'Chaturdashi', // 28
-  'Amavasya',    // 29 — new moon (no moon visible)
-];
-
-function getTithi(date) {
-  // date % 30 maps any date number to an index in TITHIS (0–29)
-  // We subtract 1 from date first so date=1 maps to index 0
-  const index = (date - 1) % 30;
-  return TITHIS[index];
+function formatDateLabel(date) {
+  return date.toLocaleDateString([], {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 }
 
-
-// ------------------------------------------------------------
-// Helper: getFestival
-// ------------------------------------------------------------
-// WHAT IS THIS?
-//   A simple lookup table that maps specific calendar dates
-//   to well-known spiritual observances.
-//
-// HOW IT WORKS:
-//   We define a plain object (FESTIVALS) where the key is
-//   the date number and the value is the festival name.
-//   If the tapped date exists as a key, we return its name.
-//   Otherwise we return 'None'.
-//
-//   Example:
-//     getFestival(1)  → "New Month Puja"
-//     getFestival(15) → "Full Moon (Purnima)"
-//     getFestival(7)  → "None"
-//
-// NOTE: These are fixed to calendar dates, not lunar dates.
-//   A real Panchang API would calculate festivals based on
-//   the actual lunar calendar, which varies each year.
-// ------------------------------------------------------------
-
-const FESTIVALS = {
-  1:  'New Month Puja',        // 1st of every month
-  5:  'Panchami Puja',         // 5th — Saraswati Panchami style
-  10: 'Dashami',               // 10th
-  11: 'Ekadashi Fast',         // 11th — fasting day
-  14: 'Chaturdashi Puja',      // 14th
-  15: 'Full Moon (Purnima)',   // 15th — full moon observance
-  25: 'Ekadashi Fast',         // 25th — second Ekadashi
-  29: 'Chaturdashi Puja',      // 29th
-  30: 'Amavasya',              // 30th — new moon, ancestor rituals
-};
-
-function getFestival(date) {
-  // Check if this date has an entry in FESTIVALS
-  // If FESTIVALS[date] exists, return it; otherwise return 'None'
-  return FESTIVALS[date] || 'None';
+function getDateISO(year, month, day) {
+  return [
+    year,
+    String(month + 1).padStart(2, '0'),
+    String(day).padStart(2, '0'),
+  ].join('-');
 }
 
+function getIndexedValue(items, year, month, day, offset = 0) {
+  const index = Math.abs((year * 17 + month * 31 + day + offset) % items.length);
+  return items[index];
+}
 
-// ------------------------------------------------------------
-// Helper: getDummyTithiAndFestival  (calls the two above)
-// ------------------------------------------------------------
-// This wrapper keeps the calling code in getPanchangFromAPI
-// unchanged — it still calls getDummyTithiAndFestival(date)
-// and gets back { tithi, festival }.
-// ------------------------------------------------------------
-function getDummyTithiAndFestival(date) {
+function getPlaceholderTime(day, baseHour, minuteStep = 7) {
+  const hour = (baseHour + (day % 5)) % 24;
+  const minute = (day * minuteStep) % 60;
+  const date = new Date(2000, 0, 1, hour, minute);
+
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function getPlaceholderWindow(day, baseHour, durationMinutes) {
+  const start = new Date(2000, 0, 1, baseHour + (day % 3), (day * 11) % 60);
+  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+
+  return `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+function getTithiIndex(day) {
+  return (day - 1) % TITHIS.length;
+}
+
+function getFestivalForDate({ month, day, tithi }) {
+  const monthDay = `${month + 1}-${day}`;
+
+  const festivalsByDate = {
+    '1-14': 'Makar Sankranti',
+    '3-8': 'Maha Shivratri',
+    '3-25': 'Holi',
+    '4-17': 'Ram Navami',
+    '4-23': 'Hanuman Jayanti',
+    '8-26': 'Janmashtami',
+    '9-7': 'Ganesh Chaturthi',
+    '10-3': 'Navratri',
+    '10-12': 'Dussehra',
+    '10-31': 'Diwali',
+  };
+
+  if (festivalsByDate[monthDay]) return festivalsByDate[monthDay];
+  if (tithi === 'Ekadashi') return 'Ekadashi';
+  if (tithi === 'Purnima') return 'Purnima';
+  if (tithi === 'Amavasya') return 'Amavasya';
+  if (tithi === 'Trayodashi') return 'Pradosh Vrat';
+  if (tithi === 'Chaturthi') return 'Sankashti Chaturthi';
+
+  return 'None';
+}
+
+function getRecommendedPujaForDate({ weekday, festival }) {
+  const festivalRules = [
+    {
+      match: 'Ekadashi',
+      value: {
+        recommendedPuja: 'Krishna/Vishnu Puja',
+        recommendedDeityId: 'krishna',
+      },
+    },
+    {
+      match: 'Pradosh Vrat',
+      value: {
+        recommendedPuja: 'Shiv Ji Puja',
+        recommendedDeityId: 'shiv',
+      },
+    },
+    {
+      match: 'Purnima',
+      value: {
+        recommendedPuja: 'Krishna/Vishnu Puja',
+        recommendedDeityId: 'krishna',
+      },
+    },
+    {
+      match: 'Sankashti Chaturthi',
+      value: {
+        recommendedPuja: 'Ganesh Ji Puja',
+        recommendedDeityId: 'ganesh',
+      },
+    },
+    {
+      match: 'Navratri',
+      value: {
+        recommendedPuja: 'Durga Ma Puja',
+        recommendedDeityId: 'durga',
+      },
+    },
+    {
+      match: 'Diwali',
+      value: {
+        recommendedPuja: 'Lakshmi Ma Puja',
+        recommendedDeityId: 'lakshmi',
+      },
+    },
+    {
+      match: 'Janmashtami',
+      value: {
+        recommendedPuja: 'Krishna Ji Puja',
+        recommendedDeityId: 'krishna',
+      },
+    },
+    {
+      match: 'Hanuman Jayanti',
+      value: {
+        recommendedPuja: 'Hanuman Ji Puja',
+        recommendedDeityId: 'hanuman',
+      },
+    },
+  ];
+
+  const festivalRule = festivalRules.find((rule) => festival.includes(rule.match));
+  if (festivalRule) return festivalRule.value;
+
+  const weekdayRule = WEEKDAY_RULES[weekday];
   return {
-    tithi:    getTithi(date),
-    festival: getFestival(date),
+    recommendedPuja: weekdayRule.recommendedPuja,
+    recommendedDeityId: weekdayRule.recommendedDeityId,
   };
 }
 
+function getRecommendedMantraForDate({ weekday, festival }) {
+  const festivalRules = [
+    {
+      match: 'Ekadashi',
+      mantra: 'Om Namo Bhagavate Vasudevaya',
+      meaning: 'A devotional mantra for surrender to Lord Krishna/Vishnu.',
+    },
+    {
+      match: 'Pradosh Vrat',
+      mantra: 'Om Namah Shivaya',
+      meaning: 'I bow to Lord Shiva, the auspicious and compassionate one.',
+    },
+    {
+      match: 'Purnima',
+      mantra: 'Om Namo Bhagavate Vasudevaya',
+      meaning: 'A devotional mantra for surrender to Lord Krishna/Vishnu.',
+    },
+    {
+      match: 'Sankashti Chaturthi',
+      mantra: 'Om Gan Ganapataye Namaha',
+      meaning: 'I bow to Lord Ganesha, remover of obstacles.',
+    },
+    {
+      match: 'Navratri',
+      mantra: 'Om Dum Durgayei Namaha',
+      meaning: 'I bow to Durga Ma, the protective divine mother.',
+    },
+    {
+      match: 'Diwali',
+      mantra: 'Om Shreem Mahalakshmiyei Namaha',
+      meaning: 'I bow to Mahalakshmi, source of grace, abundance, and auspiciousness.',
+    },
+    {
+      match: 'Janmashtami',
+      mantra: 'Om Namo Bhagavate Vasudevaya',
+      meaning: 'A devotional mantra for surrender to Lord Krishna.',
+    },
+    {
+      match: 'Hanuman Jayanti',
+      mantra: 'Om Hanumate Namaha',
+      meaning: 'I bow to Hanuman Ji, source of strength, courage, and devotion.',
+    },
+  ];
 
-// ------------------------------------------------------------
-// getPanchangFromAPI  (main exported function)
-// ------------------------------------------------------------
-// Fetches real sunrise & sunset from the free API at:
-//   https://api.sunrise-sunset.org
-//
-// Parameters:
-//   { year, month, day, latitude, longitude }
-//   month is the JavaScript Date month (0-11), so we convert it
-//   to a calendar month (1-12) before calling the API.
-//
-// Returns:
-//   { tithi, festival, sunrise, sunset }
-// ------------------------------------------------------------
+  const festivalRule = festivalRules.find((rule) => festival.includes(rule.match));
+  if (festivalRule) {
+    return {
+      recommendedMantra: festivalRule.mantra,
+      mantraMeaning: festivalRule.meaning,
+    };
+  }
+
+  const weekdayRule = WEEKDAY_RULES[weekday];
+  return {
+    recommendedMantra: weekdayRule.recommendedMantra,
+    mantraMeaning: weekdayRule.mantraMeaning,
+  };
+}
+
+function getCalendarMarkersForDate({ festival, isEkadashi, isPurnima, isAmavasya, isFast }) {
+  const markers = [];
+
+  if (festival !== 'None') markers.push('festival');
+  if (isEkadashi) markers.push('ekadashi');
+  if (isPurnima) markers.push('purnima');
+  if (isAmavasya) markers.push('amavasya');
+  if (isFast) markers.push('fast');
+
+  return markers;
+}
+
+function slugify(value) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function getImportanceForDate({ festival, tithi, paksha, recommendedPuja }) {
+  if (festival !== 'None') {
+    return `${festival} is a meaningful day for ${recommendedPuja}, japa, and a simple devotional sankalp.`;
+  }
+
+  if (tithi === 'Ekadashi') {
+    return 'Ekadashi is traditionally observed with fasting, Vishnu/Krishna bhakti, and mantra japa.';
+  }
+
+  if (tithi === 'Purnima') {
+    return 'Purnima is a bright full moon day for gratitude, prayer, charity, and peaceful reflection.';
+  }
+
+  if (tithi === 'Amavasya') {
+    return 'Amavasya is a quiet new moon day for inner reflection, diya lighting, and remembrance.';
+  }
+
+  return `${paksha} ${tithi} is suitable for steady daily sadhana and ${recommendedPuja}.`;
+}
+
+function getSuggestedBhaktiActionsForDate({
+  festival,
+  fast,
+  recommendedPuja,
+  recommendedDeityId,
+  recommendedMantra,
+  isFast,
+}) {
+  const actions = [
+    {
+      id: 'light-evening-diya',
+      title: 'Light a diya in the evening',
+      description: 'Offer a simple diya with a quiet prayer for the day.',
+      icon: '🪔',
+      actionType: 'ritual',
+      target: null,
+    },
+    {
+      id: `chant-${slugify(recommendedMantra)}`,
+      title: 'Chant today’s mantra 108 times',
+      description: recommendedMantra,
+      icon: '📿',
+      actionType: 'mantra',
+      target: recommendedMantra,
+    },
+    {
+      id: 'avoid-rahu-kaal',
+      title: 'Avoid starting important work during Rahu Kaal',
+      description: 'Use Rahu Kaal as a planning caution until accurate Panchang API data is added.',
+      icon: '⚠️',
+      actionType: 'guidance',
+      target: 'rahuKaal',
+    },
+    {
+      id: `start-${slugify(recommendedPuja)}`,
+      title: 'Start recommended puja',
+      description: recommendedPuja,
+      icon: '🛕',
+      actionType: 'puja',
+      target: recommendedDeityId,
+    },
+  ];
+
+  if (festival !== 'None' || isFast) {
+    actions.push({
+      id: `set-reminder-${slugify(festival !== 'None' ? festival : fast)}`,
+      title: 'Set reminder for festival or vrat',
+      description: festival !== 'None' ? festival : fast,
+      icon: '🔔',
+      actionType: 'reminder',
+      target: festival !== 'None' ? festival : fast,
+    });
+  }
+
+  return actions;
+}
+
+function getFastForDate({ festival, isEkadashi }) {
+  if (isEkadashi) return 'Ekadashi Vrat';
+  if (festival === 'Pradosh Vrat') return 'Pradosh Vrat';
+  if (festival === 'Sankashti Chaturthi') return 'Sankashti Vrat';
+  return 'None';
+}
+
+function getBasicPanchangForDate({ year, month, day }) {
+  const date = new Date(year, month, day);
+  const tithiIndex = getTithiIndex(day);
+  const tithi = TITHIS[tithiIndex];
+  const paksha = tithiIndex <= 14 ? 'Shukla Paksha' : 'Krishna Paksha';
+  const festival = getFestivalForDate({ month, day, tithi });
+  const isEkadashi = tithi === 'Ekadashi';
+  const isPurnima = tithi === 'Purnima';
+  const isAmavasya = tithi === 'Amavasya';
+  const fast = getFastForDate({ festival, isEkadashi });
+  const isFestival = festival !== 'None';
+  const isFast = fast !== 'None';
+  const puja = getRecommendedPujaForDate({ weekday: date.getDay(), festival });
+  const mantra = getRecommendedMantraForDate({ weekday: date.getDay(), festival });
+
+  return {
+    dateISO: getDateISO(year, month, day),
+    dateLabel: formatDateLabel(date),
+    weekday: date.toLocaleDateString([], { weekday: 'long' }),
+    hindiDateLabel: `${paksha} ${tithi}`,
+    tithi,
+    tithiEnd: getPlaceholderTime(day, 20),
+    nakshatra: getIndexedValue(NAKSHATRAS, year, month, day),
+    nakshatraEnd: getPlaceholderTime(day, 14, 9),
+    yoga: getIndexedValue(YOGAS, year, month, day, 5),
+    karana: getIndexedValue(KARANAS, year, month, day, 11),
+    paksha,
+    masa: getIndexedValue(MASA_NAMES, year, month, day, 2),
+    vikramSamvat: year + 57,
+    moonrise: getPlaceholderTime(day, 18, 13),
+    moonset: getPlaceholderTime(day, 6, 17),
+    rahuKaal: getPlaceholderWindow(day, 7, 90),
+    shubhMuhurat: getPlaceholderWindow(day, 10, 75),
+    festival,
+    fast,
+    importance: getImportanceForDate({
+      festival,
+      tithi,
+      paksha,
+      recommendedPuja: puja.recommendedPuja,
+    }),
+    recommendedPuja: puja.recommendedPuja,
+    recommendedDeityId: puja.recommendedDeityId,
+    recommendedMantra: mantra.recommendedMantra,
+    mantraMeaning: mantra.mantraMeaning,
+    suggestedBhaktiActions: getSuggestedBhaktiActionsForDate({
+      festival,
+      fast,
+      recommendedPuja: puja.recommendedPuja,
+      recommendedDeityId: puja.recommendedDeityId,
+      recommendedMantra: mantra.recommendedMantra,
+      isFast,
+    }),
+    calendarMarkers: getCalendarMarkersForDate({
+      festival,
+      isEkadashi,
+      isPurnima,
+      isAmavasya,
+      isFast,
+    }),
+    isEkadashi,
+    isPurnima,
+    isAmavasya,
+    isFestival,
+    isFast,
+  };
+}
+
+function buildPanchangResponse({ year, month, day, sunrise, sunset }) {
+  const basic = getBasicPanchangForDate({ year, month, day });
+
+  return {
+    dateISO: basic.dateISO,
+    dateLabel: basic.dateLabel,
+    weekday: basic.weekday,
+    hindiDateLabel: basic.hindiDateLabel,
+    tithi: basic.tithi,
+    tithiEnd: basic.tithiEnd,
+    nakshatra: basic.nakshatra,
+    nakshatraEnd: basic.nakshatraEnd,
+    yoga: basic.yoga,
+    karana: basic.karana,
+    paksha: basic.paksha,
+    masa: basic.masa,
+    vikramSamvat: basic.vikramSamvat,
+    sunrise,
+    sunset,
+    moonrise: basic.moonrise,
+    moonset: basic.moonset,
+    rahuKaal: basic.rahuKaal,
+    shubhMuhurat: basic.shubhMuhurat,
+    festival: basic.festival,
+    fast: basic.fast,
+    importance: basic.importance,
+    recommendedPuja: basic.recommendedPuja,
+    recommendedDeityId: basic.recommendedDeityId,
+    recommendedMantra: basic.recommendedMantra,
+    mantraMeaning: basic.mantraMeaning,
+    suggestedBhaktiActions: basic.suggestedBhaktiActions,
+    calendarMarkers: basic.calendarMarkers,
+    isEkadashi: basic.isEkadashi,
+    isPurnima: basic.isPurnima,
+    isAmavasya: basic.isAmavasya,
+    isFestival: basic.isFestival,
+    isFast: basic.isFast,
+  };
+}
+
 async function getPanchangFromAPI({ year, month, day, latitude, longitude }) {
-  const apiMonth = month + 1;
-  const dateString = [
-    year,
-    String(apiMonth).padStart(2, '0'),
-    String(day).padStart(2, '0'),
-  ].join('-');
-
-  // ----------------------------------------------------------
-  // STEP 2: Build the API URL
-  // ----------------------------------------------------------
-  // We plug latitude, longitude, and YYYY-MM-DD date into the URL.
-  // formatted=0 tells the API to give us raw UTC times (not
-  // pre-formatted strings), so we can convert them ourselves.
-  //
-  // Template literals (backticks + ${}) let us embed variables
-  // inside a string cleanly.
-  // ----------------------------------------------------------
+  const dateISO = getDateISO(year, month, day);
   const url =
-    `https://api.sunrise-sunset.org/json?lat=${latitude}&lng=${longitude}&date=${dateString}&formatted=0`;
+    `https://api.sunrise-sunset.org/json?lat=${latitude}&lng=${longitude}&date=${dateISO}&formatted=0`;
 
-  // ----------------------------------------------------------
-  // STEP 5: Wrap everything in try/catch for error handling
-  // ----------------------------------------------------------
-  // "try" → attempt the network call
-  // "catch" → if ANYTHING goes wrong (no internet, API down,
-  //            bad response...) we land here safely and return
-  //            fallback data instead of crashing the app.
-  // ----------------------------------------------------------
   try {
-
-    // --------------------------------------------------------
-    // STEP 2: Call the API using fetch()
-    // --------------------------------------------------------
-    // HOW fetch() WORKS:
-    //   fetch(url) sends an HTTP GET request to the URL.
-    //   It returns a Promise, so we "await" it.
-    //   Once the server responds, "response" holds the result.
-    //   At this point the data is still raw (not usable yet).
-    // --------------------------------------------------------
     const response = await fetch(url);
-
-    // --------------------------------------------------------
-    // STEP 3: Convert response to a usable JavaScript object
-    // --------------------------------------------------------
-    // HOW response.json() WORKS:
-    //   The server sends data as a JSON string, which looks like:
-    //   '{"results":{"sunrise":"2026-05-05T00:05:56+00:00",...}}'
-    //
-    //   response.json() reads that string and converts it into
-    //   a real JavaScript object we can access with dot notation:
-    //   data.results.sunrise, data.results.sunset, etc.
-    //
-    //   It is also async, so we "await" it too.
-    // --------------------------------------------------------
     const data = await response.json();
 
-    // --------------------------------------------------------
-    // Check that the API returned a successful status
-    // --------------------------------------------------------
-    // The API sets data.status = "OK" when everything worked.
-    // If it is anything else, we throw an error to trigger
-    // the catch block below.
-    // --------------------------------------------------------
     if (data.status !== 'OK') {
       throw new Error('API returned non-OK status: ' + data.status);
     }
 
-    // --------------------------------------------------------
-    // STEP 3: Extract sunrise and sunset from the response
-    // --------------------------------------------------------
-    // The API response shape looks like:
-    // {
-    //   status: "OK",
-    //   results: {
-    //     sunrise: "2026-05-05T00:05:56+00:00",   ← UTC time
-    //     sunset:  "2026-05-05T13:29:50+00:00",   ← UTC time
-    //     ...other fields we don't need...
-    //   }
-    // }
-    //
-    // We reach into data.results to get the two fields we need,
-    // then pass them to our helper to convert to local time.
-    // --------------------------------------------------------
-    const sunriseLocal = formatUTCtoLocalTime(data.results.sunrise);
-    const sunsetLocal  = formatUTCtoLocalTime(data.results.sunset);
-
-    // --------------------------------------------------------
-    // STEP 4: Combine real API data + placeholder tithi/festival
-    // --------------------------------------------------------
-    const { tithi, festival } = getDummyTithiAndFestival(day);
-
-    // Return the final object to CalendarScreen
-    return {
-      tithi,
-      festival,
-      sunrise: sunriseLocal,  // e.g. "5:35 AM"
-      sunset:  sunsetLocal,   // e.g. "7:01 PM"
-    };
-
+    return buildPanchangResponse({
+      year,
+      month,
+      day,
+      sunrise: formatUTCtoLocalTime(data.results.sunrise),
+      sunset: formatUTCtoLocalTime(data.results.sunset),
+    });
   } catch (error) {
-
-    // --------------------------------------------------------
-    // STEP 5: Fallback data if API call fails
-    // --------------------------------------------------------
-    // Reasons this could trigger:
-    //   - No internet connection on the device
-    //   - The API server is temporarily down
-    //   - Invalid latitude/longitude values
-    //   - Any unexpected error in the code above
-    //
-    // Instead of crashing, we return safe placeholder values
-    // so the app still works and shows something to the user.
-    // --------------------------------------------------------
     console.warn('panchangService: API call failed, using fallback.', error.message);
 
-    const { tithi, festival } = getDummyTithiAndFestival(day);
-
-    return {
-      tithi,
-      festival,
-      sunrise: 'Unavailable',  // shown when API fails
-      sunset:  'Unavailable',
-    };
+    return buildPanchangResponse({
+      year,
+      month,
+      day,
+      sunrise: 'Unavailable',
+      sunset: 'Unavailable',
+    });
   }
 }
 
-
-// ------------------------------------------------------------
-// Export
-// ------------------------------------------------------------
-// CalendarScreen imports this with:
-//   import { getPanchangFromAPI } from '../services/panchangService';
-// ------------------------------------------------------------
 export { getPanchangFromAPI };

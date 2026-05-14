@@ -14,9 +14,17 @@ import {
 import { Audio, ResizeMode, Video } from 'expo-av';
 
 import { deities, pujaItems } from '../data/pujaData';
+import { useLanguage } from '../context/LanguageContext';
 
-const categories = ['All', 'Popular', 'Shiva', 'Shakti', 'Vishnu'];
+const categories = [
+  { id: 'All', labelKey: 'all' },
+  { id: 'Popular', labelKey: 'popular' },
+  { id: 'Shiva', labelKey: 'shiva' },
+  { id: 'Shakti', labelKey: 'shakti' },
+  { id: 'Vishnu', labelKey: 'vishnu' },
+];
 export default function PujaScreen() {
+  const { t } = useLanguage();
   const [viewMode, setViewMode] = useState('chooseDeity');
   const [selectedDeity, setSelectedDeity] = useState(null);
   const [activeCategory, setActiveCategory] = useState('All');
@@ -369,21 +377,20 @@ export default function PujaScreen() {
       <ScrollView style={styles.screen} contentContainerStyle={styles.chooseContent}>
         <View style={styles.header}>
           <View style={styles.headerText}>
-            <Text style={styles.title}>Choose Your Deity</Text>
+            <Text style={styles.title}>{t('chooseYourDeity')}</Text>
           </View>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
           {categories.map(category => (
             <TouchableOpacity
-              key={category}
-              style={[styles.categoryChip, activeCategory === category && styles.categoryChipActive]}
-              onPress={() => setActiveCategory(category)}
+              key={category.id}
+              style={[styles.categoryChip, activeCategory === category.id && styles.categoryChipActive]}
+              onPress={() => setActiveCategory(category.id)}
               activeOpacity={0.8}
             >
-              <Text style={[styles.categoryText, activeCategory === category && styles.categoryTextActive]}>
-                {category}
-              </Text>
+              <Text style={[styles.categoryText, activeCategory === category.id && styles.categoryTextActive]}>
+                {t(category.labelKey)}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -397,7 +404,7 @@ export default function PujaScreen() {
               activeOpacity={0.86}
             >
               <Image source={deity.image} style={styles.deityImage} />
-              <Text style={styles.deityName}>{deity.name}</Text>
+              <Text style={styles.deityName}>{t(deity.labelKey || deity.name)}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -700,7 +707,7 @@ export default function PujaScreen() {
           </TouchableOpacity>
           {!showAartiVideo && (
             <View style={styles.templeTitleWrap}>
-              <Text style={styles.templeDeityName}>{deity.name}</Text>
+              <Text style={styles.templeDeityName}>{t(deity.labelKey || deity.name)}</Text>
             </View>
           )}
         </View>
@@ -741,32 +748,32 @@ export default function PujaScreen() {
                 contentContainerStyle={styles.actionTrayContent}
               >
                 <PujaActionButton
-                  label="Flower"
+                  label={t('flower')}
                   image={pujaItems.flower.image}
                   active={isActionActive('flower', { flowers })}
                   onPress={handleFlowerPress}
                 />
                 <PujaActionButton
-                  label="Diya"
+                  label={t('diya')}
                   image={pujaItems.diya.image}
                   active={isActionActive('diya', { diyaActive })}
                   onPress={handleDiyaPress}
                 />
                 <PujaActionButton
-                  label="Agarbatti"
+                  label={t('agarbatti')}
                   image={pujaItems.agarbatti.image}
                   active={isActionActive('agarbatti', { agarbattiActive })}
                   onPress={handleAgarbattiPress}
                 />
                 <PujaActionButton
-                  label="Prasad"
+                  label={t('prasad')}
                   image={pujaItems.prasad.image}
                   active={isActionActive('prasad', { prasadVisible })}
                   onPress={handlePrasadPress}
                 />
               </ScrollView>
               <TouchableOpacity style={styles.resetButton} onPress={resetPuja} activeOpacity={0.82}>
-                <Text style={styles.resetButtonText}>Reset Puja</Text>
+                <Text style={styles.resetButtonText}>{t('resetPuja')}</Text>
               </TouchableOpacity>
             </View>
           </>
