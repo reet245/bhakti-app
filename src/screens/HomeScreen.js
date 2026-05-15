@@ -41,9 +41,8 @@ const FEATURES = [
   { labelKey: 'kundli',      icon: ICONS.kundli,   screen: 'Kundli'   },
   { labelKey: 'puja',        icon: ICONS.puja,     screen: 'Puja'     },
   { labelKey: 'mantras',     icon: ICONS.mantras,  screen: 'Mantras'  },
-  { labelKey: 'fastingDays', icon: ICONS.fasting,  screen: 'Calendar' },
-  { labelKey: 'upcomingFestivals', icon: ICONS.fasting, screen: 'UpcomingFestivals' },
   { labelKey: 'dailyHoroscope', icon: ICONS.horoscope, screen: 'DailyHoroscope' },
+  { labelKey: 'upcomingFestivals', icon: ICONS.fasting, screen: 'UpcomingFestivals' },
 ];
 
 // This is the Home Screen - the first screen users see when they open the app
@@ -110,7 +109,9 @@ export default function HomeScreen({ navigation }) {
                   style={styles.featureIcon}
                   resizeMode="contain"
                 />
-                <Text style={styles.glassButtonLabel}>{t(item.labelKey)}</Text>
+                <Text style={styles.glassButtonLabel} numberOfLines={2}>
+                  {t(item.labelKey)}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -183,21 +184,22 @@ const styles = StyleSheet.create({
   buttonGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 8,                  // tighter gap = more composed, less scattered
+    justifyContent: 'space-between',
+    rowGap: 12,
     width: '100%',
   },
 
   // Sacred cream-gold floating button
   glassButton: {
-    width: '44%',               // ~2 per row with gap
+    width: '31%',
+    aspectRatio: 1,
     // Warm ivory — cream with the faintest gold warmth, ~70% opaque
     // so the artwork glows softly through without muddying
     backgroundColor: 'rgba(255, 248, 224, 0.72)',
-    borderRadius: 18,
-    paddingVertical: 15,
-    paddingHorizontal: 12,
+    borderRadius: 16,
+    padding: 8,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     // Soft warm-gold border — present but never harsh
     borderColor: 'rgba(200, 150, 40, 0.55)',
@@ -212,18 +214,18 @@ const styles = StyleSheet.create({
   // Custom PNG icon — fixed square keeps all icons visually identical
   // resizeMode="contain" (set inline) scales within this box without cropping
   featureIcon: {
-    width: 36,
-    height: 36,
-    marginBottom: 6,
+    width: 38,
+    height: 38,
+    marginBottom: 5,
   },
 
   glassButtonLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     // Warm dark brown — readable against the cream background
     // and harmonises with the gold border and artwork palette
     color: '#5c3a0e',
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
     textAlign: 'center',
     // Very light warm shadow lifts the text cleanly off the button
     textShadowColor: 'rgba(255, 235, 160, 0.6)',

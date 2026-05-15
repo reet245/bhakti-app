@@ -5,6 +5,8 @@ import { languages, translations } from '../i18n/translations';
 
 const STORAGE_KEY = 'appLanguage';
 const DEFAULT_LANGUAGE = 'en';
+const supportedLanguageCodes = languages.map((language) => language.code);
+const isSupportedLanguage = (languageCode) => supportedLanguageCodes.includes(languageCode);
 
 export const LanguageContext = createContext(null);
 
@@ -15,10 +17,11 @@ export function LanguageProvider({ children }) {
     async function loadSavedLanguage() {
       try {
         const savedLanguage = await AsyncStorage.getItem(STORAGE_KEY);
-        const isSupported = languages.some((language) => language.code === savedLanguage);
 
-        if (isSupported) {
+        if (isSupportedLanguage(savedLanguage)) {
           setCurrentLanguage(savedLanguage);
+        } else if (savedLanguage) {
+          await AsyncStorage.setItem(STORAGE_KEY, DEFAULT_LANGUAGE);
         }
       } catch (error) {
         console.warn('Unable to load saved language:', error);
@@ -29,9 +32,7 @@ export function LanguageProvider({ children }) {
   }, []);
 
   const setLanguage = useCallback(async (languageCode) => {
-    const isSupported = languages.some((language) => language.code === languageCode);
-
-    if (!isSupported) {
+    if (!isSupportedLanguage(languageCode)) {
       return;
     }
 
