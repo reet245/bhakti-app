@@ -1,143 +1,444 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   Image,
   ImageBackground,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 import { useLanguage } from '../context/LanguageContext';
 import { getDailyHoroscopes } from '../services/horoscopeService';
 
 const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
+const HANGING_BELL_IMAGE = require('../../assets/horoscope/decorations/hanging-bell.png');
+const DIYA_IMAGE = require('../../assets/horoscope/decorations/diya.png');
+const LOTUS_DIVIDER_IMAGE = require('../../assets/horoscope/decorations/lotus-divider.png');
+const NAKSHATRA_IMAGE = require('../../assets/horoscope/decorations/nakshatra.png');
+const MOON_SIGN_IMAGE = require('../../assets/horoscope/decorations/moon-sign.png');
+const TITHI_IMAGE = require('../../assets/horoscope/decorations/tithi.png');
 
 const ZODIAC_SIGNS = [
-  {
-    id: 'aries',
-    nameKey: 'aries',
-    dateRange: 'Mar 21 - Apr 19',
-    icon: require('../../assets/horoscope/zodiac/aries.png'),
-  },
-  {
-    id: 'taurus',
-    nameKey: 'taurus',
-    dateRange: 'Apr 20 - May 20',
-    icon: require('../../assets/horoscope/zodiac/taurus.png'),
-  },
-  {
-    id: 'gemini',
-    nameKey: 'gemini',
-    dateRange: 'May 21 - Jun 20',
-    icon: require('../../assets/horoscope/zodiac/gemini.png'),
-  },
-  {
-    id: 'cancer',
-    nameKey: 'cancer',
-    dateRange: 'Jun 21 - Jul 22',
-    icon: require('../../assets/horoscope/zodiac/cancer.png'),
-  },
-  {
-    id: 'leo',
-    nameKey: 'leo',
-    dateRange: 'Jul 23 - Aug 22',
-    icon: require('../../assets/horoscope/zodiac/leo.png'),
-  },
-  {
-    id: 'virgo',
-    nameKey: 'virgo',
-    dateRange: 'Aug 23 - Sep 22',
-    icon: require('../../assets/horoscope/zodiac/virgo.png'),
-  },
-  {
-    id: 'libra',
-    nameKey: 'libra',
-    dateRange: 'Sep 23 - Oct 22',
-    icon: require('../../assets/horoscope/zodiac/libra.png'),
-  },
-  {
-    id: 'scorpio',
-    nameKey: 'scorpio',
-    dateRange: 'Oct 23 - Nov 21',
-    icon: require('../../assets/horoscope/zodiac/scorpio.png'),
-  },
-  {
-    id: 'sagittarius',
-    nameKey: 'sagittarius',
-    dateRange: 'Nov 22 - Dec 21',
-    icon: require('../../assets/horoscope/zodiac/sagittarius.png'),
-  },
-  {
-    id: 'capricorn',
-    nameKey: 'capricorn',
-    dateRange: 'Dec 22 - Jan 19',
-    icon: require('../../assets/horoscope/zodiac/capricorn.png'),
-  },
-  {
-    id: 'aquarius',
-    nameKey: 'aquarius',
-    dateRange: 'Jan 20 - Feb 18',
-    icon: require('../../assets/horoscope/zodiac/aquarius.png'),
-  },
-  {
-    id: 'pisces',
-    nameKey: 'pisces',
-    dateRange: 'Feb 19 - Mar 20',
-    icon: require('../../assets/horoscope/zodiac/pisces.png'),
-  },
+  { id: 'aries', englishName: 'Aries', englishRashi: 'Mesh', hindiName: '\u092e\u0947\u0937', dateRange: 'Mar 21 - Apr 19', icon: require('../../assets/horoscope/zodiac/aries.png'), zeroArtwork: require('../../assets/horoscope/zodiac-zero/aries.png') },
+  { id: 'taurus', englishName: 'Taurus', englishRashi: 'Vrishabh', hindiName: '\u0935\u0943\u0937\u092d', dateRange: 'Apr 20 - May 20', icon: require('../../assets/horoscope/zodiac/taurus.png'), zeroArtwork: require('../../assets/horoscope/zodiac-zero/taurus.png') },
+  { id: 'gemini', englishName: 'Gemini', englishRashi: 'Mithun', hindiName: '\u092e\u093f\u0925\u0941\u0928', dateRange: 'May 21 - Jun 20', icon: require('../../assets/horoscope/zodiac/gemini.png'), zeroArtwork: require('../../assets/horoscope/zodiac-zero/gemini.png') },
+  { id: 'cancer', englishName: 'Cancer', englishRashi: 'Kark', hindiName: '\u0915\u0930\u094d\u0915', dateRange: 'Jun 21 - Jul 22', icon: require('../../assets/horoscope/zodiac/cancer.png'), zeroArtwork: require('../../assets/horoscope/zodiac-zero/cancer.png') },
+  { id: 'leo', englishName: 'Leo', englishRashi: 'Singh', hindiName: '\u0938\u093f\u0902\u0939', dateRange: 'Jul 23 - Aug 22', icon: require('../../assets/horoscope/zodiac/leo.png'), zeroArtwork: require('../../assets/horoscope/zodiac-zero/leo.png') },
+  { id: 'virgo', englishName: 'Virgo', englishRashi: 'Kanya', hindiName: '\u0915\u0928\u094d\u092f\u093e', dateRange: 'Aug 23 - Sep 22', icon: require('../../assets/horoscope/zodiac/virgo.png'), zeroArtwork: require('../../assets/horoscope/zodiac-zero/virgo.png') },
+  { id: 'libra', englishName: 'Libra', englishRashi: 'Tula', hindiName: '\u0924\u0941\u0932\u093e', dateRange: 'Sep 23 - Oct 22', icon: require('../../assets/horoscope/zodiac/libra.png'), zeroArtwork: require('../../assets/horoscope/zodiac-zero/libra.png') },
+  { id: 'scorpio', englishName: 'Scorpio', englishRashi: 'Vrishchik', hindiName: '\u0935\u0943\u0936\u094d\u091a\u093f\u0915', dateRange: 'Oct 23 - Nov 21', icon: require('../../assets/horoscope/zodiac/scorpio.png'), zeroArtwork: require('../../assets/horoscope/zodiac-zero/scorpio.png') },
+  { id: 'sagittarius', englishName: 'Sagittarius', englishRashi: 'Dhanu', hindiName: '\u0927\u0928\u0941', dateRange: 'Nov 22 - Dec 21', icon: require('../../assets/horoscope/zodiac/sagittarius.png'), zeroArtwork: require('../../assets/horoscope/zodiac-zero/sagittarius.png') },
+  { id: 'capricorn', englishName: 'Capricorn', englishRashi: 'Makar', hindiName: '\u092e\u0915\u0930', dateRange: 'Dec 22 - Jan 19', icon: require('../../assets/horoscope/zodiac/capricorn.png'), zeroArtwork: require('../../assets/horoscope/zodiac-zero/capricorn.png') },
+  { id: 'aquarius', englishName: 'Aquarius', englishRashi: 'Kumbh', hindiName: '\u0915\u0941\u092e\u094d\u092d', dateRange: 'Jan 20 - Feb 18', icon: require('../../assets/horoscope/zodiac/aquarius.png'), zeroArtwork: require('../../assets/horoscope/zodiac-zero/aquarius.png') },
+  { id: 'pisces', englishName: 'Pisces', englishRashi: 'Meen', hindiName: '\u092e\u0940\u0928', dateRange: 'Feb 19 - Mar 20', icon: require('../../assets/horoscope/zodiac/pisces.png'), zeroArtwork: require('../../assets/horoscope/zodiac-zero/pisces.png') },
 ];
 
-const EMPTY_MESSAGES = {
-  en: "Unable to load today's horoscope. Please try again later.",
-  hi: 'आज का राशिफल लोड नहीं हो पाया। कृपया बाद में पुनः प्रयास करें।',
+const FALLBACK_HOROSCOPE = {
+  en: 'Your daily guidance will appear here.',
+  hi: '\u0906\u092a\u0915\u093e \u0926\u0948\u0928\u093f\u0915 \u0930\u093e\u0936\u093f\u092b\u0932 \u092f\u0939\u093e\u0901 \u0926\u093f\u0916\u093e\u0908 \u0926\u0947\u0917\u093e\u0964',
 };
 
-const createSafeHoroscopes = (languageCode = 'en') => {
-  const safeLanguageCode = languageCode === 'hi' ? 'hi' : 'en';
+const INSIGHT_ITEMS = {
+  en: [
+    { id: 'love', icon: '\u2665', label: 'Love', value: 'Positive vibes in relationships.' },
+    { id: 'career', icon: '\u2609', label: 'Career', value: 'New opportunities are coming.' },
+    { id: 'health', icon: '\u2726', label: 'Health', value: 'Take care of your diet and rest.' },
+  ],
+  hi: [
+    { id: 'love', icon: '\u2665', label: '\u092a\u094d\u0930\u0947\u092e', value: '\u0930\u093f\u0936\u094d\u0924\u094b\u0902 \u092e\u0947\u0902 \u0938\u0915\u093e\u0930\u093e\u0924\u094d\u092e\u0915 \u090a\u0930\u094d\u091c\u093e \u0930\u0939\u0947\u0917\u0940\u0964' },
+    { id: 'career', icon: '\u2609', label: '\u0915\u0930\u093f\u092f\u0930', value: '\u0928\u090f \u0905\u0935\u0938\u0930 \u0906\u092a\u0915\u0940 \u0913\u0930 \u0906 \u0930\u0939\u0947 \u0939\u0948\u0902\u0964' },
+    { id: 'health', icon: '\u2726', label: '\u0938\u094d\u0935\u093e\u0938\u094d\u0925\u094d\u092f', value: '\u0906\u0939\u093e\u0930 \u0914\u0930 \u0906\u0930\u093e\u092e \u0915\u093e \u0927\u094d\u092f\u093e\u0928 \u0930\u0916\u0947\u0902\u0964' },
+  ],
+};
 
-  return ZODIAC_SIGNS.reduce((horoscopeMap, sign) => ({
+const RESULT_LUCKY_ITEMS = {
+  en: [
+    { id: 'luckyColor', label: 'Lucky Color', value: 'Golden' },
+    { id: 'luckyNumber', label: 'Lucky Number', value: '8' },
+    { id: 'auspiciousTime', label: 'Auspicious Time', value: '10:45 AM - 12:30 PM' },
+  ],
+  hi: [
+    { id: 'luckyColor', label: '\u0936\u0941\u092d \u0930\u0902\u0917', value: '\u0938\u0941\u0928\u0939\u0930\u093e' },
+    { id: 'luckyNumber', label: '\u0936\u0941\u092d \u0905\u0902\u0915', value: '\u096e' },
+    { id: 'auspiciousTime', label: '\u0936\u0941\u092d \u0938\u092e\u092f', value: '\u0938\u0941\u092c\u0939 10:45 - \u0926\u094b\u092a\u0939\u0930 12:30' },
+  ],
+};
+
+const RESULT_CARD_TEXT = {
+  en: {
+    heading: "Today's Horoscope",
+    energyLabel: 'Spiritual Energy',
+    button: 'View Detailed Horoscope \u2192',
+  },
+  hi: {
+    heading: '\u0906\u091c \u0915\u093e \u0930\u093e\u0936\u093f\u092b\u0932',
+    energyLabel: '\u0906\u0927\u094d\u092f\u093e\u0924\u094d\u092e\u093f\u0915 \u090a\u0930\u094d\u091c\u093e',
+    button: '\u0935\u093f\u0938\u094d\u0924\u0943\u0924 \u0930\u093e\u0936\u093f\u092b\u0932 \u0926\u0947\u0916\u0947\u0902 \u2192',
+  },
+};
+
+const HEADER_BLESSING_TEXT = {
+  en: '|| \u0938\u0930\u094d\u0935\u0947 \u092d\u0935\u0928\u094d\u0924\u0941 \u0938\u0941\u0916\u093f\u0928\u0903 \u0938\u0930\u094d\u0935\u0947 \u0938\u0928\u094d\u0924\u0941 \u0928\u093f\u0930\u093e\u092e\u092f\u093e\u0903 ||',
+  hi: '|| \u0938\u0930\u094d\u0935\u0947 \u092d\u0935\u0928\u094d\u0924\u0941 \u0938\u0941\u0916\u093f\u0928\u0903 \u0938\u0930\u094d\u0935\u0947 \u0938\u0928\u094d\u0924\u0941 \u0928\u093f\u0930\u093e\u092e\u092f\u093e\u0903 ||',
+};
+
+const REMEDY_TEXT = {
+  en: 'Chant your chosen mantra with devotion and offer a diya in the evening.',
+  hi: '\u0936\u094d\u0930\u0926\u094d\u0927\u093e \u0915\u0947 \u0938\u093e\u0925 \u0905\u092a\u0928\u0947 \u092e\u0902\u0924\u094d\u0930 \u0915\u093e \u091c\u093e\u092a \u0915\u0930\u0947\u0902 \u0914\u0930 \u0938\u0902\u0927\u094d\u092f\u093e \u0938\u092e\u092f \u0926\u0940\u092a\u0915 \u0905\u0930\u094d\u092a\u093f\u0924 \u0915\u0930\u0947\u0902\u0964',
+};
+
+const HEADER_PANCHANG_PILL = {
+  en: 'Panchang: Shukla Paksha',
+  hi: '\u092a\u0902\u091a\u093e\u0902\u0917: \u0936\u0941\u0915\u094d\u0932 \u092a\u0915\u094d\u0937',
+};
+
+const HEADER_PANCHANG_ITEMS = {
+  en: [
+    { icon: 'N', label: 'Nakshatra', value: 'Rohini', image: NAKSHATRA_IMAGE },
+    { icon: 'S', label: 'Moon Sign', value: 'Taurus', image: MOON_SIGN_IMAGE },
+    { icon: 'T', label: 'Tithi', value: 'Dwitiya', image: TITHI_IMAGE },
+  ],
+  hi: [
+    { icon: 'N', label: '\u0928\u0915\u094d\u0937\u0924\u094d\u0930', value: '\u0930\u094b\u0939\u093f\u0923\u0940', image: NAKSHATRA_IMAGE },
+    { icon: 'S', label: '\u091a\u0902\u0926\u094d\u0930 \u0930\u093e\u0936\u093f', value: '\u0935\u0943\u0937\u092d', image: MOON_SIGN_IMAGE },
+    { icon: 'T', label: '\u0924\u093f\u0925\u093f', value: '\u0926\u094d\u0935\u093f\u0924\u0940\u092f\u093e', image: TITHI_IMAGE },
+  ],
+};
+
+const ZODIAC_SELECTOR_TITLE = "Choose your zodiac sign to read today's guidance";
+
+const HEADER_SPARKLES = [
+  { left: 0.18, top: 0.08, size: 3.2, opacity: 0.38 },
+  { left: 0.29, top: 0.04, size: 2.4, opacity: 0.28 },
+  { left: 0.74, top: 0.07, size: 3.6, opacity: 0.34 },
+  { left: 0.84, top: 0.16, size: 2.6, opacity: 0.3 },
+  { left: 0.14, top: 0.24, size: 2.8, opacity: 0.27 },
+  { left: 0.89, top: 0.31, size: 3, opacity: 0.31 },
+  { left: 0.23, top: 0.48, size: 2.2, opacity: 0.24 },
+  { left: 0.78, top: 0.47, size: 2.4, opacity: 0.26 },
+  { left: 0.1, top: 0.63, size: 3.4, opacity: 0.24 },
+  { left: 0.91, top: 0.64, size: 3.2, opacity: 0.23 },
+  { left: 0.37, top: 0.28, size: 2, opacity: 0.18 },
+  { left: 0.63, top: 0.28, size: 2, opacity: 0.18 },
+  { left: 0.07, top: 0.78, size: 2.8, opacity: 0.24 },
+  { left: 0.17, top: 0.83, size: 2.2, opacity: 0.2 },
+  { left: 0.83, top: 0.82, size: 2.2, opacity: 0.2 },
+  { left: 0.93, top: 0.77, size: 2.8, opacity: 0.24 },
+  { left: 0.06, top: 0.56, size: 2.4, opacity: 0.23 },
+  { left: 0.94, top: 0.56, size: 2.4, opacity: 0.23 },
+  { left: 0.28, top: 0.68, size: 2, opacity: 0.18 },
+  { left: 0.72, top: 0.68, size: 2, opacity: 0.18 },
+];
+
+const createSafeHoroscopes = (languageCode = 'en') => (
+  ZODIAC_SIGNS.reduce((horoscopeMap, sign) => ({
     ...horoscopeMap,
     [sign.id]: {
       id: sign.id,
-      title: sign.nameKey,
-      horoscope: EMPTY_MESSAGES[safeLanguageCode],
+      title: sign.englishName,
+      horoscope: FALLBACK_HOROSCOPE[languageCode === 'hi' ? 'hi' : 'en'],
       date: '',
       luckyNumber: '',
       luckyColor: '',
       remedy: '',
       source: '',
     },
-  }), {});
-};
+  }), {})
+);
 
 export default function DailyHoroscopeScreen() {
+  const navigation = useNavigation();
+  const { width, height } = useWindowDimensions();
   const { t, currentLanguage } = useLanguage();
   const safeLanguage = currentLanguage === 'hi' ? 'hi' : 'en';
   const [selectedSignId, setSelectedSignId] = useState('aries');
   const [horoscopes, setHoroscopes] = useState(() => createSafeHoroscopes(safeLanguage));
   const [isLoading, setIsLoading] = useState(true);
+  const selectedSignScale = useRef(new Animated.Value(1)).current;
+  const sparkleBreath = useRef(new Animated.Value(0)).current;
 
   const selectedSign = useMemo(
     () => ZODIAC_SIGNS.find((sign) => sign.id === selectedSignId) ?? ZODIAC_SIGNS[0],
     [selectedSignId],
   );
-  const selectedHoroscope = horoscopes[selectedSign.id] ?? createSafeHoroscopes(safeLanguage)[selectedSign.id];
-  const guidanceRows = [
-    {
-      label: t('luckyNumber'),
-      value: selectedHoroscope?.luckyNumber,
-    },
-    {
-      label: t('luckyColor'),
-      value: selectedHoroscope?.luckyColor,
-    },
-    {
-      label: safeLanguage === 'hi' ? 'उपाय' : 'Remedy',
-      value: selectedHoroscope?.remedy,
-    },
-  ].filter((row) => row.value);
+  const selectedHoroscope = horoscopes?.[selectedSign.id] || createSafeHoroscopes(safeLanguage)[selectedSign.id];
+  const selectedName = safeLanguage === 'hi' ? selectedSign.hindiName : selectedSign.englishName;
+  const selectedSecondaryName = safeLanguage === 'hi' ? selectedSign.hindiName : `${selectedSign.englishName} / ${selectedSign.englishRashi}`;
+  const horoscopeText = selectedHoroscope?.horoscope || FALLBACK_HOROSCOPE[safeLanguage];
+  const horoscopePreview = isLoading ? t('loading') : horoscopeText;
+  const formattedDate = useMemo(() => (
+    new Intl.DateTimeFormat(safeLanguage === 'hi' ? 'hi-IN' : 'en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(new Date())
+  ), [safeLanguage]);
+  const formattedWeekday = useMemo(() => (
+    new Intl.DateTimeFormat(safeLanguage === 'hi' ? 'hi-IN' : 'en-GB', {
+      weekday: 'long',
+    }).format(new Date())
+  ), [safeLanguage]);
+  const responsiveStyles = useMemo(() => {
+    const compactWidth = Math.min(width, 520);
+    const contentWidth = Math.min(width - 32, 620);
+    const selectorInnerWidth = Math.max(260, contentWidth - 24);
+    const bellWidth = Math.max(46, Math.min(68, compactWidth * 0.145));
+    const bellHeight = bellWidth * 2.34;
+    const diyaWidth = compactWidth * 0.136;
+    const panchangIconSize = Math.max(20, Math.min(28, compactWidth * 0.058));
+    const headerMinHeight = Math.max(232, Math.min(292, height * 0.315));
+    const sparkleAreaHeight = Math.max(150, Math.min(220, headerMinHeight * 0.76));
+    const zodiacCircleSize = Math.max(54, Math.min(70, (selectorInnerWidth / 4) * 0.8));
+    const zodiacIconSize = zodiacCircleSize * 1.08;
+    const zodiacTitleLineWidth = Math.min(width * 0.1, 42);
+    const zodiacTitleLineHeight = zodiacTitleLineWidth * 0.18;
+    const stackResultCard = contentWidth < 330;
+    const resultCardPadding = Math.max(14, Math.min(22, contentWidth * 0.04));
+    const resultInnerWidth = contentWidth - resultCardPadding * 2;
+    const resultImageSize = stackResultCard
+      ? Math.max(188, Math.min(248, resultInnerWidth * 0.72))
+      : Math.max(146, Math.min(250, resultInnerWidth * 0.42));
+    const energyCircleSize = Math.max(58, Math.min(78, resultInnerWidth * 0.18));
+    const insightCardMinHeight = Math.max(72, Math.min(88, resultInnerWidth * 0.15));
+    const luckyCardMinHeight = Math.max(58, Math.min(72, resultInnerWidth * 0.12));
+
+    return {
+      content: {
+        paddingTop: height * 0.012,
+      },
+      headerCard: {
+        paddingHorizontal: compactWidth * 0.05,
+        paddingTop: Math.max(58, height * 0.078),
+        paddingBottom: height * 0.012,
+        minHeight: headerMinHeight,
+      },
+      headerBell: {
+        width: bellWidth,
+        height: bellHeight,
+      },
+      leftBellTop: {
+        left: -4,
+        top: 0,
+      },
+      leftBellLower: {
+        left: Math.max(6, compactWidth * 0.02),
+        top: Math.max(34, compactWidth * 0.09),
+      },
+      rightBellTop: {
+        right: -4,
+        top: 0,
+      },
+      rightBellLower: {
+        right: Math.max(6, compactWidth * 0.02),
+        top: Math.max(34, compactWidth * 0.09),
+      },
+      headerDiya: {
+        width: diyaWidth,
+        height: compactWidth * 0.11,
+      },
+      headerDiyaLeft: {
+        left: compactWidth * 0.028,
+      },
+      headerDiyaRight: {
+        right: compactWidth * 0.028,
+      },
+      headerCenter: {
+        width: contentWidth,
+        maxWidth: 620,
+        paddingHorizontal: compactWidth * 0.04,
+      },
+      title: {
+        fontSize: Math.max(24, Math.min(34, compactWidth * 0.071)),
+        lineHeight: Math.max(30, Math.min(42, compactWidth * 0.087)),
+      },
+      dateText: {
+        fontSize: Math.max(11, Math.min(15, compactWidth * 0.031)),
+        lineHeight: Math.max(15, Math.min(19, compactWidth * 0.04)),
+      },
+      dateRow: {
+        marginTop: height * 0.004,
+      },
+      panchangPill: {
+        minHeight: Math.max(28, height * 0.036),
+        paddingHorizontal: compactWidth * 0.034,
+        marginTop: height * 0.008,
+      },
+      panchangPillText: {
+        fontSize: Math.max(11, Math.min(14, compactWidth * 0.03)),
+      },
+      headerInfoRow: {
+        marginTop: height * 0.009,
+        maxWidth: Math.min(560, compactWidth * 0.98),
+        columnGap: Math.max(4, compactWidth * 0.01),
+        rowGap: Math.max(6, height * 0.006),
+        flexWrap: 'nowrap',
+      },
+      headerInfoColumn: {
+        minHeight: Math.max(50, height * 0.058),
+        paddingHorizontal: Math.max(1, compactWidth * 0.004),
+        flexBasis: 0,
+      },
+      panchangSticker: {
+        width: panchangIconSize,
+        height: panchangIconSize,
+        marginRight: Math.max(3, compactWidth * 0.008),
+      },
+      panchangStickerText: {
+        fontSize: Math.max(9, panchangIconSize * 0.38),
+      },
+      headerInfoLabel: {
+        fontSize: Math.max(7.5, Math.min(11, compactWidth * 0.023)),
+        lineHeight: Math.max(10.5, Math.min(14, compactWidth * 0.029)),
+      },
+      headerInfoValue: {
+        fontSize: Math.max(9, Math.min(13, compactWidth * 0.028)),
+        lineHeight: Math.max(12, Math.min(16, compactWidth * 0.034)),
+      },
+      headerBlessing: {
+        fontSize: Math.max(11, Math.min(14, compactWidth * 0.028)),
+        marginTop: height * 0.007,
+      },
+      lotusDividerWrap: {
+        marginTop: height * 0.004,
+        width: Math.max(190, Math.min(330, compactWidth * 0.68)),
+        columnGap: Math.max(5, compactWidth * 0.012),
+      },
+      lotusDivider: {
+        width: Math.max(34, Math.min(48, compactWidth * 0.092)),
+        height: Math.max(18, Math.min(25, compactWidth * 0.048)),
+      },
+      selectorCard: {
+        marginTop: height * 0.006,
+      },
+      zodiacTitleLine: {
+        width: Math.max(18, zodiacTitleLineWidth),
+        height: Math.max(2, zodiacTitleLineHeight),
+        marginHorizontal: Math.max(3, compactWidth * 0.008),
+      },
+      sectionHeading: {
+        fontSize: Math.max(10, Math.min(13, compactWidth * 0.028)),
+        lineHeight: Math.max(13, Math.min(17, compactWidth * 0.036)),
+      },
+      signGrid: {
+        rowGap: Math.max(10, compactWidth * 0.027),
+      },
+      signCircleShell: {
+        width: zodiacCircleSize,
+        height: zodiacCircleSize,
+        borderRadius: zodiacCircleSize / 2,
+      },
+      signCircle: {
+        borderRadius: zodiacCircleSize / 2,
+        paddingHorizontal: Math.max(3, zodiacCircleSize * 0.045),
+        paddingBottom: Math.max(6, zodiacCircleSize * 0.088),
+      },
+      signIcon: {
+        width: zodiacIconSize,
+        height: zodiacIconSize,
+        top: -zodiacCircleSize * 0.1,
+      },
+      signName: {
+        fontSize: Math.max(7.5, Math.min(9.5, zodiacCircleSize * 0.13)),
+        lineHeight: Math.max(9.5, Math.min(11.5, zodiacCircleSize * 0.155)),
+      },
+      signSubName: {
+        fontSize: Math.max(6, Math.min(7.5, zodiacCircleSize * 0.095)),
+        lineHeight: Math.max(7.5, Math.min(9.5, zodiacCircleSize * 0.12)),
+      },
+      sparkleField: {
+        height: sparkleAreaHeight,
+      },
+      sparkles: HEADER_SPARKLES.map((sparkle) => ({
+        left: compactWidth * sparkle.left,
+        top: sparkleAreaHeight * sparkle.top,
+        width: Math.max(2, compactWidth * 0.006 * sparkle.size),
+        height: Math.max(2, compactWidth * 0.006 * sparkle.size),
+        borderRadius: Math.max(1, compactWidth * 0.003 * sparkle.size),
+        opacity: sparkle.opacity,
+      })),
+      overviewCard: {
+        padding: resultCardPadding,
+        borderRadius: Math.max(24, Math.min(32, contentWidth * 0.052)),
+      },
+      resultDashboard: {
+        flexDirection: stackResultCard ? 'column' : 'row',
+        alignItems: stackResultCard ? 'center' : 'stretch',
+        columnGap: Math.max(12, Math.min(18, contentWidth * 0.034)),
+        rowGap: Math.max(12, Math.min(18, contentWidth * 0.034)),
+      },
+      overviewTop: {
+        minHeight: stackResultCard ? undefined : resultImageSize,
+      },
+      resultArtworkColumn: {
+        width: stackResultCard ? '100%' : resultImageSize,
+        minHeight: stackResultCard ? resultImageSize : resultImageSize + 8,
+      },
+      largeZodiacAura: {
+        width: resultImageSize,
+        height: resultImageSize * 1.08,
+        borderRadius: resultImageSize * 0.26,
+      },
+      largeZodiacGlow: {
+        width: resultImageSize * 0.98,
+        height: resultImageSize * 0.98,
+        borderRadius: resultImageSize * 0.49,
+      },
+      largeZodiacIcon: {
+        width: resultImageSize,
+        height: resultImageSize * 1.08,
+      },
+      overviewCopy: {
+        paddingRight: energyCircleSize * 0.78,
+        minHeight: stackResultCard ? undefined : resultImageSize * 0.42,
+      },
+      overviewEyebrow: {
+        fontSize: Math.max(9, Math.min(12, contentWidth * 0.024)),
+      },
+      overviewTitle: {
+        fontSize: Math.max(23, Math.min(34, contentWidth * 0.061)),
+        lineHeight: Math.max(28, Math.min(39, contentWidth * 0.071)),
+      },
+      overviewSubtitle: {
+        fontSize: Math.max(11, Math.min(14, contentWidth * 0.027)),
+      },
+      horoscopeText: {
+        fontSize: Math.max(12, Math.min(15, contentWidth * 0.029)),
+        lineHeight: Math.max(18, Math.min(23, contentWidth * 0.043)),
+      },
+      energyBadge: {
+        width: energyCircleSize,
+        height: energyCircleSize,
+        borderRadius: energyCircleSize / 2,
+      },
+      energyInner: {
+        width: energyCircleSize - 12,
+        height: energyCircleSize - 12,
+        borderRadius: (energyCircleSize - 12) / 2,
+      },
+      energyValue: {
+        fontSize: Math.max(17, Math.min(22, energyCircleSize * 0.24)),
+      },
+      energyLabel: {
+        fontSize: Math.max(7, Math.min(9, energyCircleSize * 0.095)),
+        lineHeight: Math.max(9, Math.min(11, energyCircleSize * 0.12)),
+      },
+      insightCard: {
+        minHeight: insightCardMinHeight,
+      },
+      luckyMiniCard: {
+        minHeight: luckyCardMinHeight,
+      },
+      detailButton: {
+        minHeight: Math.max(46, Math.min(54, contentWidth * 0.1)),
+      },
+    };
+  }, [height, width]);
 
   useEffect(() => {
     let isActive = true;
@@ -171,90 +472,288 @@ export default function DailyHoroscopeScreen() {
     };
   }, [safeLanguage]);
 
+  useEffect(() => {
+    selectedSignScale.setValue(0.98);
+    Animated.spring(selectedSignScale, {
+      toValue: 1.06,
+      friction: 6,
+      tension: 90,
+      useNativeDriver: true,
+    }).start();
+  }, [selectedSignId, selectedSignScale]);
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(sparkleBreath, {
+          toValue: 1,
+          duration: 2600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(sparkleBreath, {
+          toValue: 0,
+          duration: 3200,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    animation.start();
+
+    return () => {
+      animation.stop();
+    };
+  }, [sparkleBreath]);
+
+  const sparkleOpacity = sparkleBreath.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.45, 1],
+  });
+
   return (
-    <ImageBackground
-      source={BG_IMAGE}
-      style={styles.background}
-      resizeMode="cover"
-    >
+    <ImageBackground source={BG_IMAGE} style={styles.background} resizeMode="cover">
       <View style={styles.overlay} />
 
       <ScrollView
         style={styles.container}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, responsiveStyles.content]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <View style={styles.headerSymbolWrap}>
-            <Image source={selectedSign.icon} style={styles.headerIcon} resizeMode="contain" />
+        <View style={[styles.headerCard, responsiveStyles.headerCard]}>
+          <View pointerEvents="none" style={[styles.sparkleField, responsiveStyles.sparkleField]}>
+            {responsiveStyles.sparkles.map((sparkleStyle, index) => (
+              <Animated.View
+                key={`header-sparkle-${index}`}
+                style={[
+                  styles.headerSparkle,
+                  sparkleStyle,
+                  {
+                    opacity: sparkleOpacity.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [sparkleStyle.opacity * 0.72, sparkleStyle.opacity],
+                    }),
+                    transform: [
+                      {
+                        scale: sparkleBreath.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.82 + (index % 3) * 0.04, 1 + (index % 2) * 0.08],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+            ))}
           </View>
-          <Text style={styles.title}>{t('dailyHoroscope')}</Text>
-          <Text style={styles.subtitle}>{t('chooseZodiacSign')}</Text>
-        </View>
-
-        <View style={styles.signGrid}>
-          {ZODIAC_SIGNS.map((sign) => {
-            const isSelected = selectedSign.id === sign.id;
-
-            return (
-              <TouchableOpacity
-                key={sign.id}
-                style={[styles.signCard, isSelected && styles.signCardSelected]}
-                onPress={() => setSelectedSignId(sign.id)}
-                activeOpacity={0.78}
-              >
-                <View style={[styles.signIconWrap, isSelected && styles.signIconWrapSelected]}>
-                  <Image source={sign.icon} style={styles.signIcon} resizeMode="contain" />
-                </View>
-                <View style={styles.signCopy}>
-                  <Text style={[styles.signName, isSelected && styles.signNameSelected]}>
-                    {t(sign.nameKey)}
-                  </Text>
-                  <Text style={[styles.dateRange, isSelected && styles.dateRangeSelected]}>
-                    {sign.dateRange}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        <View style={styles.detailCard}>
-          <View style={styles.detailHeader}>
-            <View style={styles.detailSymbolWrap}>
-              <Image source={selectedSign.icon} style={styles.detailIcon} resizeMode="contain" />
+          <Image source={HANGING_BELL_IMAGE} style={[styles.headerBell, responsiveStyles.headerBell, styles.leftBellTop, responsiveStyles.leftBellTop]} resizeMode="contain" />
+          <Image source={HANGING_BELL_IMAGE} style={[styles.headerBell, responsiveStyles.headerBell, styles.leftBellLower, responsiveStyles.leftBellLower]} resizeMode="contain" />
+          <Image source={HANGING_BELL_IMAGE} style={[styles.headerBell, responsiveStyles.headerBell, styles.rightBellTop, responsiveStyles.rightBellTop]} resizeMode="contain" />
+          <Image source={HANGING_BELL_IMAGE} style={[styles.headerBell, responsiveStyles.headerBell, styles.rightBellLower, responsiveStyles.rightBellLower]} resizeMode="contain" />
+          <Image source={DIYA_IMAGE} style={[styles.headerDiya, responsiveStyles.headerDiya, styles.headerDiyaLeft, responsiveStyles.headerDiyaLeft]} resizeMode="contain" />
+          <Image source={DIYA_IMAGE} style={[styles.headerDiya, responsiveStyles.headerDiya, styles.headerDiyaRight, responsiveStyles.headerDiyaRight]} resizeMode="contain" />
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.75}
+            accessibilityLabel={t('back')}
+          >
+            <Text style={styles.backButtonText}>{'<'}</Text>
+          </TouchableOpacity>
+          <View style={[styles.headerCenter, responsiveStyles.headerCenter]}>
+            <Text style={[styles.title, responsiveStyles.title]}>{t('dailyHoroscope')}</Text>
+            <View style={[styles.dateRow, responsiveStyles.dateRow]}>
+              <Text style={[styles.dateText, responsiveStyles.dateText]}>{`${formattedDate} | ${formattedWeekday}`}</Text>
             </View>
-            <View style={styles.detailTitleWrap}>
-              <Text style={styles.detailSignName}>{t(selectedSign.nameKey)}</Text>
-              <Text style={styles.detailDateRange}>{selectedSign.dateRange}</Text>
+            <View style={[styles.panchangPill, responsiveStyles.panchangPill]}>
+              <View style={styles.panchangDot} />
+              <Text style={[styles.panchangPillText, responsiveStyles.panchangPillText]}>{HEADER_PANCHANG_PILL[safeLanguage]}</Text>
+              <View style={styles.panchangDot} />
             </View>
-          </View>
-
-          <Text style={styles.sectionTitle}>{t('todaysHoroscope')}</Text>
-          <Text style={styles.horoscopeText}>
-            {isLoading ? t('loading') : selectedHoroscope?.horoscope}
-          </Text>
-
-          {guidanceRows.length > 0 && (
-            <View style={styles.guidanceList}>
-              {guidanceRows.map((row) => (
-                <GuidanceRow key={row.label} label={row.label} value={row.value} />
+            <View style={[styles.headerInfoRow, responsiveStyles.headerInfoRow]}>
+              {HEADER_PANCHANG_ITEMS[safeLanguage].map((item) => (
+                <View key={item.label} style={[styles.headerInfoColumn, responsiveStyles.headerInfoColumn]}>
+                  <View style={[styles.panchangSticker, responsiveStyles.panchangSticker]}>
+                    {item.image ? (
+                      <Image source={item.image} style={styles.panchangStickerImage} resizeMode="contain" />
+                    ) : (
+                      <Text style={[styles.panchangStickerText, responsiveStyles.panchangStickerText]}>{item.icon}</Text>
+                    )}
+                  </View>
+                  <View style={styles.headerInfoTextWrap}>
+                    <Text
+                      style={[styles.headerInfoLabel, responsiveStyles.headerInfoLabel]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.84}
+                    >
+                      {item.label}
+                    </Text>
+                    <Text style={[styles.headerInfoValue, responsiveStyles.headerInfoValue]} numberOfLines={2}>
+                      {item.value}
+                    </Text>
+                  </View>
+                </View>
               ))}
             </View>
-          )}
+            <Text style={[styles.headerBlessing, responsiveStyles.headerBlessing]}>{HEADER_BLESSING_TEXT[safeLanguage]}</Text>
+            <View style={[styles.lotusDividerWrap, responsiveStyles.lotusDividerWrap]}>
+              <View style={[styles.lotusLineGroup, styles.lotusLineGroupLeft]}>
+                <View style={[styles.lotusLine, styles.lotusLineMain]} />
+                <View style={[styles.lotusLine, styles.lotusLineSoft]} />
+              </View>
+              <Image source={LOTUS_DIVIDER_IMAGE} style={[styles.lotusDivider, responsiveStyles.lotusDivider]} resizeMode="contain" />
+              <View style={[styles.lotusLineGroup, styles.lotusLineGroupRight]}>
+                <View style={[styles.lotusLine, styles.lotusLineMain]} />
+                <View style={[styles.lotusLine, styles.lotusLineSoft]} />
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View style={[styles.selectorCard, responsiveStyles.selectorCard]}>
+          <View style={styles.selectorCornerGlowLeft} />
+          <View style={styles.selectorCornerGlowRight} />
+          <View style={styles.sectionHeadingRow}>
+            <View style={[styles.zodiacTitleLineWrap, responsiveStyles.zodiacTitleLine]}>
+              <View style={[styles.zodiacTitleLine, styles.zodiacTitleLineStrong]} />
+              <View style={[styles.zodiacTitleLine, styles.zodiacTitleLineSoft]} />
+            </View>
+            <Text
+              style={[styles.sectionHeading, responsiveStyles.sectionHeading]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+            >
+              {ZODIAC_SELECTOR_TITLE}
+            </Text>
+            <View style={[styles.zodiacTitleLineWrap, responsiveStyles.zodiacTitleLine]}>
+              <View style={[styles.zodiacTitleLine, styles.zodiacTitleLineStrong]} />
+              <View style={[styles.zodiacTitleLine, styles.zodiacTitleLineSoft]} />
+            </View>
+          </View>
+          <View style={[styles.signGrid, responsiveStyles.signGrid]}>
+            {ZODIAC_SIGNS.map((sign) => {
+              const isSelected = selectedSign.id === sign.id;
+              const primaryName = sign.englishName;
+              const secondaryName = sign.hindiName;
+
+              return (
+                <TouchableOpacity
+                  key={sign.id}
+                  style={styles.signButton}
+                  onPress={() => setSelectedSignId(sign.id)}
+                  activeOpacity={0.78}
+                >
+                  <Animated.View
+                    style={[
+                      styles.signCircleShell,
+                      responsiveStyles.signCircleShell,
+                      isSelected && styles.signCircleShellSelected,
+                      isSelected && { transform: [{ scale: selectedSignScale }] },
+                    ]}
+                  >
+                    {isSelected && <View pointerEvents="none" style={styles.signSelectedHalo} />}
+                    <View style={[styles.signCircle, responsiveStyles.signCircle, isSelected && styles.signCircleSelected]}>
+                      <SafeZodiacImage source={sign.icon} fallback={primaryName.slice(0, 1)} style={[styles.signIcon, responsiveStyles.signIcon]} />
+                      <View style={styles.signLabelStack}>
+                        <Text style={[styles.signName, responsiveStyles.signName, isSelected && styles.signNameSelected]} numberOfLines={1}>
+                          {primaryName}
+                        </Text>
+                        <Text style={[styles.signSubName, responsiveStyles.signSubName]} numberOfLines={1}>
+                          {secondaryName}
+                        </Text>
+                      </View>
+                    </View>
+                  </Animated.View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={[styles.overviewCard, responsiveStyles.overviewCard]}>
+          <View style={styles.overviewInnerGlow} />
+          <View style={[styles.resultDashboard, responsiveStyles.resultDashboard]}>
+            <View style={[styles.resultArtworkColumn, responsiveStyles.resultArtworkColumn]}>
+              <View style={[styles.largeZodiacAura, responsiveStyles.largeZodiacAura]}>
+                <View style={[styles.largeZodiacGlow, responsiveStyles.largeZodiacGlow]} />
+                <SafeZodiacImage source={selectedSign.zeroArtwork} fallback={selectedName.slice(0, 1)} style={[styles.largeZodiacIcon, responsiveStyles.largeZodiacIcon]} />
+              </View>
+            </View>
+
+            <View style={styles.resultContentColumn}>
+              <View style={[styles.overviewTop, responsiveStyles.overviewTop]}>
+                <View style={[styles.overviewCopy, responsiveStyles.overviewCopy]}>
+                  <Text style={[styles.overviewEyebrow, responsiveStyles.overviewEyebrow]}>{RESULT_CARD_TEXT[safeLanguage].heading}</Text>
+                  <Text style={[styles.overviewTitle, responsiveStyles.overviewTitle]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.78}>
+                    {selectedName}
+                  </Text>
+                  <Text style={[styles.overviewSubtitle, responsiveStyles.overviewSubtitle]} numberOfLines={1}>
+                    {selectedSecondaryName}
+                  </Text>
+                  <Text style={[styles.horoscopeText, responsiveStyles.horoscopeText]} numberOfLines={4}>
+                    {horoscopePreview}
+                  </Text>
+                </View>
+                <View style={[styles.energyBadge, responsiveStyles.energyBadge]}>
+                  <View style={[styles.energyInner, responsiveStyles.energyInner]}>
+                    <Text style={[styles.energyValue, responsiveStyles.energyValue]}>82%</Text>
+                    <Text style={[styles.energyLabel, responsiveStyles.energyLabel]} numberOfLines={2}>
+                      {RESULT_CARD_TEXT[safeLanguage].energyLabel}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.insightGrid}>
+                {INSIGHT_ITEMS[safeLanguage].map((item) => (
+                  <View key={item.id} style={[styles.insightCard, responsiveStyles.insightCard]}>
+                    <Text style={styles.insightIcon}>{item.icon}</Text>
+                    <Text style={styles.insightLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72}>
+                      {item.label}
+                    </Text>
+                    <Text style={styles.insightValue} numberOfLines={2}>{item.value}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <View style={styles.luckyMiniGrid}>
+                {RESULT_LUCKY_ITEMS[safeLanguage].map((item) => (
+                  <View key={item.id} style={[styles.luckyMiniCard, responsiveStyles.luckyMiniCard]}>
+                    <Text style={styles.luckyMiniLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.68}>
+                      {item.label}
+                    </Text>
+                    <Text style={styles.luckyMiniValue} numberOfLines={2}>{item.value}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.detailButton, responsiveStyles.detailButton]}
+            activeOpacity={0.82}
+            onPress={() => console.log('View Detailed Horoscope:', selectedSign.id)}
+          >
+            <Text style={styles.detailButtonText}>{RESULT_CARD_TEXT[safeLanguage].button}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.remedyCard}>
+          <Text style={styles.remedyTitle}>{t('spiritualRemedy')}</Text>
+          <Text style={styles.remedyText}>{REMEDY_TEXT[safeLanguage]}</Text>
         </View>
       </ScrollView>
     </ImageBackground>
   );
 }
 
-function GuidanceRow({ label, value }) {
-  return (
-    <View style={styles.guidanceRow}>
-      <Text style={styles.guidanceLabel}>{label}</Text>
-      <Text style={styles.guidanceValue}>{value}</Text>
-    </View>
-  );
+function SafeZodiacImage({ source, fallback, style }) {
+  if (!source) {
+    return <Text style={styles.imageFallback}>{fallback}</Text>;
+  }
+
+  return <Image source={source} style={style} resizeMode="contain" />;
 }
 
 const styles = StyleSheet.create({
@@ -265,200 +764,853 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(248, 239, 216, 0.48)',
+    backgroundColor: 'rgba(255, 246, 226, 0.62)',
   },
   container: {
     flex: 1,
   },
   content: {
-    paddingHorizontal: 18,
-    paddingTop: 26,
+    paddingHorizontal: 16,
+    paddingTop: 10,
     paddingBottom: 34,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 22,
+  headerCard: {
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    borderWidth: 0,
+    borderColor: 'transparent',
+    paddingHorizontal: 18,
+    paddingTop: 54,
+    paddingBottom: 10,
+    shadowOpacity: 0,
+    elevation: 0,
+    width: '100%',
+    overflow: 'visible',
   },
-  headerSymbolWrap: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
-    backgroundColor: 'rgba(255, 248, 232, 0.88)',
+  sparkleField: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1,
+    overflow: 'visible',
+  },
+  headerSparkle: {
+    position: 'absolute',
+    backgroundColor: '#F5C85A',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 238, 164, 0.7)',
+    shadowColor: '#FFD875',
+    shadowOpacity: 0.42,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 1,
+  },
+  headerBell: {
+    position: 'absolute',
+    opacity: 0.58,
+    zIndex: 2,
+    backgroundColor: 'transparent',
+    resizeMode: 'contain',
+  },
+  leftBellTop: {
+    left: -4,
+    top: -14,
+  },
+  leftBellLower: {
+    left: 0,
+    top: 4,
+  },
+  rightBellTop: {
+    right: -4,
+    top: -14,
+    transform: [{ scaleX: -1 }],
+  },
+  rightBellLower: {
+    right: 0,
+    top: 4,
+    transform: [{ scaleX: -1 }],
+  },
+  headerDiya: {
+    position: 'absolute',
+    bottom: 0,
+    opacity: 0.86,
+    zIndex: 2,
+    shadowColor: '#D89420',
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  headerDiyaLeft: {
+    left: 14,
+  },
+  headerDiyaRight: {
+    right: 14,
+    transform: [{ scaleX: -1 }],
+  },
+  backButton: {
+    position: 'absolute',
+    top: 14,
+    left: 14,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FFF8E8',
     borderWidth: 1,
     borderColor: '#E8D3A2',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
-    shadowColor: '#B87918',
-    shadowOpacity: 0.16,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    zIndex: 6,
   },
-  headerIcon: {
-    width: 58,
-    height: 58,
+  backButtonText: {
+    color: '#5C3A0E',
+    fontSize: 24,
+    fontWeight: '900',
+    marginTop: -2,
+  },
+  headerCenter: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    paddingHorizontal: 22,
+    zIndex: 4,
   },
   title: {
-    color: '#4B2E16',
-    fontSize: 26,
+    color: '#3F2713',
+    fontSize: 28,
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+    fontWeight: '900',
+    textAlign: 'center',
+    letterSpacing: 0,
+    textShadowColor: 'rgba(184, 121, 24, 0.16)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+  },
+  dateText: {
+    color: '#795425',
+    fontSize: 12,
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+    fontWeight: '800',
+    textAlign: 'center',
+    flexShrink: 0,
+  },
+  panchangPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 30,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255, 248, 232, 0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(216, 177, 92, 0.62)',
+    paddingHorizontal: 12,
+    marginTop: 6,
+  },
+  panchangPillText: {
+    color: '#855915',
+    fontSize: 12,
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
     fontWeight: '900',
     textAlign: 'center',
   },
-  subtitle: {
-    color: '#8A6A3F',
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'center',
+  panchangDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#C88B20',
+    marginHorizontal: 8,
+  },
+  headerInfoRow: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    justifyContent: 'space-between',
+    alignItems: 'stretch',
+    columnGap: 4,
     marginTop: 7,
+  },
+  headerInfoColumn: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    minHeight: 38,
+    paddingHorizontal: 3,
+  },
+  panchangSticker: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    flexShrink: 0,
+  },
+  panchangStickerImage: {
+    width: '90%',
+    height: '90%',
+  },
+  panchangStickerText: {
+    color: '#B87918',
+    fontWeight: '900',
+  },
+  headerInfoTextWrap: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    alignSelf: 'stretch',
+    justifyContent: 'flex-start',
+  },
+  headerInfoLabel: {
+    color: '#8A6425',
+    fontSize: 10,
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+    fontWeight: '800',
+    textAlign: 'left',
+    lineHeight: 12,
+  },
+  headerInfoValue: {
+    color: '#4A2E14',
+    fontSize: 13,
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+    fontWeight: '900',
+    textAlign: 'left',
+    lineHeight: 15,
+    marginTop: 2,
+  },
+  headerBlessing: {
+    color: '#9A5F0C',
+    fontSize: 12,
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+    fontWeight: '900',
+    marginTop: 6,
+    textAlign: 'center',
+    lineHeight: 17,
+  },
+  lotusDividerWrap: {
+    width: '72%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  lotusLineGroup: {
+    flex: 1,
+    minWidth: 0,
+    height: 8,
+    justifyContent: 'center',
+  },
+  lotusLineGroupLeft: {
+    alignItems: 'flex-end',
+  },
+  lotusLineGroupRight: {
+    alignItems: 'flex-start',
+  },
+  lotusLine: {
+    height: 1.2,
+    borderRadius: 1,
+    backgroundColor: 'rgba(184, 121, 24, 0.3)',
+  },
+  lotusLineMain: {
+    width: '100%',
+  },
+  lotusLineSoft: {
+    width: '66%',
+    marginTop: 2,
+    opacity: 0.45,
+  },
+  lotusDivider: {
+    width: 30,
+    height: 15,
+    marginHorizontal: 8,
+    opacity: 0.78,
+  },
+  selectorCard: {
+    marginTop: 5,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255, 248, 224, 0.82)',
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(210, 160, 65, 0.35)',
+    shadowColor: '#B8860B',
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+    overflow: 'hidden',
+  },
+  selectorCornerGlowLeft: {
+    position: 'absolute',
+    top: -42,
+    left: -34,
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    backgroundColor: 'rgba(255, 236, 160, 0.2)',
+  },
+  selectorCornerGlowRight: {
+    position: 'absolute',
+    bottom: -46,
+    right: -34,
+    width: 122,
+    height: 122,
+    borderRadius: 61,
+    backgroundColor: 'rgba(245, 216, 144, 0.18)',
+  },
+  sectionHeadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+    zIndex: 1,
+  },
+  zodiacTitleLineWrap: {
+    justifyContent: 'center',
+    flexShrink: 1,
+    backgroundColor: 'transparent',
+  },
+  zodiacTitleLine: {
+    height: 1,
+    borderRadius: 1,
+    backgroundColor: 'rgba(184, 121, 24, 0.34)',
+  },
+  zodiacTitleLineStrong: {
+    width: '100%',
+  },
+  zodiacTitleLineSoft: {
+    width: '58%',
+    marginTop: 2,
+    alignSelf: 'center',
+    opacity: 0.45,
+  },
+  sectionHeading: {
+    color: '#5C3A0E',
+    fontSize: 13,
+    fontWeight: '900',
+    textAlign: 'center',
+    lineHeight: 17,
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    maxWidth: '82%',
   },
   signGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 12,
+    rowGap: 14,
+    zIndex: 1,
   },
-  signCard: {
-    width: '48%',
-    minHeight: 148,
-    backgroundColor: 'rgba(255, 248, 232, 0.9)',
-    borderRadius: 20,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#E8D3A2',
-    shadowColor: '#8A6A3F',
-    shadowOpacity: 0.11,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 3,
+  signButton: {
+    width: '25%',
     alignItems: 'center',
   },
-  signCardSelected: {
-    backgroundColor: 'rgba(245, 216, 144, 0.94)',
-    borderColor: '#B87918',
-  },
-  signIconWrap: {
+  signCircleShell: {
     width: 76,
     height: 76,
     borderRadius: 38,
-    backgroundColor: '#F8EFD8',
+    backgroundColor: 'rgba(255, 250, 230, 0.95)',
     borderWidth: 1,
-    borderColor: '#E8D3A2',
+    borderColor: 'rgba(192, 145, 54, 0.35)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    shadowColor: '#B8860B',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+    overflow: 'visible',
   },
-  signIconWrapSelected: {
-    backgroundColor: '#FFF8E8',
-    borderColor: '#B87918',
+  signCircleShellSelected: {
+    backgroundColor: 'rgba(255, 225, 120, 0.78)',
+    borderColor: '#D8A12D',
+    borderWidth: 2,
+    shadowColor: '#FFD66B',
+    shadowOpacity: 0.65,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 10,
+  },
+  signSelectedHalo: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 211, 82, 0.26)',
+    borderWidth: 2,
+    borderColor: 'rgba(216, 161, 45, 0.5)',
+    transform: [{ scale: 1.16 }],
+  },
+  signCircle: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 38,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 5,
+    paddingBottom: 6,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  signCircleSelected: {
+    backgroundColor: 'rgba(255, 224, 116, 0.34)',
   },
   signIcon: {
-    width: 58,
-    height: 58,
+    width: 34,
+    height: 34,
+    position: 'absolute',
+    alignSelf: 'center',
+    transform: [{ scale: 1.1 }],
   },
-  signCopy: {
-    flex: 1,
+  signLabelStack: {
+    width: '100%',
     alignItems: 'center',
-    justifyContent: 'center',
+    zIndex: 2,
   },
   signName: {
     color: '#4B2E16',
-    fontSize: 15,
-    fontWeight: '900',
+    fontSize: 10,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 12,
+    width: '100%',
   },
   signNameSelected: {
-    color: '#3D230D',
+    color: '#3F2713',
   },
-  dateRange: {
-    color: '#8A6A3F',
+  signSubName: {
+    color: '#7A5520',
+    fontSize: 8,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 10,
+    width: '100%',
+  },
+  overviewCard: {
+    marginTop: 16,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255, 247, 223, 0.98)',
+    borderRadius: 28,
+    padding: 18,
+    borderWidth: 1.4,
+    borderColor: 'rgba(198, 143, 42, 0.58)',
+    shadowColor: '#9C6420',
+    shadowOpacity: 0.22,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 7,
+    overflow: 'hidden',
+  },
+  overviewInnerGlow: {
+    position: 'absolute',
+    top: -52,
+    right: -40,
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    backgroundColor: 'rgba(246, 205, 105, 0.26)',
+    borderWidth: 1,
+    borderColor: 'rgba(216, 177, 92, 0.16)',
+  },
+  resultDashboard: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    zIndex: 1,
+  },
+  resultArtworkColumn: {
+    width: '40%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+  },
+  resultContentColumn: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  overviewTop: {
+    position: 'relative',
+    justifyContent: 'flex-start',
+    marginBottom: 10,
+    zIndex: 2,
+  },
+  largeZodiacAura: {
+    width: 126,
+    height: 136,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'visible',
+  },
+  largeZodiacGlow: {
+    position: 'absolute',
+    width: 126,
+    height: 126,
+    borderRadius: 63,
+    backgroundColor: 'rgba(255, 222, 131, 0.36)',
+    borderWidth: 1,
+    borderColor: 'rgba(184, 121, 24, 0.14)',
+    shadowColor: '#E3A72E',
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  largeZodiacWrap: {
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+    backgroundColor: 'rgba(255, 248, 232, 0.98)',
+    borderWidth: 2,
+    borderColor: '#D9A83F',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#B87918',
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
+  },
+  largeZodiacIcon: {
+    width: 116,
+    height: 126,
+  },
+  overviewCopy: {
+    flex: 1,
+    zIndex: 1,
+    justifyContent: 'flex-start',
+    minWidth: 0,
+  },
+  overviewEyebrow: {
+    color: '#B47A18',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '900',
+    marginBottom: 3,
+    letterSpacing: 0,
+    textTransform: 'uppercase',
+  },
+  overviewTitle: {
+    color: '#3F2713',
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: 0,
+  },
+  overviewSubtitle: {
+    color: '#8A6425',
+    fontSize: 13,
+    fontWeight: '800',
+    marginTop: 1,
+    marginBottom: 8,
+  },
+  horoscopeText: {
+    color: '#5F3D18',
+    fontSize: 15,
+    fontWeight: '800',
+    lineHeight: 22,
+    marginTop: 1,
+  },
+  energyBadge: {
+    position: 'absolute',
+    top: -2,
+    right: 0,
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    backgroundColor: 'rgba(255, 244, 205, 0.92)',
+    borderWidth: 3,
+    borderTopColor: '#C88B20',
+    borderRightColor: '#EBC86A',
+    borderBottomColor: 'rgba(199, 139, 32, 0.42)',
+    borderLeftColor: '#E3AE36',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#B87918',
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+    zIndex: 3,
+  },
+  energyInner: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(255, 250, 232, 0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(216, 177, 92, 0.52)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  energyValue: {
+    color: '#7C4B0B',
+    fontSize: 20,
+    fontWeight: '900',
+    lineHeight: 24,
+  },
+  energyLabel: {
+    color: '#9B6A19',
+    fontSize: 8,
+    fontWeight: '900',
+    lineHeight: 10,
+    textAlign: 'center',
+  },
+  insightGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    columnGap: 6,
+    zIndex: 2,
+  },
+  insightCard: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 78,
+    backgroundColor: 'rgba(255, 252, 239, 0.94)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(216, 177, 92, 0.58)',
+    paddingVertical: 8,
+    paddingHorizontal: 7,
+    shadowColor: '#8A6425',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  insightIcon: {
+    color: '#B87918',
+    fontSize: 13,
+    fontWeight: '900',
+    lineHeight: 15,
+    marginBottom: 2,
+  },
+  insightLabel: {
+    color: '#A36A12',
+    fontSize: 10,
+    fontWeight: '900',
+    marginBottom: 3,
+  },
+  insightValue: {
+    color: '#4D3218',
+    fontSize: 10,
+    fontWeight: '800',
+    lineHeight: 13,
+  },
+  luckyMiniGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    columnGap: 6,
+    marginTop: 7,
+    zIndex: 2,
+  },
+  luckyMiniCard: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 62,
+    backgroundColor: 'rgba(255, 242, 202, 0.76)',
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: 'rgba(199, 139, 32, 0.48)',
+    paddingVertical: 8,
+    paddingHorizontal: 7,
+    justifyContent: 'center',
+  },
+  luckyMiniLabel: {
+    color: '#A36A12',
+    fontSize: 9,
+    fontWeight: '900',
+    marginBottom: 4,
+  },
+  luckyMiniValue: {
+    color: '#3F2713',
+    fontSize: 11,
+    fontWeight: '900',
+    lineHeight: 14,
+  },
+  detailButton: {
+    minHeight: 50,
+    borderRadius: 999,
+    backgroundColor: '#D89A22',
+    borderWidth: 1,
+    borderColor: '#F0C96C',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 13,
+    shadowColor: '#A86913',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
+    zIndex: 1,
+  },
+  detailButtonText: {
+    color: '#FFF9E8',
+    fontSize: 14,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  scoreGrid: {
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 12,
+    marginTop: 16,
+  },
+  scoreCard: {
+    width: '31.5%',
+    minHeight: 96,
+    backgroundColor: 'rgba(255, 250, 239, 0.96)',
+    borderRadius: 20,
+    paddingVertical: 11,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(216, 177, 92, 0.68)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#7A552A',
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
+  },
+  scoreIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#FFF2C6',
+    borderWidth: 1,
+    borderColor: '#D9A83F',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    shadowColor: '#B87918',
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  scoreIconText: {
+    color: '#8A520B',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  scoreLabel: {
+    color: '#76501F',
+    fontSize: 11,
+    fontWeight: '900',
+    textAlign: 'center',
+    lineHeight: 14,
+  },
+  scoreValue: {
+    color: '#3F2713',
+    fontSize: 19,
+    fontWeight: '900',
     marginTop: 4,
   },
-  dateRangeSelected: {
-    color: '#5C3A0E',
+  luckyPanel: {
+    marginTop: 16,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255, 250, 239, 0.96)',
+    borderRadius: 26,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(184, 121, 24, 0.3)',
+    shadowColor: '#7A552A',
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
   },
-  detailCard: {
-    backgroundColor: 'rgba(255, 248, 232, 0.94)',
-    borderRadius: 24,
+  panelTitle: {
+    color: '#4B2E16',
+    fontSize: 17,
+    fontWeight: '900',
+    marginBottom: 12,
+  },
+  luckyGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 12,
+  },
+  luckyCard: {
+    width: '48.5%',
+    minHeight: 76,
+    backgroundColor: 'rgba(255, 248, 232, 0.9)',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(216, 177, 92, 0.58)',
+    padding: 12,
+    justifyContent: 'center',
+    shadowColor: '#8A6A3F',
+    shadowOpacity: 0.08,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  luckyLabel: {
+    color: '#A56B16',
+    fontSize: 11,
+    fontWeight: '900',
+    marginBottom: 5,
+  },
+  luckyValue: {
+    color: '#3F2713',
+    fontSize: 14,
+    fontWeight: '900',
+    lineHeight: 19,
+  },
+  remedyCard: {
+    marginTop: 16,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255, 250, 239, 0.97)',
+    borderRadius: 26,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#E8D3A2',
-    marginTop: 22,
-    shadowColor: '#8A6A3F',
+    borderColor: 'rgba(184, 121, 24, 0.34)',
+    shadowColor: '#7A552A',
     shadowOpacity: 0.14,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 6 },
     elevation: 4,
   },
-  detailHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  detailSymbolWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#F8EFD8',
-    borderWidth: 1,
-    borderColor: '#E8D3A2',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  detailIcon: {
-    width: 48,
-    height: 48,
-  },
-  detailTitleWrap: {
-    flex: 1,
-  },
-  detailSignName: {
+  remedyTitle: {
     color: '#4B2E16',
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: '900',
+    marginBottom: 10,
   },
-  detailDateRange: {
-    color: '#8A6A3F',
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 3,
-  },
-  sectionTitle: {
-    color: '#B87918',
-    fontSize: 15,
-    fontWeight: '900',
-    marginBottom: 8,
-  },
-  horoscopeText: {
-    color: '#5C3A0E',
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 22,
-    marginBottom: 16,
-  },
-  guidanceList: {
-    gap: 10,
-  },
-  guidanceRow: {
-    backgroundColor: '#F8EFD8',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#E8D3A2',
-  },
-  guidanceLabel: {
-    color: '#B87918',
-    fontSize: 12,
-    fontWeight: '900',
-    marginBottom: 4,
-  },
-  guidanceValue: {
-    color: '#4B2E16',
+  remedyText: {
+    color: '#6B461A',
     fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 20,
+    fontWeight: '800',
+    lineHeight: 23,
+  },
+  imageFallback: {
+    color: '#4B2E16',
+    fontSize: 22,
+    fontWeight: '900',
   },
 });

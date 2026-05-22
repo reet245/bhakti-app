@@ -1,6 +1,4 @@
-import { useContext } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ThemeContext } from '../../App';
 
 import HomeScreen from '../screens/HomeScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -19,33 +17,12 @@ const Stack = createNativeStackNavigator();
 
 // This component defines which screens exist in our app and how they connect
 export default function AppNavigator() {
-  // -------------------------------------------------------
-  // THEME-AWARE HEADER
-  // -------------------------------------------------------
-  // Reading from ThemeContext so the navigation header
-  // instantly updates whenever the user toggles light/dark
-  // mode from SettingsScreen — no restart required.
-  // -------------------------------------------------------
-  const { theme } = useContext(ThemeContext);
-
   return (
     <Stack.Navigator
       initialRouteName="Home"
       // initialRouteName tells the app which screen to show first
       screenOptions={{
-        // These options apply to ALL screens
-        headerStyle: {
-          backgroundColor: theme.headerBg,
-          // Darker header for more depth and contrast
-        },
-        headerTintColor: theme.headerText,
-        // Header text and back arrow color (light purple)
-        headerTitleStyle: {
-          fontWeight: 'bold',
-          fontSize: 17,
-          letterSpacing: 0.5,
-        },
-        headerShadowVisible: false,  // remove default border, we add our own
+        headerShown: false,
       }}
     >
       {/* Screen 1: Home */}

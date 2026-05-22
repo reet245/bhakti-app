@@ -1,0 +1,26 @@
+{
+  "short_name": "Bhakti",
+  "name": "Bhakti",
+  "description": "Daily Panchang, horoscope, puja, mantras, and bhakti guidance.",
+  "icons": [
+    {
+      "src": "/pwa-icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa-icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#f4c45f",
+  "background_color": "#fff6e2",
+  "lang": "en"
+}

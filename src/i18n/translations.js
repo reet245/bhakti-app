@@ -223,9 +223,15 @@ export const translations = {
     dailyHoroscope: "Daily Horoscope",
     chooseZodiacSign: "Choose your zodiac sign to read today's guidance",
     todaysHoroscope: "Today's Horoscope",
+    todaysLuckyElements: "Today's Lucky Elements",
+    overall: "Overall",
     love: "Love",
+    finance: "Finance",
     luckyColor: "Lucky Color",
     luckyNumber: "Lucky Number",
+    luckyDirection: "Lucky Direction",
+    luckyTime: "Lucky Time",
+    spiritualRemedy: "Spiritual Remedy",
     aries: "Aries",
     taurus: "Taurus",
     gemini: "Gemini",
@@ -464,6 +470,12 @@ export const translations = {
     sagittarius: "धनु",
     capricorn: "मकर",
     aquarius: "कुंभ",
-    pisces: "मीन"
+    pisces: "मीन",
+    todaysLuckyElements: "\u0906\u091c \u0915\u0947 \u0936\u0941\u092d \u0924\u0924\u094d\u0935",
+    overall: "\u0938\u092e\u0917\u094d\u0930",
+    finance: "\u0927\u0928",
+    luckyDirection: "\u0936\u0941\u092d \u0926\u093f\u0936\u093e",
+    luckyTime: "\u0936\u0941\u092d \u0938\u092e\u092f",
+    spiritualRemedy: "\u0906\u0927\u094d\u092f\u093e\u0924\u094d\u092e\u093f\u0915 \u0909\u092a\u093e\u092f"
   }
 };

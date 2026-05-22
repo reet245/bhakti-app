@@ -25,7 +25,16 @@
       "edgeToEdgeEnabled": true
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "Bhakti",
+      "shortName": "Bhakti",
+      "lang": "en",
+      "display": "standalone",
+      "startUrl": ".",
+      "scope": ".",
+      "themeColor": "#f4c45f",
+      "backgroundColor": "#fff6e2",
+      "description": "Daily Panchang, horoscope, puja, mantras, and bhakti guidance."
     },
     "owner": "hreetp",
     "extra": {
