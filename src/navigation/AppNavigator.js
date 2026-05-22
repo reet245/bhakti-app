@@ -10,6 +10,7 @@ import PujaScreen from '../screens/PujaScreen';
 import MantrasScreen from '../screens/MantrasScreen';
 import UpcomingFestivalsScreen from '../screens/UpcomingFestivalsScreen';
 import DailyHoroscopeScreen from '../screens/DailyHoroscopeScreen';
+import HoroscopeDetailScreen from '../screens/HoroscopeDetailScreen';
 
 // Create a Stack Navigator
 // Think of it like a stack of cards - you put new screens "on top" and go back by removing the top card
@@ -93,6 +94,12 @@ export default function AppNavigator() {
         name="DailyHoroscope"
         component={DailyHoroscopeScreen}
         options={{ title: 'Daily Horoscope' }}
+      />
+
+      <Stack.Screen
+        name="HoroscopeDetail"
+        component={HoroscopeDetailScreen}
+        options={{ title: 'Horoscope Detail', headerShown: false }}
       />
     </Stack.Navigator>
   );
