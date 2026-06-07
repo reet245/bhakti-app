@@ -51,6 +51,8 @@ const MASA_NAMES = [
   'Ashwin', 'Kartika', 'Margashirsha', 'Pausha', 'Magha', 'Phalguna',
 ];
 
+const RITUS = ['Vasant', 'Grishma', 'Varsha', 'Sharad', 'Hemant', 'Shishir'];
+
 const WEEKDAY_RULES = {
   0: {
     recommendedPuja: 'Surya Prayer',
@@ -132,6 +134,13 @@ function getPlaceholderTime(day, baseHour, minuteStep = 7) {
 
 function getPlaceholderWindow(day, baseHour, durationMinutes) {
   const start = new Date(2000, 0, 1, baseHour + (day % 3), (day * 11) % 60);
+  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+
+  return `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+function getWindowFromFixedTime(hour, minute, durationMinutes) {
+  const start = new Date(2000, 0, 1, hour, minute);
   const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
 
   return `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
@@ -308,6 +317,122 @@ function getCalendarMarkersForDate({ festival, isEkadashi, isPurnima, isAmavasya
   return markers;
 }
 
+function getMuhurtasForDate({ day }) {
+  return [
+    {
+      id: 'brahma',
+      name: 'Brahma Muhurta',
+      time: getWindowFromFixedTime(4, (day * 3) % 24, 48),
+      type: 'auspicious',
+      icon: 'sun',
+      description: 'A calm pre-dawn window for japa, meditation, and sankalp.',
+    },
+    {
+      id: 'abhijit',
+      name: 'Abhijit Muhurta',
+      time: getWindowFromFixedTime(11, 48, 46),
+      type: 'auspicious',
+      icon: 'diya',
+      description: 'Traditionally considered supportive for important beginnings.',
+    },
+    {
+      id: 'amrit',
+      name: 'Amrit Kaal',
+      time: getPlaceholderWindow(day, 9, 72),
+      type: 'auspicious',
+      icon: 'lotus',
+      description: 'A sweet, devotional period for prayer and graceful action.',
+    },
+    {
+      id: 'vijay',
+      name: 'Vijay Muhurta',
+      time: getWindowFromFixedTime(14, 12, 48),
+      type: 'auspicious',
+      icon: 'bell',
+      description: 'A victorious window for focused work and sacred resolve.',
+    },
+    {
+      id: 'gulika',
+      name: 'Gulika Kaal',
+      time: getPlaceholderWindow(day, 6, 90),
+      type: 'inauspicious',
+      icon: 'moon',
+      description: 'Avoid starting major new work during this caution period.',
+    },
+    {
+      id: 'rahu',
+      name: 'Rahu Kaal',
+      time: getPlaceholderWindow(day, 7, 90),
+      type: 'inauspicious',
+      icon: 'shadow',
+      description: 'A traditional period avoided for fresh undertakings.',
+    },
+    {
+      id: 'yamaganda',
+      name: 'Yamaganda',
+      time: getPlaceholderWindow(day, 12, 90),
+      type: 'inauspicious',
+      icon: 'warning',
+      description: 'Used as a caution window in daily Panchang planning.',
+    },
+    {
+      id: 'dur',
+      name: 'Dur Muhurta',
+      time: getPlaceholderWindow(day, 15, 44),
+      type: 'inauspicious',
+      icon: 'cloud',
+      description: 'Best kept for routine work rather than auspicious starts.',
+    },
+  ];
+}
+
+function getFestivalItemsForDate({ festival, dateLabel }) {
+  const todayFestival = festival && festival !== 'None'
+    ? festival
+    : 'Daily Panchang Observance';
+
+  return [
+    {
+      id: slugify(todayFestival),
+      name: todayFestival,
+      date: dateLabel,
+      icon: 'diya',
+      description: festival && festival !== 'None'
+        ? `${festival} is observed today with devotion, prayer, and simple offerings.`
+        : 'A gentle day for daily puja, japa, and lighting a diya at home.',
+      featured: true,
+    },
+    {
+      id: 'nirjala-ekadashi',
+      name: 'Nirjala Ekadashi',
+      date: 'Upcoming',
+      icon: 'lotus',
+      description: 'A sacred Ekadashi vrat dedicated to Vishnu bhakti and discipline.',
+    },
+    {
+      id: 'pradosh-vrat',
+      name: 'Pradosh Vrat',
+      date: 'Upcoming',
+      icon: 'moon',
+      description: 'An evening vrat observed with prayers to Shiv Ji.',
+    },
+    {
+      id: 'sankashti-chaturthi',
+      name: 'Sankashti Chaturthi',
+      date: 'Upcoming',
+      icon: 'bell',
+      description: 'A Ganesh Ji vrat for obstacle removal and blessings.',
+    },
+    {
+      id: 'ganga-dussehra',
+      name: 'Ganga Dussehra',
+      date: 'Upcoming',
+      icon: 'sun',
+      description: 'A holy observance honoring Maa Ganga and purification.',
+    },
+  ];
+}
+
 function slugify(value) {
   return value
     .toLowerCase()
@@ -428,6 +553,10 @@ function getBasicPanchangForDate({ year, month, day }) {
     paksha,
     masa: getIndexedValue(MASA_NAMES, year, month, day, 2),
     vikramSamvat: year + 57,
+    samvat: year + 57,
+    ayan: month >= 5 && month <= 10 ? 'Dakshinayan' : 'Uttarayan',
+    ritu: RITUS[Math.floor(((month + 1) % 12) / 2)],
+    vaar: date.toLocaleDateString([], { weekday: 'long' }),
     moonrise: getPlaceholderTime(day, 18, 13),
     moonset: getPlaceholderTime(day, 6, 17),
     rahuKaal: getPlaceholderWindow(day, 7, 90),
@@ -452,6 +581,7 @@ function getBasicPanchangForDate({ year, month, day }) {
       recommendedMantra: mantra.recommendedMantra,
       isFast,
     }),
+    muhurtas: getMuhurtasForDate({ day }),
     calendarMarkers: getCalendarMarkersForDate({
       festival,
       isEkadashi,
@@ -484,6 +614,10 @@ function buildPanchangResponse({ year, month, day, sunrise, sunset }) {
     paksha: basic.paksha,
     masa: basic.masa,
     vikramSamvat: basic.vikramSamvat,
+    samvat: basic.samvat,
+    ayan: basic.ayan,
+    ritu: basic.ritu,
+    vaar: basic.vaar,
     sunrise,
     sunset,
     moonrise: basic.moonrise,
@@ -498,6 +632,11 @@ function buildPanchangResponse({ year, month, day, sunrise, sunset }) {
     recommendedMantra: basic.recommendedMantra,
     mantraMeaning: basic.mantraMeaning,
     suggestedBhaktiActions: basic.suggestedBhaktiActions,
+    muhurtas: basic.muhurtas,
+    festivals: getFestivalItemsForDate({
+      festival: basic.festival,
+      dateLabel: basic.dateLabel,
+    }),
     calendarMarkers: basic.calendarMarkers,
     isEkadashi: basic.isEkadashi,
     isPurnima: basic.isPurnima,
@@ -540,4 +679,35 @@ async function getPanchangFromAPI({ year, month, day, latitude, longitude }) {
   }
 }
 
-export { getPanchangFromAPI };
+function getFallbackPanchangData({ year, month, day }) {
+  return buildPanchangResponse({
+    year,
+    month,
+    day,
+    sunrise: getPlaceholderTime(day, 6, 5),
+    sunset: getPlaceholderTime(day, 18, 4),
+  });
+}
+
+function normalizePanchangData(data, dateParts) {
+  const fallback = getFallbackPanchangData(dateParts);
+  const normalized = {
+    ...fallback,
+    ...(data || {}),
+  };
+
+  return {
+    ...normalized,
+    samvat: normalized.samvat || normalized.vikramSamvat || fallback.samvat,
+    vaar: normalized.vaar || normalized.weekday || fallback.vaar,
+    muhurtas: normalized.muhurtas?.length ? normalized.muhurtas : fallback.muhurtas,
+    festivals: normalized.festivals?.length ? normalized.festivals : fallback.festivals,
+    calendarMarkers: normalized.calendarMarkers?.length ? normalized.calendarMarkers : fallback.calendarMarkers,
+  };
+}
+
+export {
+  getFallbackPanchangData,
+  getPanchangFromAPI,
+  normalizePanchangData,
+};

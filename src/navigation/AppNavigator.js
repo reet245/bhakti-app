@@ -3,11 +3,17 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from '../screens/HomeScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import CalendarScreen from '../screens/CalendarScreen';
+import PanchangCalendarScreen from '../screens/PanchangCalendarScreen';
+import TithiDetailScreen from '../screens/TithiDetailScreen';
+import PanchangMuhurtasScreen from '../screens/PanchangMuhurtasScreen';
+import PanchangFestivalsScreen from '../screens/PanchangFestivalsScreen';
 import KundliScreen from '../screens/KundliScreen';
 import KundliResultScreen from '../screens/KundliResultScreen';
 import KundliMatchScreen from '../screens/KundliMatchScreen';
 import PujaScreen from '../screens/PujaScreen';
 import MantrasScreen from '../screens/MantrasScreen';
+import MantraDetailScreen from '../screens/MantraDetailScreen';
+import JaapCounterScreen from '../screens/JaapCounterScreen';
 import UpcomingFestivalsScreen from '../screens/UpcomingFestivalsScreen';
 import DailyHoroscopeScreen from '../screens/DailyHoroscopeScreen';
 import HoroscopeDetailScreen from '../screens/HoroscopeDetailScreen';
@@ -49,6 +55,30 @@ export default function AppNavigator() {
         options={{ title: '📅 Calendar' }}
       />
 
+      <Stack.Screen
+        name="PanchangCalendar"
+        component={PanchangCalendarScreen}
+        options={{ title: 'Panchang Calendar', headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="TithiDetail"
+        component={TithiDetailScreen}
+        options={{ title: 'Tithi Detail', headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="PanchangMuhurtas"
+        component={PanchangMuhurtasScreen}
+        options={{ title: 'Today Muhurtas', headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="PanchangFestivals"
+        component={PanchangFestivalsScreen}
+        options={{ title: 'Today Festivals', headerShown: false }}
+      />
+
       {/* Screen 4: Kundli Form */}
       <Stack.Screen
         name="Kundli"
@@ -82,6 +112,18 @@ export default function AppNavigator() {
         name="Mantras"
         component={MantrasScreen}
         options={{ title: '🕉️ Mantras' }}
+      />
+
+      <Stack.Screen
+        name="MantraDetail"
+        component={MantraDetailScreen}
+        options={{ title: 'Mantra Detail', headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="JaapCounter"
+        component={JaapCounterScreen}
+        options={{ title: 'Jaap Counter', headerShown: false }}
       />
 
       <Stack.Screen

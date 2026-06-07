@@ -67,22 +67,17 @@ const RESULT_LUCKY_ITEMS = {
 const RESULT_CARD_TEXT = {
   en: {
     heading: "Today's Horoscope",
-    button: 'View Details \u2192',
+    button: 'View Detailed Horoscope',
   },
   hi: {
     heading: '\u0906\u091c \u0915\u093e \u0930\u093e\u0936\u093f\u092b\u0932',
-    button: '\u0935\u093f\u0938\u094d\u0924\u093e\u0930 \u0926\u0947\u0916\u0947\u0902 \u2192',
+    button: 'View Detailed Horoscope',
   },
 };
 
 const HEADER_BLESSING_TEXT = {
   en: '|| \u0938\u0930\u094d\u0935\u0947 \u092d\u0935\u0928\u094d\u0924\u0941 \u0938\u0941\u0916\u093f\u0928\u0903 \u0938\u0930\u094d\u0935\u0947 \u0938\u0928\u094d\u0924\u0941 \u0928\u093f\u0930\u093e\u092e\u092f\u093e\u0903 ||',
   hi: '|| \u0938\u0930\u094d\u0935\u0947 \u092d\u0935\u0928\u094d\u0924\u0941 \u0938\u0941\u0916\u093f\u0928\u0903 \u0938\u0930\u094d\u0935\u0947 \u0938\u0928\u094d\u0924\u0941 \u0928\u093f\u0930\u093e\u092e\u092f\u093e\u0903 ||',
-};
-
-const REMEDY_TEXT = {
-  en: 'Chant your chosen mantra with devotion and offer a diya in the evening.',
-  hi: '\u0936\u094d\u0930\u0926\u094d\u0927\u093e \u0915\u0947 \u0938\u093e\u0925 \u0905\u092a\u0928\u0947 \u092e\u0902\u0924\u094d\u0930 \u0915\u093e \u091c\u093e\u092a \u0915\u0930\u0947\u0902 \u0914\u0930 \u0938\u0902\u0927\u094d\u092f\u093e \u0938\u092e\u092f \u0926\u0940\u092a\u0915 \u0905\u0930\u094d\u092a\u093f\u0924 \u0915\u0930\u0947\u0902\u0964',
 };
 
 const HEADER_PANCHANG_PILL = {
@@ -168,7 +163,7 @@ export default function DailyHoroscopeScreen() {
     const zodiacIconSize = zodiacCircleSize * 1.08;
     const zodiacTitleLineWidth = Math.min(width * 0.1, 42);
     const zodiacTitleLineHeight = zodiacTitleLineWidth * 0.18;
-    const previewCardHeight = Math.max(170, Math.min(190, contentWidth * 0.46));
+    const previewCardHeight = Math.max(178, Math.min(204, contentWidth * 0.49));
     const previewContentPadding = Math.max(9, Math.min(12, contentWidth * 0.024));
     const insightCardMinHeight = Math.max(38, Math.min(44, previewCardHeight * 0.23));
     const luckyCardMinHeight = Math.max(34, Math.min(40, previewCardHeight * 0.2));
@@ -340,8 +335,8 @@ export default function DailyHoroscopeScreen() {
         marginBottom: Math.max(4, Math.min(7, contentWidth * 0.012)),
       },
       resultArtworkColumn: {
-        flexBasis: '34%',
-        maxWidth: '35%',
+        flexBasis: '42%',
+        maxWidth: '43%',
         height: '100%',
       },
       largeZodiacAura: {
@@ -647,11 +642,6 @@ export default function DailyHoroscopeScreen() {
             </View>
           </View>
         </View>
-
-        <View style={styles.remedyCard}>
-          <Text style={styles.remedyTitle}>{t('spiritualRemedy')}</Text>
-          <Text style={styles.remedyText}>{REMEDY_TEXT[safeLanguage]}</Text>
-        </View>
       </ScrollView>
     </ImageBackground>
   );
@@ -946,17 +936,17 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 720,
     alignSelf: 'center',
-    paddingVertical: 18,
+    paddingVertical: 16,
     paddingHorizontal: 12,
-    backgroundColor: 'rgba(255, 248, 224, 0.82)',
-    borderRadius: 28,
+    backgroundColor: '#F6E2A8',
+    borderRadius: 26,
     borderWidth: 1,
-    borderColor: 'rgba(210, 160, 65, 0.35)',
-    shadowColor: '#B8860B',
-    shadowOpacity: 0.16,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
+    borderColor: 'rgba(156, 106, 24, 0.25)',
+    shadowColor: '#8A5A12',
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
     overflow: 'hidden',
   },
   selectorCornerGlowLeft: {
@@ -1141,10 +1131,10 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   resultArtworkColumn: {
-    flexBasis: '34%',
-    maxWidth: '35%',
+    flexBasis: '42%',
+    maxWidth: '43%',
     height: '100%',
-    backgroundColor: '#F3D18A',
+    backgroundColor: 'rgba(243, 209, 138, 0.9)',
     alignItems: 'stretch',
     justifyContent: 'stretch',
     alignSelf: 'stretch',
@@ -1324,9 +1314,9 @@ const styles = StyleSheet.create({
     borderColor: '#F0C96C',
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'flex-end',
+    alignSelf: 'center',
     marginTop: 7,
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingVertical: 8,
     shadowColor: '#A86913',
     shadowOpacity: 0.25,
@@ -1336,9 +1326,9 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   detailButtonText: {
-    color: '#FFF9E8',
+    color: '#FFF8E8',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '700',
     textAlign: 'center',
   },
   scoreGrid: {
@@ -1456,34 +1446,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
     lineHeight: 19,
-  },
-  remedyCard: {
-    marginTop: 16,
-    width: '100%',
-    maxWidth: 720,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(255, 250, 239, 0.97)',
-    borderRadius: 26,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(184, 121, 24, 0.34)',
-    shadowColor: '#7A552A',
-    shadowOpacity: 0.14,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-  },
-  remedyTitle: {
-    color: '#4B2E16',
-    fontSize: 20,
-    fontWeight: '900',
-    marginBottom: 10,
-  },
-  remedyText: {
-    color: '#6B461A',
-    fontSize: 14,
-    fontWeight: '800',
-    lineHeight: 23,
   },
   imageFallback: {
     color: '#4B2E16',

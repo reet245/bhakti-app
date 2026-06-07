@@ -1,0 +1,32 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: bhakti-backend
+  jackson:
+    default-property-inclusion: non_null
+
+dream:
+  api:
+    url: ${DREAM_API_URL:}
+    key: ${DREAM_API_KEY:}
+    timeout-ms: ${DREAM_API_TIMEOUT_MS:30000}
+
+cors:
+  allowed-origins: ${ALLOWED_ORIGINS:*}
+
+rate-limit:
+  enabled: ${RATE_LIMIT_ENABLED:true}
+  max-requests: ${RATE_LIMIT_MAX_REQUESTS:30}
+  window-ms: ${RATE_LIMIT_WINDOW_MS:60000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    com.bhakti.backend: INFO

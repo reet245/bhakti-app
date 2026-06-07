@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Image,
   ImageBackground,
@@ -9,11 +9,14 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import * as Speech from 'expo-speech';
 
 import { useLanguage } from '../context/LanguageContext';
 import { getDailyHoroscopes } from '../services/horoscopeService';
 
 const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
+const LOTUS_DIVIDER_IMAGE = require('../../assets/horoscope/decorations/lotus-divider.png');
+const DETAIL_CARD_COLOR = 'rgba(255, 250, 230, 0.95)';
 
 const ZODIAC_SIGNS = [
   { id: 'aries', englishName: 'Aries', englishRashi: 'Mesh', zeroArtwork: require('../../assets/horoscope/zodiac-zero/aries.png') },
@@ -35,44 +38,21 @@ const FALLBACK_HOROSCOPE = {
   hi: '\u0906\u092a\u0915\u093e \u0926\u0948\u0928\u093f\u0915 \u0930\u093e\u0936\u093f\u092b\u0932 \u092f\u0939\u093e\u0901 \u0926\u093f\u0916\u093e\u0908 \u0926\u0947\u0917\u093e\u0964',
 };
 
-const INSIGHT_ITEMS = {
-  en: [
-    { id: 'love', icon: '\u2665', label: 'Love', value: 'Positive vibes in relationships.' },
-    { id: 'career', icon: '\u2609', label: 'Career', value: 'New opportunities are coming.' },
-    { id: 'health', icon: '\u2726', label: 'Health', value: 'Take care of your diet and rest.' },
-  ],
-  hi: [
-    { id: 'love', icon: '\u2665', label: '\u092a\u094d\u0930\u0947\u092e', value: '\u0930\u093f\u0936\u094d\u0924\u094b\u0902 \u092e\u0947\u0902 \u0938\u0915\u093e\u0930\u093e\u0924\u094d\u092e\u0915 \u090a\u0930\u094d\u091c\u093e \u0930\u0939\u0947\u0917\u0940\u0964' },
-    { id: 'career', icon: '\u2609', label: '\u0915\u0930\u093f\u092f\u0930', value: '\u0928\u090f \u0905\u0935\u0938\u0930 \u0906\u092a\u0915\u0940 \u0913\u0930 \u0906 \u0930\u0939\u0947 \u0939\u0948\u0902\u0964' },
-    { id: 'health', icon: '\u2726', label: '\u0938\u094d\u0935\u093e\u0938\u094d\u0925\u094d\u092f', value: '\u0906\u0939\u093e\u0930 \u0914\u0930 \u0906\u0930\u093e\u092e \u0915\u093e \u0927\u094d\u092f\u093e\u0928 \u0930\u0916\u0947\u0902\u0964' },
-  ],
-};
-
-const LUCKY_ITEMS = {
-  en: [
-    { id: 'luckyColor', label: 'Lucky Color', value: 'Golden' },
-    { id: 'luckyNumber', label: 'Lucky Number', value: '8' },
-    { id: 'auspiciousTime', label: 'Auspicious Time', value: '10:45 AM - 12:30 PM' },
-  ],
-  hi: [
-    { id: 'luckyColor', label: '\u0936\u0941\u092d \u0930\u0902\u0917', value: '\u0938\u0941\u0928\u0939\u0930\u093e' },
-    { id: 'luckyNumber', label: '\u0936\u0941\u092d \u0905\u0902\u0915', value: '\u096e' },
-    { id: 'auspiciousTime', label: '\u0936\u0941\u092d \u0938\u092e\u092f', value: '\u0938\u0941\u092c\u0939 10:45 - \u0926\u094b\u092a\u0939 12:30' },
-  ],
-};
-
 export default function HoroscopeDetailScreen({ navigation, route }) {
   const { width } = useWindowDimensions();
   const { currentLanguage, t } = useLanguage();
   const safeLanguage = currentLanguage === 'hi' ? 'hi' : 'en';
   const [horoscopeText, setHoroscopeText] = useState(FALLBACK_HOROSCOPE[safeLanguage]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const isScreenActive = useRef(true);
 
   const selectedSign = useMemo(() => (
     ZODIAC_SIGNS.find((sign) => sign.id === route?.params?.signId) ?? ZODIAC_SIGNS[0]
   ), [route?.params?.signId]);
 
-  const imageSize = Math.max(190, Math.min(290, width * 0.58));
+  const imageSize = Math.max(128, Math.min(170, width * 0.42));
+  const heroGap = width < 360 ? 12 : 16;
 
   useEffect(() => {
     let isActive = true;
@@ -105,6 +85,43 @@ export default function HoroscopeDetailScreen({ navigation, route }) {
     };
   }, [safeLanguage, selectedSign.id]);
 
+  const finishSpeaking = () => {
+    if (isScreenActive.current) {
+      setIsSpeaking(false);
+    }
+  };
+
+  useEffect(() => () => {
+    isScreenActive.current = false;
+    Speech.stop();
+  }, []);
+
+  const handleListenHoroscope = async () => {
+    try {
+      const alreadySpeaking = await Speech.isSpeakingAsync();
+
+      if (alreadySpeaking) {
+        Speech.stop();
+        setIsSpeaking(false);
+        return;
+      }
+
+      const textToRead = `${selectedSign.englishName}, ${selectedSign.englishRashi}. Detailed Horoscope. ${horoscopeText}`;
+
+      setIsSpeaking(true);
+      Speech.speak(textToRead, {
+        language: safeLanguage === 'hi' ? 'hi-IN' : 'en-IN',
+        pitch: 1,
+        rate: 0.9,
+        onDone: finishSpeaking,
+        onStopped: finishSpeaking,
+        onError: finishSpeaking,
+      });
+    } catch (error) {
+      setIsSpeaking(false);
+    }
+  };
+
   return (
     <ImageBackground source={BG_IMAGE} style={styles.background} resizeMode="cover">
       <View style={styles.overlay} />
@@ -113,46 +130,44 @@ export default function HoroscopeDetailScreen({ navigation, route }) {
           <Text style={styles.backButtonText}>{'\u2039'} Back</Text>
         </TouchableOpacity>
 
-        <View style={styles.heroCard}>
-          <Image
-            source={selectedSign.zeroArtwork}
-            style={[styles.heroImage, { width: imageSize, height: imageSize * 1.06 }]}
-            resizeMode="contain"
-          />
-          <Text style={styles.eyebrow}>Today's Detailed Horoscope</Text>
-          <View style={styles.nameRow}>
-            <Text style={styles.title}>{selectedSign.englishName}</Text>
-            <Text style={styles.nameDivider}>/</Text>
-            <Text style={styles.rashiName}>{selectedSign.englishRashi}</Text>
-          </View>
-        </View>
-
         <View style={styles.detailCard}>
-          <Text style={styles.detailText}>{isLoading ? t('loading') : horoscopeText}</Text>
-        </View>
+          <View style={styles.topRow}>
+            <Image
+              source={selectedSign.zeroArtwork}
+              style={[styles.zodiacHeroImage, { width: imageSize, height: imageSize, marginRight: heroGap }]}
+              resizeMode="cover"
+            />
 
-        <View style={styles.cardGrid}>
-          {INSIGHT_ITEMS[safeLanguage].map((item) => (
-            <View key={item.id} style={styles.infoCard}>
-              <Text style={styles.infoIcon}>{item.icon}</Text>
-              <Text style={styles.infoLabel}>{item.label}</Text>
-              <Text style={styles.infoValue}>{item.value}</Text>
+            <View style={styles.signCopy}>
+              <Text style={styles.signName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.78}>
+                {selectedSign.englishName}
+              </Text>
+              <Text style={styles.hinglishName}>
+                {selectedSign.englishName} / {selectedSign.englishRashi}
+              </Text>
             </View>
-          ))}
-        </View>
+          </View>
 
-        <View style={styles.cardGrid}>
-          {LUCKY_ITEMS[safeLanguage].map((item) => (
-            <View key={item.id} style={styles.luckyCard}>
-              <Text style={styles.luckyLabel}>{item.label}</Text>
-              <Text style={styles.luckyValue}>{item.value}</Text>
-            </View>
-          ))}
-        </View>
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Image source={LOTUS_DIVIDER_IMAGE} style={styles.lotusIcon} resizeMode="contain" />
+            <View style={styles.dividerLine} />
+          </View>
 
-        <TouchableOpacity style={styles.listenButton} activeOpacity={0.82}>
-          <Text style={styles.listenButtonText}>Listen Horoscope</Text>
-        </TouchableOpacity>
+          <Text style={styles.detailTitle}>Detailed Horoscope</Text>
+          <Text style={styles.horoscopeText}>{isLoading ? t('loading') : horoscopeText}</Text>
+
+          <TouchableOpacity
+            style={[styles.listenButton, isLoading && styles.listenButtonDisabled]}
+            activeOpacity={0.82}
+            onPress={handleListenHoroscope}
+            disabled={isLoading}
+          >
+            <Text style={styles.listenButtonText}>
+              {isSpeaking ? 'Stop Listening' : 'Listen to your Horoscope'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </ImageBackground>
   );
@@ -181,175 +196,108 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(198, 143, 42, 0.48)',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   backButtonText: {
     color: '#7C4B0B',
     fontSize: 13,
     fontWeight: '900',
   },
-  heroCard: {
-    width: '100%',
-    maxWidth: 720,
-    alignSelf: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 247, 223, 0.98)',
-    borderRadius: 28,
-    borderWidth: 1.4,
-    borderColor: 'rgba(198, 143, 42, 0.58)',
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 20,
-    shadowColor: '#9C6420',
-    shadowOpacity: 0.2,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 7,
-  },
-  heroImage: {
-    marginBottom: 4,
-  },
-  eyebrow: {
-    color: '#B47A18',
-    fontSize: 12,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0,
-    marginBottom: 4,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    columnGap: 8,
-  },
-  title: {
-    color: '#3F2713',
-    fontSize: 32,
-    fontWeight: '900',
-    letterSpacing: 0,
-  },
-  nameDivider: {
-    color: '#A36A12',
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  rashiName: {
-    color: '#8A6425',
-    fontSize: 17,
-    fontWeight: '900',
-  },
   detailCard: {
     width: '100%',
     maxWidth: 720,
     alignSelf: 'center',
-    marginTop: 14,
-    backgroundColor: 'rgba(255, 252, 239, 0.97)',
-    borderRadius: 22,
+    backgroundColor: DETAIL_CARD_COLOR,
+    borderRadius: 28,
     borderWidth: 1,
-    borderColor: 'rgba(216, 177, 92, 0.6)',
+    borderColor: 'rgba(156, 106, 24, 0.25)',
     padding: 18,
-    shadowColor: '#8A6425',
-    shadowOpacity: 0.11,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
+    shadowColor: '#8A5A12',
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
+    overflow: 'hidden',
   },
-  detailText: {
-    color: '#4D3218',
-    fontSize: 16,
-    fontWeight: '800',
-    lineHeight: 25,
-  },
-  cardGrid: {
-    width: '100%',
-    maxWidth: 720,
-    alignSelf: 'center',
+  topRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    columnGap: 8,
-    rowGap: 8,
-    marginTop: 12,
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  infoCard: {
+  zodiacHeroImage: {
+    borderRadius: 24,
+    backgroundColor: 'rgba(243, 209, 138, 0.86)',
+    overflow: 'hidden',
+  },
+  signCopy: {
     flex: 1,
-    flexBasis: '31%',
     minWidth: 0,
-    minHeight: 116,
-    backgroundColor: 'rgba(255, 252, 239, 0.96)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(216, 177, 92, 0.58)',
-    paddingVertical: 12,
-    paddingHorizontal: 9,
-    shadowColor: '#8A6425',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
   },
-  infoIcon: {
-    color: '#B87918',
-    fontSize: 15,
+  signName: {
+    fontSize: 26,
     fontWeight: '900',
-    marginBottom: 5,
+    color: '#4F2E10',
+    letterSpacing: 0,
   },
-  infoLabel: {
-    color: '#A36A12',
-    fontSize: 12,
+  hinglishName: {
+    fontSize: 14,
     fontWeight: '900',
-    marginBottom: 5,
+    color: '#9A681E',
+    marginTop: 4,
   },
-  infoValue: {
-    color: '#4D3218',
-    fontSize: 12,
-    fontWeight: '800',
-    lineHeight: 16,
-  },
-  luckyCard: {
-    flex: 1,
-    flexBasis: '31%',
-    minWidth: 0,
-    minHeight: 78,
-    backgroundColor: 'rgba(255, 242, 202, 0.78)',
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(199, 139, 32, 0.48)',
-    paddingVertical: 11,
-    paddingHorizontal: 9,
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 16,
   },
-  luckyLabel: {
-    color: '#A36A12',
-    fontSize: 10,
-    fontWeight: '900',
-    marginBottom: 5,
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    borderRadius: 1,
+    backgroundColor: 'rgba(156, 106, 24, 0.35)',
   },
-  luckyValue: {
-    color: '#3F2713',
-    fontSize: 12,
+  lotusIcon: {
+    width: 34,
+    height: 20,
+    marginHorizontal: 10,
+    opacity: 0.86,
+  },
+  detailTitle: {
+    fontSize: 22,
     fontWeight: '900',
-    lineHeight: 16,
+    color: '#4F2E10',
+    marginBottom: 12,
+    letterSpacing: 0,
+  },
+  horoscopeText: {
+    fontSize: 15.5,
+    lineHeight: 25,
+    color: '#5C3A18',
+    fontWeight: '700',
   },
   listenButton: {
     alignSelf: 'center',
-    marginTop: 18,
-    borderRadius: 999,
-    backgroundColor: '#D89A22',
+    marginTop: 20,
+    paddingHorizontal: 22,
+    paddingVertical: 11,
+    borderRadius: 22,
+    backgroundColor: '#C9911E',
     borderWidth: 1,
     borderColor: '#F0C96C',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
     shadowColor: '#A86913',
     shadowOpacity: 0.25,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 5 },
     elevation: 4,
   },
+  listenButtonDisabled: {
+    opacity: 0.58,
+  },
   listenButtonText: {
-    color: '#FFF9E8',
+    color: '#FFF8E8',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });

@@ -16,6 +16,8 @@ import { Audio, ResizeMode, Video } from 'expo-av';
 import { deities, pujaItems } from '../data/pujaData';
 import { useLanguage } from '../context/LanguageContext';
 
+const PUJA_BG_IMAGE = require('../../assets/backgrounds/puja-bg.png');
+
 const categories = [
   { id: 'All', labelKey: 'all' },
   { id: 'Popular', labelKey: 'popular' },
@@ -374,41 +376,46 @@ export default function PujaScreen() {
 
   function renderChooseDeity() {
     return (
-      <ScrollView style={styles.screen} contentContainerStyle={styles.chooseContent}>
-        <View style={styles.header}>
-          <View style={styles.headerText}>
-            <Text style={styles.title}>{t('chooseYourDeity')}</Text>
+      <ImageBackground source={PUJA_BG_IMAGE} style={styles.chooseBackground} resizeMode="cover">
+        <View style={styles.chooseOverlay} />
+        <ScrollView style={styles.screen} contentContainerStyle={styles.chooseContent}>
+          <View style={styles.header}>
+            <View style={styles.headerText}>
+              <Text style={styles.title}>{t('chooseYourDeity')}</Text>
+            </View>
           </View>
-        </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
-          {categories.map(category => (
-            <TouchableOpacity
-              key={category.id}
-              style={[styles.categoryChip, activeCategory === category.id && styles.categoryChipActive]}
-              onPress={() => setActiveCategory(category.id)}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.categoryText, activeCategory === category.id && styles.categoryTextActive]}>
-                {t(category.labelKey)}</Text>
-            </TouchableOpacity>
-          ))}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
+            {categories.map(category => (
+              <TouchableOpacity
+                key={category.id}
+                style={[styles.categoryChip, activeCategory === category.id && styles.categoryChipActive]}
+                onPress={() => setActiveCategory(category.id)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.categoryText, activeCategory === category.id && styles.categoryTextActive]}>
+                  {t(category.labelKey)}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <View style={styles.deityGrid}>
+            {visibleDeities.map(deity => (
+              <TouchableOpacity
+                key={deity.id}
+                style={styles.deityCard}
+                onPress={() => openTemple(deity)}
+                activeOpacity={0.86}
+              >
+                <View style={styles.deityImageFrame}>
+                  <Image source={deity.image} style={styles.deityImage} resizeMode="cover" />
+                </View>
+                <Text style={styles.deityName}>{t(deity.labelKey || deity.name)}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </ScrollView>
-
-        <View style={styles.deityGrid}>
-          {visibleDeities.map(deity => (
-            <TouchableOpacity
-              key={deity.id}
-              style={styles.deityCard}
-              onPress={() => openTemple(deity)}
-              activeOpacity={0.86}
-            >
-              <Image source={deity.image} style={styles.deityImage} />
-              <Text style={styles.deityName}>{t(deity.labelKey || deity.name)}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
+      </ImageBackground>
     );
   }
 
@@ -852,11 +859,20 @@ function OfferingImage({ source, style, scale = 2.4, flipX = false }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#F8EFD9',
+    backgroundColor: 'transparent',
+  },
+  chooseBackground: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  chooseOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 245, 220, 0.58)',
   },
   chooseContent: {
     paddingHorizontal: 18,
-    paddingTop: 22,
+    paddingTop: 24,
     paddingBottom: 34,
   },
   title: {
@@ -910,7 +926,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 17,
     paddingVertical: 9,
     borderRadius: 18,
-    backgroundColor: '#FFF7E8',
+    backgroundColor: 'rgba(255, 247, 232, 0.92)',
     borderWidth: 1,
     borderColor: '#E8C982',
   },
@@ -934,17 +950,27 @@ const styles = StyleSheet.create({
   },
   deityCard: {
     width: '48%',
-    borderRadius: 18,
-    padding: 10,
-    backgroundColor: '#FFF7E8',
+    borderRadius: 20,
+    padding: 9,
+    backgroundColor: 'rgba(255, 247, 232, 0.94)',
     borderWidth: 1,
-    borderColor: '#E8C982',
+    borderColor: 'rgba(200, 148, 46, 0.45)',
+    shadowColor: '#8A5A12',
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
+  },
+  deityImageFrame: {
+    width: '100%',
+    height: 166,
+    borderRadius: 16,
+    backgroundColor: '#F4DFAC',
+    overflow: 'hidden',
   },
   deityImage: {
     width: '100%',
-    height: 154,
-    borderRadius: 14,
-    backgroundColor: '#F4DFAC',
+    height: '100%',
   },
   deityName: {
     color: '#3A220D',
