@@ -21,8 +21,6 @@ import {
 } from '../services/panchangService';
 
 const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
-const LOTUS_IMAGE = require('../../assets/horoscope/decorations/lotus-divider.png');
-const BELL_IMAGE = require('../../assets/puja-items/bell.png');
 const ICONS = {
   calendar: require('../../assets/icon/calender.png'),
   kundli: require('../../assets/icon/kundli.png'),
@@ -257,6 +255,14 @@ export default function CalendarScreen({ navigation }) {
   const featuredFestival = panchang?.festivals?.[0];
   const monthYear = today.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
   const weekday = today.toLocaleDateString('en-GB', { weekday: 'long' });
+  const handleHeaderBack = () => {
+    if (navigation?.canGoBack?.()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation?.navigate?.('Home');
+  };
 
   return (
     <ImageBackground source={BG_IMAGE} style={styles.background} resizeMode="cover">
@@ -270,13 +276,17 @@ export default function CalendarScreen({ navigation }) {
         >
           <View style={[styles.header, { width: responsiveStyles.contentWidth }]}>
             <View style={styles.headerTopRow}>
-              <View style={styles.smallIconButton}>
-                <Image source={LOTUS_IMAGE} style={styles.lotusIcon} resizeMode="contain" />
-              </View>
+              <TouchableOpacity
+                style={styles.headerBackButton}
+                activeOpacity={0.68}
+                onPress={handleHeaderBack}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+              >
+                <Text style={styles.headerBackArrow}>{'\u2039'}</Text>
+              </TouchableOpacity>
               <Text style={styles.screenTitle}>Panchang</Text>
-              <View style={styles.smallIconButton}>
-                <Image source={BELL_IMAGE} style={styles.bellIcon} resizeMode="contain" />
-              </View>
+              <View style={styles.headerActionSpacer} />
             </View>
             <Text style={styles.screenDate}>{formatHeaderDate(today)}</Text>
             <TouchableOpacity style={styles.locationPill} activeOpacity={0.82}>
@@ -404,24 +414,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignSelf: 'stretch',
   },
-  smallIconButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 247, 227, 0.84)',
-    borderWidth: 1,
-    borderColor: COLORS.borderGold,
-    alignItems: 'center',
+  headerBackButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'flex-start',
     justifyContent: 'center',
   },
-  lotusIcon: {
-    width: 22,
-    height: 14,
-    opacity: 0.92,
+  headerBackArrow: {
+    color: COLORS.textDark,
+    fontSize: 34,
+    lineHeight: 36,
+    fontWeight: '800',
+    marginLeft: 1,
+    marginTop: -2,
   },
-  bellIcon: {
-    width: 17,
-    height: 17,
+  headerActionSpacer: {
+    width: 40,
+    height: 40,
   },
   screenTitle: {
     color: COLORS.textDark,
@@ -782,7 +791,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(247, 232, 190, 0.72)',
   },
   bottomNavInner: {
     minHeight: 56,
