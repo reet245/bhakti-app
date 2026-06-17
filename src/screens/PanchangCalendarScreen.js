@@ -43,9 +43,6 @@ function formatDate(date) {
 }
 
 function markerForDay(day) {
-  if ([4, 11, 13, 15, 26].includes(day)) return ['festival', 'vrat'];
-  if ([5, 9, 21].includes(day)) return ['muhurta'];
-  if (day % 7 === 0) return ['festival'];
   return [];
 }
 
@@ -61,6 +58,7 @@ export default function PanchangCalendarScreen({ navigation, route }) {
   const [activeQuickTab, setActiveQuickTab] = useState('Tithi');
   const [selectedPanchang, setSelectedPanchang] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
 
   const responsiveStyles = useMemo(() => {
     const statusTop = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
@@ -110,6 +108,7 @@ export default function PanchangCalendarScreen({ navigation, route }) {
   useEffect(() => {
     async function loadSelectedPanchang() {
       setLoading(true);
+      setErrorMessage(null);
 
       try {
         const dateParts = getDateParts(selectedDate);
@@ -117,10 +116,14 @@ export default function PanchangCalendarScreen({ navigation, route }) {
           ...dateParts,
           latitude: FALLBACK_LOCATION.latitude,
           longitude: FALLBACK_LOCATION.longitude,
+          locationName: 'New Delhi, India',
+          timezone: 'Asia/Kolkata',
+          ayanamsa: 'LAHIRI',
         });
         setSelectedPanchang(normalizePanchangData(data, dateParts));
       } catch (error) {
         console.warn('Panchang Calendar: selected date fetch failed.', error?.message);
+        setErrorMessage('Real Panchang data unavailable. Please try again.');
         setSelectedPanchang(normalizePanchangData(null, getDateParts(selectedDate)));
       } finally {
         setLoading(false);
@@ -242,6 +245,8 @@ export default function PanchangCalendarScreen({ navigation, route }) {
               </View>
               {loading ? <ActivityIndicator size="small" color="#B87918" /> : null}
             </View>
+
+            {!loading && errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickTabs}>
               {QUICK_TABS.map((tab) => (
@@ -478,6 +483,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     marginTop: 3,
+  },
+  errorText: {
+    color: '#A94D3A',
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '800',
+    marginTop: 8,
   },
   quickTabs: {
     paddingVertical: 10,

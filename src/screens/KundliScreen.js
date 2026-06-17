@@ -79,129 +79,6 @@ const TABS = [
   { id: 'remedies', label: 'Remedies' },
 ];
 
-const DUMMY_HOUSES = [
-  {
-    number: 1,
-    name: 'Lagna',
-    title: '1st House (Lagna)',
-    sign: 'Leo',
-    planets: ['Su', 'Me'],
-    planetNames: ['Sun', 'Mercury'],
-    meaning: 'Self, body, personality',
-    detail: 'The first house reflects identity, physical presence, confidence and the way you approach life.',
-  },
-  {
-    number: 2,
-    name: 'Second House',
-    title: '2nd House',
-    sign: 'Virgo',
-    planets: [],
-    planetNames: [],
-    meaning: 'Wealth, family, speech',
-    detail: 'The second house relates to family values, accumulated wealth, food and the power of speech.',
-  },
-  {
-    number: 3,
-    name: 'Third House',
-    title: '3rd House',
-    sign: 'Libra',
-    planets: [],
-    planetNames: [],
-    meaning: 'Courage, siblings, efforts',
-    detail: 'The third house describes courage, communication, personal effort, skills and sibling relationships.',
-  },
-  {
-    number: 4,
-    name: 'Fourth House',
-    title: '4th House',
-    sign: 'Scorpio',
-    planets: ['Ma'],
-    planetNames: ['Mars'],
-    meaning: 'Mother, home, happiness',
-    detail: 'The fourth house reflects home, mother, emotional security, property and inner contentment.',
-  },
-  {
-    number: 5,
-    name: 'Fifth House',
-    title: '5th House',
-    sign: 'Sagittarius',
-    planets: ['Ju'],
-    planetNames: ['Jupiter'],
-    meaning: 'Education, children, creativity',
-    detail: 'The fifth house relates to education, intelligence, creativity, children and joyful self-expression.',
-  },
-  {
-    number: 6,
-    name: 'Sixth House',
-    title: '6th House',
-    sign: 'Capricorn',
-    planets: [],
-    planetNames: [],
-    meaning: 'Health, enemies, service',
-    detail: 'The sixth house covers health routines, service, competition, debts and practical daily responsibilities.',
-  },
-  {
-    number: 7,
-    name: 'Seventh House',
-    title: '7th House',
-    sign: 'Aquarius',
-    planets: ['Ra'],
-    planetNames: ['Rahu'],
-    meaning: 'Marriage, partnership',
-    detail: 'The seventh house represents marriage, committed partnerships, agreements and one-to-one relationships.',
-  },
-  {
-    number: 8,
-    name: 'Eighth House',
-    title: '8th House',
-    sign: 'Pisces',
-    planets: ['Mo'],
-    planetNames: ['Moon'],
-    meaning: 'Longevity, secrets, transformation',
-    detail: 'The eighth house relates to longevity, hidden matters, shared resources and profound transformation.',
-  },
-  {
-    number: 9,
-    name: 'Ninth House',
-    title: '9th House',
-    sign: 'Aries',
-    planets: ['Ke'],
-    planetNames: ['Ketu'],
-    meaning: 'Luck, dharma, father',
-    detail: 'The ninth house reflects fortune, dharma, father, teachers, higher wisdom and long journeys.',
-  },
-  {
-    number: 10,
-    name: 'Tenth House',
-    title: '10th House',
-    sign: 'Taurus',
-    planets: ['Ve'],
-    planetNames: ['Venus'],
-    meaning: 'Career, karma, status',
-    detail: 'The tenth house represents career, public standing, responsibility, karma and contribution to society.',
-  },
-  {
-    number: 11,
-    name: 'Eleventh House',
-    title: '11th House',
-    sign: 'Gemini',
-    planets: [],
-    planetNames: [],
-    meaning: 'Gains, friends, wishes',
-    detail: 'The eleventh house relates to gains, friendships, networks, ambitions and the fulfillment of wishes.',
-  },
-  {
-    number: 12,
-    name: 'Twelfth House',
-    title: '12th House',
-    sign: 'Cancer',
-    planets: ['Su'],
-    planetNames: ['Sun'],
-    meaning: 'Expenses, moksha, foreign land',
-    detail: 'The twelfth house reflects expenses, rest, spiritual release, foreign lands, retreat and moksha.',
-  },
-];
-
 const CHART_HOUSE_POSITIONS = [
   { number: 1, left: '38%', top: '13%', width: '24%', height: '20%' },
   { number: 2, left: '15%', top: '7%', width: '22%', height: '18%' },
@@ -221,133 +98,47 @@ const PLANETS = [
   {
     symbol: '\u2609',
     name: 'Sun',
-    sign: 'Cancer',
-    degree: '06\u00B0 25\'',
     meaning: 'Sun represents soul, confidence, father, authority and life purpose.',
   },
   {
     symbol: '\u263D',
     name: 'Moon',
-    sign: 'Pisces',
-    degree: '18\u00B0 40\'',
     meaning: 'Moon represents emotions, intuition, mother, comfort and the inner mind.',
   },
   {
     symbol: '\u2642',
     name: 'Mars',
-    sign: 'Aries',
-    degree: '14\u00B0 10\'',
     meaning: 'Mars represents courage, energy, initiative, discipline and decisive action.',
   },
   {
     symbol: '\u263F',
     name: 'Mercury',
-    sign: 'Leo',
-    degree: '02\u00B0 30\'',
     meaning: 'Mercury represents intellect, speech, learning, analysis and communication.',
   },
   {
     symbol: '\u2643',
     name: 'Jupiter',
-    sign: 'Sagittarius',
-    degree: '21\u00B0 15\'',
     meaning: 'Jupiter represents wisdom, faith, teachers, growth and good fortune.',
   },
   {
     symbol: '\u2640',
     name: 'Venus',
-    sign: 'Gemini',
-    degree: '05\u00B0 30\'',
     meaning: 'Venus represents love, harmony, beauty, relationships and refined pleasures.',
   },
   {
     symbol: '\u2644',
     name: 'Saturn',
-    sign: 'Taurus',
-    degree: '27\u00B0 05\'',
     meaning: 'Saturn represents responsibility, patience, discipline, karma and endurance.',
   },
   {
     symbol: '\u260A',
     name: 'Rahu',
-    sign: 'Aries',
-    degree: '13\u00B0 20\'',
     meaning: 'Rahu represents ambition, worldly desire, innovation and unfamiliar experiences.',
   },
   {
     symbol: '\u260B',
     name: 'Ketu',
-    sign: 'Libra',
-    degree: '13\u00B0 20\'',
     meaning: 'Ketu represents detachment, intuition, past-life insight and spiritual liberation.',
-  },
-];
-
-const DOSHA_ITEMS = [
-  {
-    icon: '\u2713',
-    title: 'Mangal Dosha',
-    status: 'Not Detected',
-    description: 'Your chart does not show strong Mangal Dosha.',
-    tone: 'clear',
-  },
-  {
-    icon: '\u2713',
-    title: 'Kaal Sarp Dosha',
-    status: 'Not Detected',
-    description: 'No Kaal Sarp Dosha found in your chart.',
-    tone: 'clear',
-  },
-  {
-    icon: '\u2726',
-    title: 'Pitra Dosha',
-    status: 'Mild',
-    description: 'Some signs of Pitra Dosha are present.',
-    tone: 'mild',
-  },
-];
-
-const DASHA_ITEMS = [
-  {
-    icon: '\u2643',
-    label: 'Current Mahadasha',
-    name: 'Jupiter Mahadasha',
-    range: '16 May 2023 - 16 May 2039',
-  },
-  {
-    icon: '\u263F',
-    label: 'Current Antardasha',
-    name: 'Jupiter / Mercury',
-    range: '10 Nov 2024 - 21 Jul 2026',
-  },
-  {
-    icon: '\u260B',
-    label: 'Upcoming Antardasha',
-    name: 'Jupiter / Ketu',
-    range: '21 Jul 2026 - 02 Aug 2027',
-  },
-];
-
-const REMEDY_ITEMS = [
-  {
-    icon: '\u{1FA94}',
-    title: 'Light a diya on Monday',
-    subtitle: 'For good health & positivity',
-  },
-  {
-    icon: '\u273F',
-    title: 'Offer white flowers',
-    subtitle: 'To Lord Shiva every Monday',
-  },
-  {
-    icon: '\u0950',
-    title: 'Chant Om Namah Shivaya',
-    subtitle: '108 times daily',
-  },
-  {
-    icon: '\u2726',
-    title: 'Donate white items',
-    subtitle: 'On Monday to the needy',
   },
 ];
 
@@ -357,12 +148,12 @@ const INITIAL_FORM = {
   date: '23 July 2000',
   time: '07:30 AM',
   place: '',
+  latitude: null,
+  longitude: null,
+  timezone: null,
 };
 
 const SAFE_VALUE = '--';
-const PLACE_COORDINATES_ERROR =
-  'We could not find the birth place coordinates. Please select a valid place and try again.';
-
 const MONTHS = {
   january: '01',
   february: '02',
@@ -474,17 +265,36 @@ function parseBirthTime(value, unknownTime) {
   return null;
 }
 
+function getLocalTimezoneOffset() {
+  const totalMinutes = -new Date().getTimezoneOffset();
+  const sign = totalMinutes >= 0 ? '+' : '-';
+  const absoluteMinutes = Math.abs(totalMinutes);
+  const hours = Math.floor(absoluteMinutes / 60);
+  const minutes = absoluteMinutes % 60;
+
+  return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
 function normalizeKundliData(data) {
   const profile = data?.profile || {};
-  const summary = data?.summary || {};
-  const rawHouses = Array.isArray(data?.houses) ? data.houses : [];
+  const summary = data?.birthSummary || data?.summary || {};
+  const calculationMeta = data?.calculationMeta || {};
+  const rawHouses = Array.isArray(data?.houses)
+    ? data.houses
+    : Array.isArray(data?.charts?.d1?.houses)
+      ? data.charts.d1.houses
+      : [];
   const rawPlanets = Array.isArray(data?.planets) ? data.planets : [];
   const rawDoshas = Array.isArray(data?.doshas) ? data.doshas : [];
-  const rawDashas = Array.isArray(data?.dashas) ? data.dashas : [];
+  const rawDashas = Array.isArray(data?.dashas)
+    ? data.dashas
+    : Array.isArray(data?.dasha?.timeline)
+      ? data.dasha.timeline
+      : [];
   const rawRemedies = Array.isArray(data?.remedies) ? data.remedies : [];
   const housesByNumber = rawHouses.reduce((map, house) => ({
     ...map,
-    [house?.houseNumber ?? house?.number]: house,
+    [house?.houseNumber ?? house?.number ?? house?.house]: house,
   }), {});
   const houses = Array.from({ length: 12 }, (_, index) => {
     const number = index + 1;
@@ -505,7 +315,7 @@ function normalizeKundliData(data) {
   });
   const normalizedPlanets = rawPlanets.length > 0
     ? rawPlanets.map((planet) => {
-      const name = safeValue(planet?.name);
+      const name = safeValue(planet?.planet || planet?.name);
       return {
         symbol: PLANET_SYMBOLS[name.toLowerCase()] || '\u2609',
         name,
@@ -544,9 +354,9 @@ function normalizeKundliData(data) {
     }];
   const dashas = rawDashas.length > 0
     ? rawDashas.map((dasha) => ({
-      icon: PLANET_SYMBOLS[safeValue(dasha?.name, '').split(' ')[0].toLowerCase()] || '\u263D',
-      label: safeValue(dasha?.type),
-      name: safeValue(dasha?.name),
+      icon: PLANET_SYMBOLS[safeValue(dasha?.mahaDasha || dasha?.name, '').split(' ')[0].toLowerCase()] || '\u263D',
+      label: safeValue(dasha?.type || (dasha?.antarDasha ? 'Antardasha' : 'Mahadasha')),
+      name: safeValue(dasha?.name || [dasha?.mahaDasha, dasha?.antarDasha].filter(Boolean).join(' / ')),
       range: `${safeValue(dasha?.startDate)} - ${safeValue(dasha?.endDate)}`,
     }))
     : [{
@@ -573,10 +383,10 @@ function normalizeKundliData(data) {
       gender: safeValue(profile.gender),
       birthDate: safeValue(profile.birthDate),
       birthTime: safeValue(profile.birthTime),
-      placeName: safeValue(profile.placeName),
-      latitude: profile.latitude,
-      longitude: profile.longitude,
-      timezone: safeValue(profile.timezone),
+      placeName: safeValue(profile.birthPlace || profile.placeName || calculationMeta?.birthLocation?.name),
+      latitude: calculationMeta?.birthLocation?.latitude ?? profile.latitude,
+      longitude: calculationMeta?.birthLocation?.longitude ?? profile.longitude,
+      timezone: safeValue(calculationMeta?.birthLocation?.timezone || profile.timezone),
     },
     summary: {
       lagna: safeValue(summary.lagna),
@@ -584,17 +394,17 @@ function normalizeKundliData(data) {
       nakshatra: safeValue(summary.nakshatra),
       tithi: safeValue(summary.tithi),
       sunSign: safeValue(summary.sunSign),
-      moonSign: safeValue(summary.moonSign),
-      ayanamsa: safeValue(summary.ayanamsa),
+      moonSign: safeValue(summary.moonSign || summary.rashi),
+      ayanamsa: safeValue(summary.ayanamsa || calculationMeta?.ayanamsa),
     },
     overviewItems: [
       { label: 'Lagna', value: safeValue(summary.lagna) },
       { label: 'Rashi', value: safeValue(summary.rashi) },
       { label: 'Nakshatra', value: safeValue(summary.nakshatra) },
       { label: 'Tithi', value: safeValue(summary.tithi) },
-      { label: 'Sun Sign', value: safeValue(summary.sunSign) },
-      { label: 'Moon Sign', value: safeValue(summary.moonSign) },
-      { label: 'Ayanamsa', value: safeValue(summary.ayanamsa) },
+      { label: 'Karana', value: safeValue(summary.karana) },
+      { label: 'Yoga', value: safeValue(summary.yoga) },
+      { label: 'Ayanamsa', value: safeValue(summary.ayanamsa || calculationMeta?.ayanamsa) },
     ],
     planets: normalizedPlanets,
     houses,
@@ -602,67 +412,7 @@ function normalizeKundliData(data) {
     dashas,
     dashaTimeline: dashas.map((dasha) => dasha.name).filter((name) => name !== SAFE_VALUE),
     remedies,
-    calculationMeta: data?.calculationMeta || {},
-  };
-}
-
-function createDevelopmentKundliFallback({ form, unknownTime }) {
-  return {
-    profile: {
-      name: safeValue(form.name),
-      gender: safeValue(form.gender),
-      birthDate: safeValue(form.date),
-      birthTime: unknownTime ? 'Unknown' : safeValue(form.time),
-      placeName: safeValue(form.place),
-    },
-    summary: {
-      lagna: 'Leo',
-      rashi: 'Pisces',
-      nakshatra: 'Revati',
-      tithi: 'Krishna Paksha Ashtami',
-      sunSign: 'Cancer',
-      moonSign: 'Pisces',
-    },
-    planets: PLANETS.map((planet) => {
-      const house = DUMMY_HOUSES.find((item) => item.planetNames.includes(planet.name));
-      return {
-        name: planet.name,
-        sign: planet.sign,
-        house: house?.number || SAFE_VALUE,
-        degree: planet.degree,
-        retrograde: false,
-      };
-    }),
-    houses: DUMMY_HOUSES.map((house) => ({
-      houseNumber: house.number,
-      name: house.title,
-      sign: house.sign,
-      planets: house.planetNames,
-      meaning: house.meaning,
-      detail: house.detail,
-    })),
-    doshas: DOSHA_ITEMS.map((item) => ({
-      name: item.title,
-      status: item.status,
-      description: item.description,
-    })),
-    dashas: DASHA_ITEMS.map((item) => {
-      const [startDate, endDate] = item.range.split(' - ');
-      return {
-        type: item.label,
-        name: item.name,
-        startDate,
-        endDate,
-      };
-    }),
-    remedies: REMEDY_ITEMS.map((item) => ({
-      title: item.title,
-      description: item.subtitle,
-    })),
-    calculationMeta: {
-      provider: 'Development fallback',
-      isLive: false,
-    },
+    calculationMeta,
   };
 }
 
@@ -713,7 +463,19 @@ export default function KundliScreen({ navigation }) {
   }, [height, width]);
 
   const updateField = (key, value) => {
-    setForm((current) => ({ ...current, [key]: value }));
+    setForm((current) => {
+      if (key === 'place') {
+        return {
+          ...current,
+          place: value,
+          latitude: null,
+          longitude: null,
+          timezone: null,
+        };
+      }
+
+      return { ...current, [key]: value };
+    });
   };
 
   const goBack = () => {
@@ -777,12 +539,25 @@ export default function KundliScreen({ navigation }) {
         gender: form.gender,
         birthDate,
         birthTime,
+        birthPlace: placeName,
         unknownTime,
-        placeName,
+        ayanamsa: 'LAHIRI',
       };
-      const responseData = await requestKundli(request);
 
-      setKundliData(normalizeKundliData(responseData));
+      if (form.latitude !== null && form.longitude !== null && form.timezone) {
+        request.latitude = form.latitude;
+        request.longitude = form.longitude;
+        request.timezone = form.timezone;
+      }
+
+      const responseData = await requestKundli(request);
+      const normalizedData = normalizeKundliData(responseData);
+      const warnings = Array.isArray(normalizedData.calculationMeta?.warnings)
+        ? normalizedData.calculationMeta.warnings.filter(Boolean)
+        : [];
+
+      setKundliData(normalizedData);
+      setKundliError(warnings.join(' '));
       setScreen('result');
     } catch (error) {
       const message = safeValue(
@@ -790,24 +565,8 @@ export default function KundliScreen({ navigation }) {
         'Unable to generate your Kundli right now. Please try again.'
       );
 
-      if (message === PLACE_COORDINATES_ERROR) {
-        setKundliError(message);
-        Alert.alert('Kundli Service', message);
-      } else if (typeof __DEV__ !== 'undefined' && __DEV__) {
-        const fallbackData = createDevelopmentKundliFallback({
-          form,
-          unknownTime,
-        });
-        const fallbackMessage = `${message} Showing development fallback data.`;
-
-        setKundliData(normalizeKundliData(fallbackData));
-        setKundliError(fallbackMessage);
-        setScreen('result');
-        Alert.alert('Kundli Service', fallbackMessage);
-      } else {
-        setKundliError(message);
-        Alert.alert('Kundli Service', message);
-      }
+      setKundliError(message);
+      Alert.alert('Kundli Service', message);
     } finally {
       setIsGenerating(false);
     }
@@ -858,7 +617,13 @@ export default function KundliScreen({ navigation }) {
         return;
       }
 
-      updateField('place', placeParts.join(', '));
+      setForm((current) => ({
+        ...current,
+        place: placeParts.join(', '),
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
+        timezone: getLocalTimezoneOffset(),
+      }));
       setLocationStatus('success');
     } catch (error) {
       console.warn('Kundli: current location could not be detected.', error?.message);
@@ -1412,7 +1177,7 @@ function FormFlow({
       </View>
 
       <Text style={styles.formDisclaimer}>
-        {'\u2727'} UI preview only. Astrology calculations will be connected later.
+        {'\u2727'} Kundli calculations are generated through the Bhakti backend.
       </Text>
     </>
   );
@@ -1771,7 +1536,7 @@ function NorthIndianChartCard({ calculationMeta, houses, layout, onHousePress })
   const chartHouses = houses?.length ? houses : normalizeKundliData({}).houses;
   const metaProvider = safeValue(calculationMeta?.provider, '');
   const chartSubtitle = metaProvider
-    ? `${calculationMeta?.isLive ? 'Live' : 'Sample'} planetary positions - ${metaProvider}`
+    ? `${calculationMeta?.precision === 'ACCURATE' ? 'Calculated' : 'Approximate'} planetary positions - ${metaProvider}`
     : 'Planetary positions';
 
   return (

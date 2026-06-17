@@ -13,6 +13,12 @@ dream:
     key: ${DREAM_API_KEY:}
     timeout-ms: ${DREAM_API_TIMEOUT_MS:30000}
 
+vedastro:
+  api:
+    base-url: ${VEDASTRO_BASE_URL:https://api.vedastro.org/api}
+    key: ${VEDASTRO_API_KEY:}
+    timeout-ms: ${VEDASTRO_API_TIMEOUT_MS:30000}
+
 cors:
   allowed-origins: ${ALLOWED_ORIGINS:*}
 

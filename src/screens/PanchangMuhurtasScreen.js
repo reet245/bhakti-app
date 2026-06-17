@@ -72,7 +72,7 @@ export default function PanchangMuhurtasScreen({ navigation, route }) {
             ))}
           </ScrollView>
 
-          {visibleMuhurtas.map((item) => (
+          {visibleMuhurtas.length > 0 ? visibleMuhurtas.map((item) => (
             <View key={item.id} style={styles.muhurtaRow}>
               <View style={[styles.muhurtaIconWrap, item.type === 'inauspicious' && styles.warningIconWrap]}>
                 <Text style={[styles.muhurtaIcon, item.type === 'inauspicious' && styles.warningIcon]}>{iconForMuhurtam(item)}</Text>
@@ -88,7 +88,11 @@ export default function PanchangMuhurtasScreen({ navigation, route }) {
                 </Text>
               </View>
             </View>
-          ))}
+          )) : (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>Muhurta data is not included in Phase 1.</Text>
+            </View>
+          )}
         </ScrollView>
       </SafeAreaView>
     </ImageBackground>
@@ -182,4 +186,21 @@ const styles = StyleSheet.create({
   warningBadge: { backgroundColor: '#F7DFD4', borderColor: '#D9A28A' },
   badgeText: { color: '#8A520B', fontSize: 10, fontWeight: '900' },
   warningBadgeText: { color: '#A94D3A' },
+  emptyCard: {
+    minHeight: 92,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 250, 239, 0.97)',
+    borderWidth: 1,
+    borderColor: 'rgba(216, 177, 92, 0.46)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 14,
+  },
+  emptyText: {
+    color: '#8A6425',
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
 });

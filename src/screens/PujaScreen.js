@@ -1,14 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
   Image,
   ImageBackground,
+  Platform,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
+  StatusBar,
   Text,
   TouchableOpacity,
   Vibration,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Audio, ResizeMode, Video } from 'expo-av';
@@ -27,6 +31,7 @@ const categories = [
 ];
 export default function PujaScreen() {
   const { t } = useLanguage();
+  const { width, height } = useWindowDimensions();
   const [viewMode, setViewMode] = useState('chooseDeity');
   const [selectedDeity, setSelectedDeity] = useState(null);
   const [activeCategory, setActiveCategory] = useState('All');
@@ -52,6 +57,78 @@ export default function PujaScreen() {
     activeCategory === 'All'
       ? deities
       : deities.filter(deity => deity.category === activeCategory);
+
+  const responsiveStyles = useMemo(() => {
+    const statusTop = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
+    const horizontalPadding = Math.max(16, Math.min(30, width * 0.05));
+    const maxContentWidth = width >= 720 ? 760 : 520;
+    const contentWidth = Math.max(260, Math.min(width - horizontalPadding * 2, maxContentWidth));
+    const columns = contentWidth >= 680 ? 3 : 2;
+    const gridGap = Math.max(12, Math.min(20, contentWidth * 0.032));
+    const cardWidth = (contentWidth - gridGap * (columns - 1)) / columns;
+    const cardPadding = Math.max(8, Math.min(12, cardWidth * 0.045));
+    const cardRadius = Math.max(16, Math.min(22, cardWidth * 0.09));
+    const imageRadius = Math.max(12, cardRadius - 4);
+    const titleSize = Math.max(24, Math.min(34, width * 0.078));
+    const chipTextSize = Math.max(11, Math.min(13, width * 0.032));
+    const nameSize = Math.max(13, Math.min(16, cardWidth * 0.085));
+
+    return {
+      chooseContent: {
+        paddingHorizontal: horizontalPadding,
+        paddingTop: statusTop + Math.max(12, height * 0.018),
+        paddingBottom: Math.max(32, height * 0.045),
+      },
+      contentWidth,
+      header: {
+        width: contentWidth,
+        minHeight: Math.max(58, Math.min(82, height * 0.1)),
+      },
+      headerText: {
+        paddingHorizontal: Math.max(12, Math.min(42, contentWidth * 0.08)),
+      },
+      title: {
+        fontSize: titleSize,
+        lineHeight: titleSize * 1.14,
+      },
+      categoryScroller: {
+        width: contentWidth,
+      },
+      categoryRow: {
+        gap: Math.max(8, Math.min(12, contentWidth * 0.026)),
+        paddingVertical: Math.max(14, Math.min(20, height * 0.024)),
+        paddingHorizontal: Math.max(1, Math.min(4, contentWidth * 0.008)),
+      },
+      categoryChip: {
+        paddingHorizontal: Math.max(14, Math.min(18, contentWidth * 0.042)),
+        paddingVertical: Math.max(8, Math.min(10, height * 0.012)),
+        borderRadius: Math.max(16, Math.min(20, contentWidth * 0.046)),
+      },
+      categoryText: {
+        fontSize: chipTextSize,
+        lineHeight: chipTextSize * 1.25,
+      },
+      deityGrid: {
+        width: contentWidth,
+        columnGap: gridGap,
+        rowGap: Math.max(14, Math.min(22, height * 0.024)),
+      },
+      deityCard: {
+        width: cardWidth,
+        borderRadius: cardRadius,
+        padding: cardPadding,
+      },
+      deityImageFrame: {
+        borderRadius: imageRadius,
+      },
+      deityName: {
+        fontSize: nameSize,
+        lineHeight: nameSize * 1.22,
+        marginTop: Math.max(8, Math.min(12, cardWidth * 0.045)),
+        marginBottom: Math.max(2, Math.min(4, cardWidth * 0.015)),
+      },
+    };
+  }, [height, width]);
 
   useEffect(() => {
     if (!diyaActive) {
@@ -378,43 +455,72 @@ export default function PujaScreen() {
     return (
       <ImageBackground source={PUJA_BG_IMAGE} style={styles.chooseBackground} resizeMode="cover">
         <View style={styles.chooseOverlay} />
-        <ScrollView style={styles.screen} contentContainerStyle={styles.chooseContent}>
-          <View style={styles.header}>
-            <View style={styles.headerText}>
-              <Text style={styles.title}>{t('chooseYourDeity')}</Text>
+        <SafeAreaView style={styles.screen}>
+          <ScrollView
+            style={styles.screen}
+            contentContainerStyle={[styles.chooseContent, responsiveStyles.chooseContent]}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={[styles.header, responsiveStyles.header]}>
+              <View style={[styles.headerText, responsiveStyles.headerText]}>
+                <Text style={[styles.title, responsiveStyles.title]}>{t('chooseYourDeity')}</Text>
+              </View>
             </View>
-          </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
-            {categories.map(category => (
-              <TouchableOpacity
-                key={category.id}
-                style={[styles.categoryChip, activeCategory === category.id && styles.categoryChipActive]}
-                onPress={() => setActiveCategory(category.id)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.categoryText, activeCategory === category.id && styles.categoryTextActive]}>
-                  {t(category.labelKey)}</Text>
-              </TouchableOpacity>
-            ))}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={[styles.categoryScroller, responsiveStyles.categoryScroller]}
+              contentContainerStyle={[styles.categoryRow, responsiveStyles.categoryRow]}
+            >
+              {categories.map(category => (
+                <TouchableOpacity
+                  key={category.id}
+                  style={[
+                    styles.categoryChip,
+                    responsiveStyles.categoryChip,
+                    activeCategory === category.id && styles.categoryChipActive,
+                  ]}
+                  onPress={() => setActiveCategory(category.id)}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.categoryText,
+                      responsiveStyles.categoryText,
+                      activeCategory === category.id && styles.categoryTextActive,
+                    ]}
+                  >
+                    {t(category.labelKey)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <View style={[styles.deityGrid, responsiveStyles.deityGrid]}>
+              {visibleDeities.map(deity => (
+                <TouchableOpacity
+                  key={deity.id}
+                  style={[styles.deityCard, responsiveStyles.deityCard]}
+                  onPress={() => openTemple(deity)}
+                  activeOpacity={0.86}
+                >
+                  <View style={[styles.deityImageFrame, responsiveStyles.deityImageFrame]}>
+                    <Image source={deity.thumbnailImage || deity.image} style={styles.deityImage} resizeMode="cover" />
+                  </View>
+                  <Text
+                    style={[styles.deityName, responsiveStyles.deityName]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.78}
+                  >
+                    {t(deity.labelKey || deity.name)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </ScrollView>
-
-          <View style={styles.deityGrid}>
-            {visibleDeities.map(deity => (
-              <TouchableOpacity
-                key={deity.id}
-                style={styles.deityCard}
-                onPress={() => openTemple(deity)}
-                activeOpacity={0.86}
-              >
-                <View style={styles.deityImageFrame}>
-                  <Image source={deity.image} style={styles.deityImage} resizeMode="cover" />
-                </View>
-                <Text style={styles.deityName}>{t(deity.labelKey || deity.name)}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
+        </SafeAreaView>
       </ImageBackground>
     );
   }
@@ -871,13 +977,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 245, 220, 0.58)',
   },
   chooseContent: {
-    paddingHorizontal: 18,
-    paddingTop: 24,
-    paddingBottom: 34,
+    alignItems: 'center',
   },
   title: {
     color: '#3A220D',
-    fontSize: 30,
     fontWeight: '900',
     textAlign: 'center',
   },
@@ -889,11 +992,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   header: {
-    minHeight: 72,
     justifyContent: 'center',
   },
   headerText: {
-    paddingHorizontal: 42,
+    width: '100%',
   },
   backButton: {
     position: 'absolute',
@@ -918,14 +1020,13 @@ const styles = StyleSheet.create({
   backTextVideo: {
     color: '#FFF7E8',
   },
+  categoryScroller: {
+    flexGrow: 0,
+  },
   categoryRow: {
-    gap: 10,
-    paddingVertical: 18,
+    alignItems: 'center',
   },
   categoryChip: {
-    paddingHorizontal: 17,
-    paddingVertical: 9,
-    borderRadius: 18,
     backgroundColor: 'rgba(255, 247, 232, 0.92)',
     borderWidth: 1,
     borderColor: '#E8C982',
@@ -936,7 +1037,6 @@ const styles = StyleSheet.create({
   },
   categoryText: {
     color: '#8B6A3E',
-    fontSize: 12,
     fontWeight: '800',
   },
   categoryTextActive: {
@@ -945,13 +1045,9 @@ const styles = StyleSheet.create({
   deityGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: 14,
+    justifyContent: 'flex-start',
   },
   deityCard: {
-    width: '48%',
-    borderRadius: 20,
-    padding: 9,
     backgroundColor: 'rgba(255, 247, 232, 0.94)',
     borderWidth: 1,
     borderColor: 'rgba(200, 148, 46, 0.45)',
@@ -963,8 +1059,7 @@ const styles = StyleSheet.create({
   },
   deityImageFrame: {
     width: '100%',
-    height: 166,
-    borderRadius: 16,
+    aspectRatio: 0.88,
     backgroundColor: '#F4DFAC',
     overflow: 'hidden',
   },
@@ -974,11 +1069,8 @@ const styles = StyleSheet.create({
   },
   deityName: {
     color: '#3A220D',
-    fontSize: 15,
     fontWeight: '900',
     textAlign: 'center',
-    marginTop: 10,
-    marginBottom: 2,
   },
   templeScreen: {
     flex: 1,

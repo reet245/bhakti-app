@@ -15,6 +15,7 @@ import MantrasScreen from '../screens/MantrasScreen';
 import MantraDetailScreen from '../screens/MantraDetailScreen';
 import JaapCounterScreen from '../screens/JaapCounterScreen';
 import UpcomingFestivalsScreen from '../screens/UpcomingFestivalsScreen';
+import FestivalDetailScreen from '../screens/FestivalDetailScreen';
 import DailyHoroscopeScreen from '../screens/DailyHoroscopeScreen';
 import HoroscopeDetailScreen from '../screens/HoroscopeDetailScreen';
 
@@ -130,6 +131,12 @@ export default function AppNavigator() {
         name="UpcomingFestivals"
         component={UpcomingFestivalsScreen}
         options={{ title: 'Upcoming Festivals' }}
+      />
+
+      <Stack.Screen
+        name="FestivalDetail"
+        component={FestivalDetailScreen}
+        options={{ title: 'Festival Story', headerShown: false }}
       />
 
       <Stack.Screen

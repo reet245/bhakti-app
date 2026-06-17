@@ -256,6 +256,8 @@ function SectionHeader({ title, actionLabel = 'View All', onViewAll }) {
 }
 
 function DeityCard({ deity, selected, responsiveStyles, onPress }) {
+  const cardImage = deity.thumbnailImage || deity.image;
+
   return (
     <TouchableOpacity
       style={[styles.deityCard, responsiveStyles.deityCard, selected && styles.selectedDeityCard]}
@@ -263,8 +265,8 @@ function DeityCard({ deity, selected, responsiveStyles, onPress }) {
       onPress={onPress}
     >
       <View style={styles.deityImageArea}>
-        {deity.image ? (
-          <Image source={deity.image} style={styles.deityImage} resizeMode="cover" />
+        {cardImage ? (
+          <Image source={cardImage} style={styles.deityImage} resizeMode="cover" />
         ) : (
           <View style={styles.deitySymbolArea}>
             <Text style={styles.deitySymbolText}>{deity.symbol}</Text>

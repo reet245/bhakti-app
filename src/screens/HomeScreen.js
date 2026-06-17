@@ -8,6 +8,7 @@ import {
   ImageBackground,
   SafeAreaView,
   StatusBar,
+  useWindowDimensions,
 } from 'react-native';
 
 // Pull in the global theme context created in App.js
@@ -37,13 +38,77 @@ const ICONS = {
 
 // Feature buttons — each carries a pre-resolved image source
 const FEATURES = [
-  { labelKey: 'panchang',    icon: ICONS.calendar, screen: 'Calendar' },
-  { labelKey: 'kundli',      icon: ICONS.kundli,   screen: 'Kundli'   },
-  { labelKey: 'puja',        icon: ICONS.puja,     screen: 'Puja'     },
-  { labelKey: 'mantras',     icon: ICONS.mantras,  screen: 'Mantras'  },
-  { labelKey: 'dailyHoroscope', icon: ICONS.horoscope, screen: 'DailyHoroscope' },
-  { labelKey: 'upcomingFestivals', icon: ICONS.fasting, screen: 'UpcomingFestivals' },
+  { labelKey: 'panchang', icon: ICONS.calendar, screen: 'Calendar', subtitle: 'Tithi, Nakshatra,\nMuhurat & more' },
+  { labelKey: 'kundli', icon: ICONS.kundli, screen: 'Kundli', subtitle: 'Your personal\nbirth chart' },
+  { labelKey: 'puja', icon: ICONS.puja, screen: 'Puja', subtitle: 'Book Puja,\nOnline Seva' },
+  { labelKey: 'mantras', icon: ICONS.mantras, screen: 'Mantras', subtitle: 'Sacred chants\nfor peace & power' },
+  { labelKey: 'dailyHoroscope', icon: ICONS.horoscope, screen: 'DailyHoroscope', subtitle: 'Daily predictions\nfor your sign' },
+  { labelKey: 'upcomingFestivals', icon: ICONS.fasting, screen: 'UpcomingFestivals', subtitle: 'Never miss an\nauspicious day' },
 ];
+
+const LOTUS_MARK = '\u2741';
+
+function HomeModuleCard({ item, title, cardWidth, cardHeight, medallionSize, iconSize, onPress }) {
+  return (
+    <TouchableOpacity
+      key={item.labelKey}
+      style={[styles.moduleCard, { width: cardWidth, height: cardHeight }]}
+      onPress={onPress}
+      activeOpacity={0.78}
+      accessibilityRole="button"
+    >
+      <View style={styles.cardInnerGlow} pointerEvents="none" />
+      <View style={styles.cardTopGlow} pointerEvents="none" />
+
+      <View
+        style={[
+          styles.iconMedallion,
+          {
+            width: medallionSize,
+            height: medallionSize,
+            borderRadius: medallionSize / 2,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.iconInnerRing,
+            {
+              width: medallionSize - 10,
+              height: medallionSize - 10,
+              borderRadius: (medallionSize - 10) / 2,
+            },
+          ]}
+        />
+        <Image
+          source={item.icon}
+          style={[styles.featureIcon, { width: iconSize, height: iconSize }]}
+          resizeMode="contain"
+        />
+      </View>
+
+      <View style={styles.cardTextBlock}>
+        <Text
+          style={styles.moduleTitle}
+          numberOfLines={2}
+          adjustsFontSizeToFit
+          minimumFontScale={0.88}
+        >
+          {title}
+        </Text>
+        <Text style={styles.moduleSubtitle} numberOfLines={2}>
+          {item.subtitle}
+        </Text>
+      </View>
+
+      <View style={styles.lotusDivider} pointerEvents="none">
+        <View style={styles.lotusLine} />
+        <Text style={styles.lotusSymbol}>{LOTUS_MARK}</Text>
+        <View style={styles.lotusLine} />
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 // This is the Home Screen - the first screen users see when they open the app
 export default function HomeScreen({ navigation }) {
@@ -52,6 +117,16 @@ export default function HomeScreen({ navigation }) {
   // ThemeContext kept wired — toggle still works when screens are themed later
   useContext(ThemeContext);
   const { t } = useLanguage();
+  const { width } = useWindowDimensions();
+
+  const isCompact = width < 380;
+  const horizontalPadding = isCompact ? 16 : 22;
+  const gridGap = isCompact ? 8 : 10;
+  const gridWidth = Math.min(width - horizontalPadding * 2, 388);
+  const cardWidth = Math.floor((gridWidth - gridGap * 2) / 3);
+  const cardHeight = Math.min(158, Math.max(148, cardWidth * 1.32));
+  const medallionSize = Math.min(62, Math.max(52, cardWidth * 0.5));
+  const iconSize = Math.min(38, Math.max(30, medallionSize * 0.58));
 
 
   return (
@@ -91,28 +166,21 @@ export default function HomeScreen({ navigation }) {
             Positioned in the lower-middle third of the screen so
             deity faces and the Om symbol remain fully visible.
             ------------------------------------------------------- */}
-        <View style={styles.bottomContent}>
+        <View style={[styles.bottomContent, { paddingHorizontal: horizontalPadding }]}>
 
-          {/* Feature buttons — 2-column grid */}
-          <View style={styles.buttonGrid}>
+          {/* Feature buttons — 3-column grid */}
+          <View style={[styles.buttonGrid, { width: gridWidth, columnGap: gridGap, rowGap: gridGap + 2 }]}>
             {FEATURES.map((item) => (
-              <TouchableOpacity
+              <HomeModuleCard
                 key={item.labelKey}
-                style={styles.glassButton}
+                item={item}
+                title={t(item.labelKey)}
+                cardWidth={cardWidth}
+                cardHeight={cardHeight}
+                medallionSize={medallionSize}
+                iconSize={iconSize}
                 onPress={() => navigation.navigate(item.screen)}
-                activeOpacity={0.78}
-              >
-                {/* Local PNG icon — resizeMode="contain" preserves
-                    transparency and prevents stretching on any button size */}
-                <Image
-                  source={item.icon}
-                  style={styles.featureIcon}
-                  resizeMode="contain"
-                />
-                <Text style={styles.glassButtonLabel} numberOfLines={2}>
-                  {t(item.labelKey)}
-                </Text>
-              </TouchableOpacity>
+              />
             ))}
           </View>
 
@@ -175,61 +243,130 @@ const styles = StyleSheet.create({
   // --- Bottom section — buttons float in the lower quarter ---
   bottomContent: {
     paddingHorizontal: 22,   // matches topBar horizontal rhythm
-    paddingBottom: 44,       // generous floor so buttons don't crowd the very edge
+    paddingBottom: 38,       // generous floor so buttons don't crowd the very edge
     paddingTop: 8,           // small gap between spacer and grid
     alignItems: 'center',
   },
 
-  // --- 2-column flex-wrap button grid ---
+  // --- 3-column flex-wrap button grid ---
   buttonGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     rowGap: 12,
     width: '100%',
   },
 
-  // Sacred cream-gold floating button
-  glassButton: {
-    width: '31%',
-    aspectRatio: 1,
-    // Warm ivory — cream with the faintest gold warmth, ~70% opaque
-    // so the artwork glows softly through without muddying
-    backgroundColor: 'rgba(255, 248, 224, 0.72)',
-    borderRadius: 16,
-    padding: 8,
+  featureIcon: {
+    zIndex: 1,
+  },
+
+  moduleCard: {
+    backgroundColor: 'rgba(255, 248, 230, 0.50)',
+    borderRadius: 24,
+    paddingHorizontal: 7,
+    paddingTop: 8,
+    paddingBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: 'rgba(207, 161, 72, 0.38)',
+    shadowColor: '#8b4f12',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 7,
+    elevation: 2,
+  },
+
+  cardInnerGlow: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    bottom: 2,
+    left: 2,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.24)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+  },
+
+  cardTopGlow: {
+    position: 'absolute',
+    top: 5,
+    width: '66%',
+    height: 26,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+  },
+
+  iconMedallion: {
+    backgroundColor: 'rgba(255, 248, 225, 0.35)',
+    borderWidth: 1,
+    borderColor: 'rgba(207, 161, 72, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#d4932e',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+
+  iconInnerRing: {
+    position: 'absolute',
     borderWidth: 1,
-    // Soft warm-gold border — present but never harsh
-    borderColor: 'rgba(200, 150, 40, 0.55)',
-    // Amber glow shadow — feels warm, not cold
-    shadowColor: '#c8962a',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.30,
-    shadowRadius: 10,
-    elevation: 5,
+    borderColor: 'rgba(255, 255, 255, 0.24)',
+    backgroundColor: 'rgba(255, 250, 229, 0.10)',
   },
 
-  // Custom PNG icon — fixed square keeps all icons visually identical
-  // resizeMode="contain" (set inline) scales within this box without cropping
-  featureIcon: {
-    width: 38,
-    height: 38,
-    marginBottom: 5,
+  cardTextBlock: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 50,
+    width: '100%',
   },
 
-  glassButtonLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    // Warm dark brown — readable against the cream background
-    // and harmonises with the gold border and artwork palette
-    color: '#5c3a0e',
-    letterSpacing: 0.2,
+  moduleTitle: {
+    fontSize: 15,
+    lineHeight: 17,
+    fontWeight: '800',
+    color: '#56340d',
+    letterSpacing: 0,
     textAlign: 'center',
-    // Very light warm shadow lifts the text cleanly off the button
-    textShadowColor: 'rgba(255, 235, 160, 0.6)',
+    textShadowColor: 'rgba(255, 235, 160, 0.36)',
     textShadowOffset: { width: 0, height: 0.5 },
     textShadowRadius: 2,
+  },
+
+  moduleSubtitle: {
+    marginTop: 3,
+    fontSize: 11,
+    lineHeight: 12.5,
+    fontWeight: '600',
+    color: 'rgba(91, 55, 15, 0.80)',
+    letterSpacing: 0,
+    textAlign: 'center',
+  },
+
+  lotusDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '78%',
+    minHeight: 12,
+  },
+
+  lotusLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(190, 123, 28, 0.34)',
+  },
+
+  lotusSymbol: {
+    marginHorizontal: 5,
+    fontSize: 9,
+    lineHeight: 11,
+    color: 'rgba(148, 84, 16, 0.66)',
+    textAlign: 'center',
   },
 });

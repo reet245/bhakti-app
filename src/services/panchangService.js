@@ -2,56 +2,41 @@
 // src/services/panchangService.js
 // ============================================================
 //
-// Panchang data foundation for the Bhakti Calendar screen.
+// Panchang data foundation for the Bhakti Calendar screens.
 //
-// IMPORTANT:
-//   Only sunrise and sunset currently come from a real API
-//   (sunrise-sunset.org). All lunar Panchang values below
-//   are deterministic local placeholders. They are NOT
-//   astronomically accurate yet.
-//
-//   Later, getBasicPanchangForDate can be replaced with a real
-//   Panchang API while keeping the returned object shape stable.
+// Phase 1 loads real daily Panchang fields from the Bhakti
+// Spring Boot backend, which keeps the VedAstro API key off the
+// React Native client. Unsupported items such as festival dates,
+// Rahu Kaal, end times, and muhurtas are marked unavailable
+// instead of being generated locally.
 // ============================================================
 
-const TITHIS = [
-  'Pratipada', 'Dwitiya', 'Tritiya', 'Chaturthi', 'Panchami',
-  'Shashthi', 'Saptami', 'Ashtami', 'Navami', 'Dashami',
-  'Ekadashi', 'Dwadashi', 'Trayodashi', 'Chaturdashi', 'Purnima',
-  'Pratipada', 'Dwitiya', 'Tritiya', 'Chaturthi', 'Panchami',
-  'Shashthi', 'Saptami', 'Ashtami', 'Navami', 'Dashami',
-  'Ekadashi', 'Dwadashi', 'Trayodashi', 'Chaturdashi', 'Amavasya',
+import { API_BASE_URL, API_BASE_URL_SOURCE } from '../config/api';
+
+const REAL_DATA_ERROR_MESSAGE = 'Real Panchang data unavailable. Please try again.';
+const PHASE_1_UNAVAILABLE = 'Not included in Phase 1';
+const UNAVAILABLE = 'Unavailable';
+const PANCHANG_DEBUG = typeof __DEV__ !== 'undefined' ? __DEV__ : true;
+
+const REQUIRED_BACKEND_FIELDS = [
+  'tithiName',
+  'paksha',
+  'lunarMonth',
+  'nakshatra',
+  'yogaName',
+  'karana',
+  'sunrise',
+  'sunset',
+  'ayanamsa',
 ];
 
-const NAKSHATRAS = [
-  'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira',
-  'Ardra', 'Punarvasu', 'Pushya', 'Ashlesha', 'Magha',
-  'Purva Phalguni', 'Uttara Phalguni', 'Hasta', 'Chitra', 'Swati',
-  'Vishakha', 'Anuradha', 'Jyeshtha', 'Mula', 'Purva Ashadha',
-  'Uttara Ashadha', 'Shravana', 'Dhanishta', 'Shatabhisha',
-  'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati',
-];
-
-const YOGAS = [
-  'Vishkambha', 'Priti', 'Ayushman', 'Saubhagya', 'Shobhana',
-  'Atiganda', 'Sukarma', 'Dhriti', 'Shoola', 'Ganda',
-  'Vriddhi', 'Dhruva', 'Vyaghata', 'Harshana', 'Vajra',
-  'Siddhi', 'Vyatipata', 'Variyan', 'Parigha', 'Shiva',
-  'Siddha', 'Sadhya', 'Shubha', 'Shukla', 'Brahma',
-  'Indra', 'Vaidhriti',
-];
-
-const KARANAS = [
-  'Bava', 'Balava', 'Kaulava', 'Taitila', 'Garaja',
-  'Vanija', 'Vishti', 'Shakuni', 'Chatushpada', 'Naga', 'Kimstughna',
-];
-
-const MASA_NAMES = [
-  'Chaitra', 'Vaishakha', 'Jyeshtha', 'Ashadha', 'Shravana', 'Bhadrapada',
-  'Ashwin', 'Kartika', 'Margashirsha', 'Pausha', 'Magha', 'Phalguna',
-];
-
-const RITUS = ['Vasant', 'Grishma', 'Varsha', 'Sharad', 'Hemant', 'Shishir'];
+const DEFAULT_LOCATION = {
+  latitude: 22.566,
+  longitude: 88.37,
+  locationName: 'Kolkata, West Bengal, India',
+  timezone: 'Asia/Kolkata',
+  ayanamsa: 'LAHIRI',
+};
 
 const WEEKDAY_RULES = {
   0: {
@@ -98,11 +83,6 @@ const WEEKDAY_RULES = {
   },
 };
 
-function formatUTCtoLocalTime(utcString) {
-  const date = new Date(utcString);
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
 function formatDateLabel(date) {
   return date.toLocaleDateString([], {
     day: 'numeric',
@@ -119,590 +99,324 @@ function getDateISO(year, month, day) {
   ].join('-');
 }
 
-function getIndexedValue(items, year, month, day, offset = 0) {
-  const index = Math.abs((year * 17 + month * 31 + day + offset) % items.length);
-  return items[index];
+function getDateFromParts({ year, month, day }) {
+  return new Date(year, month, day);
 }
 
-function getPlaceholderTime(day, baseHour, minuteStep = 7) {
-  const hour = (baseHour + (day % 5)) % 24;
-  const minute = (day * minuteStep) % 60;
-  const date = new Date(2000, 0, 1, hour, minute);
-
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function getPlaceholderWindow(day, baseHour, durationMinutes) {
-  const start = new Date(2000, 0, 1, baseHour + (day % 3), (day * 11) % 60);
-  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
-
-  return `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-}
-
-function getWindowFromFixedTime(hour, minute, durationMinutes) {
-  const start = new Date(2000, 0, 1, hour, minute);
-  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
-
-  return `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-}
-
-function getTithiIndex(day) {
-  return (day - 1) % TITHIS.length;
-}
-
-function getFestivalForDate({ month, day, tithi }) {
-  const monthDay = `${month + 1}-${day}`;
-
-  const festivalsByDate = {
-    '1-14': 'Makar Sankranti',
-    '3-8': 'Maha Shivratri',
-    '3-25': 'Holi',
-    '4-17': 'Ram Navami',
-    '4-23': 'Hanuman Jayanti',
-    '8-26': 'Janmashtami',
-    '9-7': 'Ganesh Chaturthi',
-    '10-3': 'Navratri',
-    '10-12': 'Dussehra',
-    '10-31': 'Diwali',
-  };
-
-  if (festivalsByDate[monthDay]) return festivalsByDate[monthDay];
-  if (tithi === 'Ekadashi') return 'Ekadashi';
-  if (tithi === 'Purnima') return 'Purnima';
-  if (tithi === 'Amavasya') return 'Amavasya';
-  if (tithi === 'Trayodashi') return 'Pradosh Vrat';
-  if (tithi === 'Chaturthi') return 'Sankashti Chaturthi';
-
-  return 'None';
-}
-
-function getRecommendedPujaForDate({ weekday, festival }) {
-  const festivalRules = [
-    {
-      match: 'Ekadashi',
-      value: {
-        recommendedPuja: 'Krishna/Vishnu Puja',
-        recommendedDeityId: 'krishna',
-      },
-    },
-    {
-      match: 'Pradosh Vrat',
-      value: {
-        recommendedPuja: 'Shiv Ji Puja',
-        recommendedDeityId: 'shiv',
-      },
-    },
-    {
-      match: 'Purnima',
-      value: {
-        recommendedPuja: 'Krishna/Vishnu Puja',
-        recommendedDeityId: 'krishna',
-      },
-    },
-    {
-      match: 'Sankashti Chaturthi',
-      value: {
-        recommendedPuja: 'Ganesh Ji Puja',
-        recommendedDeityId: 'ganesh',
-      },
-    },
-    {
-      match: 'Navratri',
-      value: {
-        recommendedPuja: 'Durga Ma Puja',
-        recommendedDeityId: 'durga',
-      },
-    },
-    {
-      match: 'Diwali',
-      value: {
-        recommendedPuja: 'Lakshmi Ma Puja',
-        recommendedDeityId: 'lakshmi',
-      },
-    },
-    {
-      match: 'Janmashtami',
-      value: {
-        recommendedPuja: 'Krishna Ji Puja',
-        recommendedDeityId: 'krishna',
-      },
-    },
-    {
-      match: 'Hanuman Jayanti',
-      value: {
-        recommendedPuja: 'Hanuman Ji Puja',
-        recommendedDeityId: 'hanuman',
-      },
-    },
-  ];
-
-  const festivalRule = festivalRules.find((rule) => festival.includes(rule.match));
-  if (festivalRule) return festivalRule.value;
-
-  const weekdayRule = WEEKDAY_RULES[weekday];
-  return {
-    recommendedPuja: weekdayRule.recommendedPuja,
-    recommendedDeityId: weekdayRule.recommendedDeityId,
-  };
-}
-
-function getRecommendedMantraForDate({ weekday, festival }) {
-  const festivalRules = [
-    {
-      match: 'Ekadashi',
-      mantra: 'Om Namo Bhagavate Vasudevaya',
-      meaning: 'A devotional mantra for surrender to Lord Krishna/Vishnu.',
-    },
-    {
-      match: 'Pradosh Vrat',
-      mantra: 'Om Namah Shivaya',
-      meaning: 'I bow to Lord Shiva, the auspicious and compassionate one.',
-    },
-    {
-      match: 'Purnima',
-      mantra: 'Om Namo Bhagavate Vasudevaya',
-      meaning: 'A devotional mantra for surrender to Lord Krishna/Vishnu.',
-    },
-    {
-      match: 'Sankashti Chaturthi',
-      mantra: 'Om Gan Ganapataye Namaha',
-      meaning: 'I bow to Lord Ganesha, remover of obstacles.',
-    },
-    {
-      match: 'Navratri',
-      mantra: 'Om Dum Durgayei Namaha',
-      meaning: 'I bow to Durga Ma, the protective divine mother.',
-    },
-    {
-      match: 'Diwali',
-      mantra: 'Om Shreem Mahalakshmiyei Namaha',
-      meaning: 'I bow to Mahalakshmi, source of grace, abundance, and auspiciousness.',
-    },
-    {
-      match: 'Janmashtami',
-      mantra: 'Om Namo Bhagavate Vasudevaya',
-      meaning: 'A devotional mantra for surrender to Lord Krishna.',
-    },
-    {
-      match: 'Hanuman Jayanti',
-      mantra: 'Om Hanumate Namaha',
-      meaning: 'I bow to Hanuman Ji, source of strength, courage, and devotion.',
-    },
-  ];
-
-  const festivalRule = festivalRules.find((rule) => festival.includes(rule.match));
-  if (festivalRule) {
-    return {
-      recommendedMantra: festivalRule.mantra,
-      mantraMeaning: festivalRule.meaning,
-    };
+function getSafeDateParts(dateParts) {
+  if (dateParts?.year && Number.isInteger(dateParts.month) && dateParts?.day) {
+    return dateParts;
   }
 
-  const weekdayRule = WEEKDAY_RULES[weekday];
+  const today = new Date();
   return {
-    recommendedMantra: weekdayRule.recommendedMantra,
-    mantraMeaning: weekdayRule.mantraMeaning,
+    year: today.getFullYear(),
+    month: today.getMonth(),
+    day: today.getDate(),
   };
 }
 
-function getCalendarMarkersForDate({ festival, isEkadashi, isPurnima, isAmavasya, isFast }) {
-  const markers = [];
-
-  if (festival !== 'None') markers.push('festival');
-  if (isEkadashi) markers.push('ekadashi');
-  if (isPurnima) markers.push('purnima');
-  if (isAmavasya) markers.push('amavasya');
-  if (isFast) markers.push('fast');
-
-  return markers;
+function hasText(value) {
+  return typeof value === 'string' && value.trim().length > 0;
 }
 
-function getMuhurtasForDate({ day }) {
-  return [
-    {
-      id: 'brahma',
-      name: 'Brahma Muhurta',
-      time: getWindowFromFixedTime(4, (day * 3) % 24, 48),
-      type: 'auspicious',
-      icon: 'sun',
-      description: 'A calm pre-dawn window for japa, meditation, and sankalp.',
-    },
-    {
-      id: 'abhijit',
-      name: 'Abhijit Muhurta',
-      time: getWindowFromFixedTime(11, 48, 46),
-      type: 'auspicious',
-      icon: 'diya',
-      description: 'Traditionally considered supportive for important beginnings.',
-    },
-    {
-      id: 'amrit',
-      name: 'Amrit Kaal',
-      time: getPlaceholderWindow(day, 9, 72),
-      type: 'auspicious',
-      icon: 'lotus',
-      description: 'A sweet, devotional period for prayer and graceful action.',
-    },
-    {
-      id: 'vijay',
-      name: 'Vijay Muhurta',
-      time: getWindowFromFixedTime(14, 12, 48),
-      type: 'auspicious',
-      icon: 'bell',
-      description: 'A victorious window for focused work and sacred resolve.',
-    },
-    {
-      id: 'gulika',
-      name: 'Gulika Kaal',
-      time: getPlaceholderWindow(day, 6, 90),
-      type: 'inauspicious',
-      icon: 'moon',
-      description: 'Avoid starting major new work during this caution period.',
-    },
-    {
-      id: 'rahu',
-      name: 'Rahu Kaal',
-      time: getPlaceholderWindow(day, 7, 90),
-      type: 'inauspicious',
-      icon: 'shadow',
-      description: 'A traditional period avoided for fresh undertakings.',
-    },
-    {
-      id: 'yamaganda',
-      name: 'Yamaganda',
-      time: getPlaceholderWindow(day, 12, 90),
-      type: 'inauspicious',
-      icon: 'warning',
-      description: 'Used as a caution window in daily Panchang planning.',
-    },
-    {
-      id: 'dur',
-      name: 'Dur Muhurta',
-      time: getPlaceholderWindow(day, 15, 44),
-      type: 'inauspicious',
-      icon: 'cloud',
-      description: 'Best kept for routine work rather than auspicious starts.',
-    },
-  ];
+function debugLog(label, value) {
+  if (PANCHANG_DEBUG) {
+    console.log(`[Bhakti Panchang] ${label}`, value);
+  }
 }
 
-function getFestivalItemsForDate({ festival, dateLabel }) {
-  const todayFestival = festival && festival !== 'None'
-    ? festival
-    : 'Daily Panchang Observance';
+function displayValue(value, fallback = UNAVAILABLE) {
+  return hasText(value) ? value.trim() : fallback;
+}
 
-  return [
-    {
-      id: slugify(todayFestival),
-      name: todayFestival,
-      date: dateLabel,
-      icon: 'diya',
-      description: festival && festival !== 'None'
-        ? `${festival} is observed today with devotion, prayer, and simple offerings.`
-        : 'A gentle day for daily puja, japa, and lighting a diya at home.',
-      featured: true,
-    },
-    {
-      id: 'nirjala-ekadashi',
-      name: 'Nirjala Ekadashi',
-      date: 'Upcoming',
-      icon: 'lotus',
-      description: 'A sacred Ekadashi vrat dedicated to Vishnu bhakti and discipline.',
-    },
-    {
-      id: 'pradosh-vrat',
-      name: 'Pradosh Vrat',
-      date: 'Upcoming',
-      icon: 'moon',
-      description: 'An evening vrat observed with prayers to Shiv Ji.',
-    },
-    {
-      id: 'sankashti-chaturthi',
-      name: 'Sankashti Chaturthi',
-      date: 'Upcoming',
-      icon: 'bell',
-      description: 'A Ganesh Ji vrat for obstacle removal and blessings.',
-    },
-    {
-      id: 'ganga-dussehra',
-      name: 'Ganga Dussehra',
-      date: 'Upcoming',
-      icon: 'sun',
-      description: 'A holy observance honoring Maa Ganga and purification.',
-    },
-  ];
+function buildQuery(params) {
+  return Object.entries(params)
+    .filter(([, value]) => value !== undefined && value !== null && value !== '')
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+    .join('&');
 }
 
 function slugify(value) {
-  return value
+  return String(value || '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 }
 
-function getImportanceForDate({ festival, tithi, paksha, recommendedPuja }) {
-  if (festival !== 'None') {
-    return `${festival} is a meaningful day for ${recommendedPuja}, japa, and a simple devotional sankalp.`;
-  }
-
-  if (tithi === 'Ekadashi') {
-    return 'Ekadashi is traditionally observed with fasting, Vishnu/Krishna bhakti, and mantra japa.';
-  }
-
-  if (tithi === 'Purnima') {
-    return 'Purnima is a bright full moon day for gratitude, prayer, charity, and peaceful reflection.';
-  }
-
-  if (tithi === 'Amavasya') {
-    return 'Amavasya is a quiet new moon day for inner reflection, diya lighting, and remembrance.';
-  }
-
-  return `${paksha} ${tithi} is suitable for steady daily sadhana and ${recommendedPuja}.`;
+function getWeekdayRule(date) {
+  return WEEKDAY_RULES[date.getDay()] || WEEKDAY_RULES[0];
 }
 
 function getSuggestedBhaktiActionsForDate({
-  festival,
-  fast,
   recommendedPuja,
   recommendedDeityId,
   recommendedMantra,
-  isFast,
 }) {
-  const actions = [
+  return [
     {
       id: 'light-evening-diya',
       title: 'Light a diya in the evening',
       description: 'Offer a simple diya with a quiet prayer for the day.',
-      icon: '🪔',
+      icon: 'diya',
       actionType: 'ritual',
       target: null,
     },
     {
       id: `chant-${slugify(recommendedMantra)}`,
-      title: 'Chant today’s mantra 108 times',
+      title: "Chant today's mantra 108 times",
       description: recommendedMantra,
-      icon: '📿',
+      icon: 'mantra',
       actionType: 'mantra',
       target: recommendedMantra,
-    },
-    {
-      id: 'avoid-rahu-kaal',
-      title: 'Avoid starting important work during Rahu Kaal',
-      description: 'Use Rahu Kaal as a planning caution until accurate Panchang API data is added.',
-      icon: '⚠️',
-      actionType: 'guidance',
-      target: 'rahuKaal',
     },
     {
       id: `start-${slugify(recommendedPuja)}`,
       title: 'Start recommended puja',
       description: recommendedPuja,
-      icon: '🛕',
+      icon: 'puja',
       actionType: 'puja',
       target: recommendedDeityId,
     },
   ];
+}
 
-  if (festival !== 'None' || isFast) {
-    actions.push({
-      id: `set-reminder-${slugify(festival !== 'None' ? festival : fast)}`,
-      title: 'Set reminder for festival or vrat',
-      description: festival !== 'None' ? festival : fast,
-      icon: '🔔',
-      actionType: 'reminder',
-      target: festival !== 'None' ? festival : fast,
-    });
+function getPhase1FestivalItems(dateLabel) {
+  return [
+    {
+      id: 'vedastro-phase-1-festivals',
+      name: 'Festival data not included in Phase 1',
+      date: dateLabel,
+      icon: '\u273A',
+      description: 'VedAstro PanchangaTable Phase 1 is used only for daily Panchang fields.',
+      featured: true,
+    },
+  ];
+}
+
+function buildUnavailablePanchangData(dateParts, message = REAL_DATA_ERROR_MESSAGE) {
+  const safeParts = getSafeDateParts(dateParts);
+  const date = getDateFromParts(safeParts);
+  const weekdayRule = getWeekdayRule(date);
+  const dateLabel = formatDateLabel(date);
+
+  return {
+    dateISO: getDateISO(safeParts.year, safeParts.month, safeParts.day),
+    dateLabel,
+    weekday: date.toLocaleDateString([], { weekday: 'long' }),
+    hindiDateLabel: UNAVAILABLE,
+    tithi: UNAVAILABLE,
+    tithiEnd: PHASE_1_UNAVAILABLE,
+    nakshatra: UNAVAILABLE,
+    nakshatraEnd: PHASE_1_UNAVAILABLE,
+    yoga: UNAVAILABLE,
+    yogaDescription: UNAVAILABLE,
+    karana: UNAVAILABLE,
+    paksha: UNAVAILABLE,
+    masa: UNAVAILABLE,
+    lunarMonth: UNAVAILABLE,
+    vikramSamvat: PHASE_1_UNAVAILABLE,
+    samvat: PHASE_1_UNAVAILABLE,
+    ayan: PHASE_1_UNAVAILABLE,
+    ritu: PHASE_1_UNAVAILABLE,
+    vaar: date.toLocaleDateString([], { weekday: 'long' }),
+    sunrise: UNAVAILABLE,
+    sunset: UNAVAILABLE,
+    moonrise: PHASE_1_UNAVAILABLE,
+    moonset: PHASE_1_UNAVAILABLE,
+    rahuKaal: PHASE_1_UNAVAILABLE,
+    shubhMuhurat: PHASE_1_UNAVAILABLE,
+    festival: PHASE_1_UNAVAILABLE,
+    fast: PHASE_1_UNAVAILABLE,
+    importance: message,
+    recommendedPuja: weekdayRule.recommendedPuja,
+    recommendedDeityId: weekdayRule.recommendedDeityId,
+    recommendedMantra: weekdayRule.recommendedMantra,
+    mantraMeaning: weekdayRule.mantraMeaning,
+    suggestedBhaktiActions: getSuggestedBhaktiActionsForDate({
+      recommendedPuja: weekdayRule.recommendedPuja,
+      recommendedDeityId: weekdayRule.recommendedDeityId,
+      recommendedMantra: weekdayRule.recommendedMantra,
+    }),
+    muhurtas: [],
+    festivals: getPhase1FestivalItems(dateLabel),
+    calendarMarkers: [],
+    isEkadashi: false,
+    isPurnima: false,
+    isAmavasya: false,
+    isFestival: false,
+    isFast: false,
+    source: null,
+    isRealData: false,
+    errorMessage: message,
+  };
+}
+
+function buildImportanceText(data, { tithi, paksha, nakshatra }) {
+  const pieces = [paksha, tithi, nakshatra].filter((value) => value !== UNAVAILABLE);
+
+  if (pieces.length === 0) {
+    return 'Real daily Panchang data loaded from VedAstro.';
   }
 
-  return actions;
+  return `Real VedAstro Panchang for today: ${pieces.join(' | ')}.`;
 }
 
-function getFastForDate({ festival, isEkadashi }) {
-  if (isEkadashi) return 'Ekadashi Vrat';
-  if (festival === 'Pradosh Vrat') return 'Pradosh Vrat';
-  if (festival === 'Sankashti Chaturthi') return 'Sankashti Vrat';
-  return 'None';
+function getMissingRequiredFields(data) {
+  return REQUIRED_BACKEND_FIELDS.filter((fieldName) => !hasText(data?.[fieldName]));
 }
 
-function getBasicPanchangForDate({ year, month, day }) {
-  const date = new Date(year, month, day);
-  const tithiIndex = getTithiIndex(day);
-  const tithi = TITHIS[tithiIndex];
-  const paksha = tithiIndex <= 14 ? 'Shukla Paksha' : 'Krishna Paksha';
-  const festival = getFestivalForDate({ month, day, tithi });
-  const isEkadashi = tithi === 'Ekadashi';
-  const isPurnima = tithi === 'Purnima';
-  const isAmavasya = tithi === 'Amavasya';
-  const fast = getFastForDate({ festival, isEkadashi });
-  const isFestival = festival !== 'None';
-  const isFast = fast !== 'None';
-  const puja = getRecommendedPujaForDate({ weekday: date.getDay(), festival });
-  const mantra = getRecommendedMantraForDate({ weekday: date.getDay(), festival });
+function assertBackendPanchangData(data) {
+  const missingFields = getMissingRequiredFields(data);
+  if (missingFields.length > 0) {
+    throw new Error(`Backend Panchang response missing required fields: ${missingFields.join(', ')}`);
+  }
+}
+
+function mapBackendPanchang(data, dateParts) {
+  const fallback = buildUnavailablePanchangData(dateParts, null);
+  const date = getDateFromParts(getSafeDateParts(dateParts));
+  const weekdayRule = getWeekdayRule(date);
+  const tithi = displayValue(data?.tithiName);
+  const paksha = displayValue(data?.paksha);
+  const lunarMonth = displayValue(data?.lunarMonth);
+  const nakshatra = displayValue(data?.nakshatra);
+  const yoga = displayValue(data?.yogaName);
+  const karana = displayValue(data?.karana);
+  const dateLabel = fallback.dateLabel;
 
   return {
-    dateISO: getDateISO(year, month, day),
-    dateLabel: formatDateLabel(date),
-    weekday: date.toLocaleDateString([], { weekday: 'long' }),
-    hindiDateLabel: `${paksha} ${tithi}`,
+    ...fallback,
+    dateISO: displayValue(data?.date, fallback.dateISO),
+    dateLabel,
+    weekday: displayValue(data?.vara, fallback.weekday),
+    hindiDateLabel: [paksha, tithi].filter((value) => value !== UNAVAILABLE).join(' ') || UNAVAILABLE,
     tithi,
-    tithiEnd: getPlaceholderTime(day, 20),
-    nakshatra: getIndexedValue(NAKSHATRAS, year, month, day),
-    nakshatraEnd: getPlaceholderTime(day, 14, 9),
-    yoga: getIndexedValue(YOGAS, year, month, day, 5),
-    karana: getIndexedValue(KARANAS, year, month, day, 11),
+    tithiEnd: PHASE_1_UNAVAILABLE,
+    nakshatra,
+    nakshatraEnd: PHASE_1_UNAVAILABLE,
+    yoga,
+    yogaDescription: displayValue(data?.yogaDescription),
+    karana,
     paksha,
-    masa: getIndexedValue(MASA_NAMES, year, month, day, 2),
-    vikramSamvat: year + 57,
-    samvat: year + 57,
-    ayan: month >= 5 && month <= 10 ? 'Dakshinayan' : 'Uttarayan',
-    ritu: RITUS[Math.floor(((month + 1) % 12) / 2)],
-    vaar: date.toLocaleDateString([], { weekday: 'long' }),
-    moonrise: getPlaceholderTime(day, 18, 13),
-    moonset: getPlaceholderTime(day, 6, 17),
-    rahuKaal: getPlaceholderWindow(day, 7, 90),
-    shubhMuhurat: getPlaceholderWindow(day, 10, 75),
-    festival,
-    fast,
-    importance: getImportanceForDate({
-      festival,
-      tithi,
-      paksha,
-      recommendedPuja: puja.recommendedPuja,
-    }),
-    recommendedPuja: puja.recommendedPuja,
-    recommendedDeityId: puja.recommendedDeityId,
-    recommendedMantra: mantra.recommendedMantra,
-    mantraMeaning: mantra.mantraMeaning,
+    masa: lunarMonth,
+    lunarMonth,
+    ayan: displayValue(data?.ayanamsa, fallback.ayan),
+    vaar: displayValue(data?.vara, fallback.vaar),
+    sunrise: displayValue(data?.sunrise),
+    sunset: displayValue(data?.sunset),
+    horaLord: displayValue(data?.horaLord),
+    dishaShool: displayValue(data?.dishaShool),
+    ishtaKaala: displayValue(data?.ishtaKaala),
+    ayanamsa: displayValue(data?.ayanamsa, DEFAULT_LOCATION.ayanamsa),
+    locationName: displayValue(data?.locationName, DEFAULT_LOCATION.locationName),
+    latitude: data?.latitude,
+    longitude: data?.longitude,
+    timezone: displayValue(data?.timezone, DEFAULT_LOCATION.timezone),
+    source: displayValue(data?.source, 'VEDASTRO'),
+    isRealData: data?.isRealData === true,
+    errorMessage: null,
+    importance: buildImportanceText(data, { tithi, paksha, nakshatra }),
+    recommendedPuja: weekdayRule.recommendedPuja,
+    recommendedDeityId: weekdayRule.recommendedDeityId,
+    recommendedMantra: weekdayRule.recommendedMantra,
+    mantraMeaning: weekdayRule.mantraMeaning,
     suggestedBhaktiActions: getSuggestedBhaktiActionsForDate({
-      festival,
-      fast,
-      recommendedPuja: puja.recommendedPuja,
-      recommendedDeityId: puja.recommendedDeityId,
-      recommendedMantra: mantra.recommendedMantra,
-      isFast,
+      recommendedPuja: weekdayRule.recommendedPuja,
+      recommendedDeityId: weekdayRule.recommendedDeityId,
+      recommendedMantra: weekdayRule.recommendedMantra,
     }),
-    muhurtas: getMuhurtasForDate({ day }),
-    calendarMarkers: getCalendarMarkersForDate({
-      festival,
-      isEkadashi,
-      isPurnima,
-      isAmavasya,
-      isFast,
-    }),
-    isEkadashi,
-    isPurnima,
-    isAmavasya,
-    isFestival,
-    isFast,
+    festivals: getPhase1FestivalItems(dateLabel),
+    muhurtas: [],
+    calendarMarkers: [],
   };
 }
 
-function buildPanchangResponse({ year, month, day, sunrise, sunset }) {
-  const basic = getBasicPanchangForDate({ year, month, day });
+async function getPanchangFromAPI({
+  year,
+  month,
+  day,
+  latitude = DEFAULT_LOCATION.latitude,
+  longitude = DEFAULT_LOCATION.longitude,
+  locationName = DEFAULT_LOCATION.locationName,
+  timezone = DEFAULT_LOCATION.timezone,
+  ayanamsa = DEFAULT_LOCATION.ayanamsa,
+}) {
+  const dateParts = getSafeDateParts({ year, month, day });
+  const dateISO = getDateISO(dateParts.year, dateParts.month, dateParts.day);
+  const safeLatitude = Number.isFinite(latitude) ? latitude : DEFAULT_LOCATION.latitude;
+  const safeLongitude = Number.isFinite(longitude) ? longitude : DEFAULT_LOCATION.longitude;
+  const query = buildQuery({
+    date: dateISO,
+    lat: safeLatitude,
+    lon: safeLongitude,
+    locationName: locationName || DEFAULT_LOCATION.locationName,
+    timezone: timezone || DEFAULT_LOCATION.timezone,
+    ayanamsa: ayanamsa || DEFAULT_LOCATION.ayanamsa,
+  });
+  const requestUrl = `${API_BASE_URL}/api/v1/panchang/daily?${query}`;
 
-  return {
-    dateISO: basic.dateISO,
-    dateLabel: basic.dateLabel,
-    weekday: basic.weekday,
-    hindiDateLabel: basic.hindiDateLabel,
-    tithi: basic.tithi,
-    tithiEnd: basic.tithiEnd,
-    nakshatra: basic.nakshatra,
-    nakshatraEnd: basic.nakshatraEnd,
-    yoga: basic.yoga,
-    karana: basic.karana,
-    paksha: basic.paksha,
-    masa: basic.masa,
-    vikramSamvat: basic.vikramSamvat,
-    samvat: basic.samvat,
-    ayan: basic.ayan,
-    ritu: basic.ritu,
-    vaar: basic.vaar,
-    sunrise,
-    sunset,
-    moonrise: basic.moonrise,
-    moonset: basic.moonset,
-    rahuKaal: basic.rahuKaal,
-    shubhMuhurat: basic.shubhMuhurat,
-    festival: basic.festival,
-    fast: basic.fast,
-    importance: basic.importance,
-    recommendedPuja: basic.recommendedPuja,
-    recommendedDeityId: basic.recommendedDeityId,
-    recommendedMantra: basic.recommendedMantra,
-    mantraMeaning: basic.mantraMeaning,
-    suggestedBhaktiActions: basic.suggestedBhaktiActions,
-    muhurtas: basic.muhurtas,
-    festivals: getFestivalItemsForDate({
-      festival: basic.festival,
-      dateLabel: basic.dateLabel,
-    }),
-    calendarMarkers: basic.calendarMarkers,
-    isEkadashi: basic.isEkadashi,
-    isPurnima: basic.isPurnima,
-    isAmavasya: basic.isAmavasya,
-    isFestival: basic.isFestival,
-    isFast: basic.isFast,
-  };
-}
+  debugLog('API_BASE_URL', API_BASE_URL);
+  debugLog('API_BASE_URL source', API_BASE_URL_SOURCE);
+  debugLog('request URL', requestUrl);
 
-async function getPanchangFromAPI({ year, month, day, latitude, longitude }) {
-  const dateISO = getDateISO(year, month, day);
-  const url =
-    `https://api.sunrise-sunset.org/json?lat=${latitude}&lng=${longitude}&date=${dateISO}&formatted=0`;
+  let response;
 
   try {
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (data.status !== 'OK') {
-      throw new Error('API returned non-OK status: ' + data.status);
-    }
-
-    return buildPanchangResponse({
-      year,
-      month,
-      day,
-      sunrise: formatUTCtoLocalTime(data.results.sunrise),
-      sunset: formatUTCtoLocalTime(data.results.sunset),
-    });
+    response = await fetch(requestUrl);
+    debugLog('HTTP status', response.status);
   } catch (error) {
-    console.warn('panchangService: API call failed, using fallback.', error.message);
-
-    return buildPanchangResponse({
-      year,
-      month,
-      day,
-      sunrise: 'Unavailable',
-      sunset: 'Unavailable',
-    });
+    console.warn('panchangService: backend network call failed.', error?.message);
+    throw new Error(REAL_DATA_ERROR_MESSAGE);
   }
+
+  let apiResponse;
+
+  try {
+    apiResponse = await response.json();
+    debugLog('raw backend JSON', apiResponse);
+  } catch (error) {
+    console.warn('panchangService: backend response was not JSON.', error?.message);
+    throw new Error(REAL_DATA_ERROR_MESSAGE);
+  }
+
+  if (response.ok && apiResponse?.success === true && apiResponse.data) {
+    try {
+      assertBackendPanchangData(apiResponse.data);
+      const mappedPanchang = mapBackendPanchang(apiResponse.data, dateParts);
+      debugLog('mapped Panchang object', mappedPanchang);
+      return mappedPanchang;
+    } catch (error) {
+      console.warn('panchangService: backend Panchang data was incomplete.', error?.message);
+      throw new Error(REAL_DATA_ERROR_MESSAGE);
+    }
+  }
+
+  console.warn('panchangService: backend returned Panchang error.', apiResponse?.message);
+  throw new Error(REAL_DATA_ERROR_MESSAGE);
 }
 
-function getFallbackPanchangData({ year, month, day }) {
-  return buildPanchangResponse({
-    year,
-    month,
-    day,
-    sunrise: getPlaceholderTime(day, 6, 5),
-    sunset: getPlaceholderTime(day, 18, 4),
-  });
+function getFallbackPanchangData(dateParts) {
+  return buildUnavailablePanchangData(dateParts);
 }
 
 function normalizePanchangData(data, dateParts) {
   const fallback = getFallbackPanchangData(dateParts);
-  const normalized = {
-    ...fallback,
-    ...(data || {}),
-  };
+
+  if (!data) {
+    return fallback;
+  }
 
   return {
-    ...normalized,
-    samvat: normalized.samvat || normalized.vikramSamvat || fallback.samvat,
-    vaar: normalized.vaar || normalized.weekday || fallback.vaar,
-    muhurtas: normalized.muhurtas?.length ? normalized.muhurtas : fallback.muhurtas,
-    festivals: normalized.festivals?.length ? normalized.festivals : fallback.festivals,
-    calendarMarkers: normalized.calendarMarkers?.length ? normalized.calendarMarkers : fallback.calendarMarkers,
+    ...fallback,
+    ...data,
+    samvat: data.samvat || data.vikramSamvat || fallback.samvat,
+    vaar: data.vaar || data.weekday || fallback.vaar,
+    muhurtas: Array.isArray(data.muhurtas) ? data.muhurtas : fallback.muhurtas,
+    festivals: Array.isArray(data.festivals) && data.festivals.length ? data.festivals : fallback.festivals,
+    calendarMarkers: Array.isArray(data.calendarMarkers) ? data.calendarMarkers : fallback.calendarMarkers,
+    isRealData: data.isRealData === true,
+    errorMessage: data.errorMessage || null,
   };
 }
 

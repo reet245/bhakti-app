@@ -138,6 +138,7 @@ export default function CalendarScreen({ navigation }) {
   const dateParts = useMemo(() => getDateParts(today), [today]);
   const [panchang, setPanchang] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState(null);
   const [locationLabel, setLocationLabel] = useState('New Delhi, India');
   const [coords, setCoords] = useState(FALLBACK_LOCATION);
 
@@ -201,16 +202,25 @@ export default function CalendarScreen({ navigation }) {
   useEffect(() => {
     async function loadPanchang() {
       setLoading(true);
+      setErrorMessage(null);
 
       try {
         const data = await getPanchangFromAPI({
           ...dateParts,
           latitude: coords.latitude,
           longitude: coords.longitude,
+          locationName: locationLabel,
+          timezone: 'Asia/Kolkata',
+          ayanamsa: 'LAHIRI',
         });
-        setPanchang(normalizePanchangData(data, dateParts));
+        const mappedPanchang = normalizePanchangData(data, dateParts);
+        if (typeof __DEV__ === 'undefined' || __DEV__) {
+          console.log('[Bhakti Panchang] CalendarScreen received mapped object', mappedPanchang);
+        }
+        setPanchang(mappedPanchang);
       } catch (error) {
         console.warn('Panchang Home: API failed.', error?.message);
+        setErrorMessage('Real Panchang data unavailable. Please try again.');
         setPanchang(normalizePanchangData(null, dateParts));
       } finally {
         setLoading(false);
@@ -218,7 +228,7 @@ export default function CalendarScreen({ navigation }) {
     }
 
     loadPanchang();
-  }, [coords, dateParts]);
+  }, [coords, dateParts, locationLabel]);
 
   const panchangRows = panchang ? [
     [
@@ -235,7 +245,7 @@ export default function CalendarScreen({ navigation }) {
     ],
     [
       { label: 'Samvat', value: panchang.samvat, icon: '\u2609' },
-      { label: 'Ayan', value: panchang.ayan, icon: '\u2191' },
+      { label: 'Ayanamsa', value: panchang.ayanamsa, icon: '\u2191' },
     ],
     [
       { label: 'Ritu', value: panchang.ritu, icon: '\u274B' },
@@ -309,27 +319,36 @@ export default function CalendarScreen({ navigation }) {
                   <ActivityIndicator size="small" color={COLORS.gold} />
                   <Text style={styles.loadingText}>Loading Panchang</Text>
                 </View>
-              ) : panchangRows.map((row, index) => (
-                <PanchangInfoRow
-                  key={`${row[0].label}-${row[1].label}`}
-                  left={row[0]}
-                  right={row[1]}
-                  isLast={index === panchangRows.length - 1}
-                />
-              ))}
+              ) : (
+                <>
+                  {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+                  {panchangRows.map((row, index) => (
+                    <PanchangInfoRow
+                      key={`${row[0].label}-${row[1].label}`}
+                      left={row[0]}
+                      right={row[1]}
+                      isLast={index === panchangRows.length - 1}
+                    />
+                  ))}
+                </>
+              )}
             </View>
           </View>
 
           <View style={[styles.sectionWrap, styles.muhurtaSection, { width: responsiveStyles.contentWidth }]}>
             <SectionHeader title="Today's Muhurta" onPress={() => navigation.navigate('PanchangMuhurtas', { panchang })} />
             <View style={styles.muhurtaRow}>
-              {auspiciousMuhurtas.map((item) => (
+              {auspiciousMuhurtas.length > 0 ? auspiciousMuhurtas.map((item) => (
                 <TouchableOpacity key={item.id} style={styles.muhurtaCard} activeOpacity={0.82}>
                   <Text style={styles.muhurtaIcon}>{item.id === 'abhijit' ? '\u2726' : item.id === 'amrit' ? '\u273A' : '\u2609'}</Text>
                   <Text style={styles.muhurtaName} numberOfLines={2}>{item.name}</Text>
                   <Text style={styles.muhurtaTime} numberOfLines={1}>{item.time}</Text>
                 </TouchableOpacity>
-              ))}
+              )) : (
+                <View style={styles.muhurtaUnavailableCard}>
+                  <Text style={styles.muhurtaUnavailableText}>Muhurta data is not included in Phase 1.</Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -589,6 +608,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
   },
+  errorText: {
+    color: '#A94D3A',
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '800',
+    textAlign: 'center',
+    paddingVertical: 7,
+  },
   panchangInfoRow: {
     minHeight: 37,
     flexDirection: 'row',
@@ -657,6 +684,24 @@ const styles = StyleSheet.create({
     shadowRadius: 7,
     shadowOffset: { width: 0, height: 3 },
     elevation: 2,
+  },
+  muhurtaUnavailableCard: {
+    flex: 1,
+    minHeight: 58,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255, 247, 227, 0.96)',
+    borderWidth: 1,
+    borderColor: COLORS.borderGold,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  muhurtaUnavailableText: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '800',
+    textAlign: 'center',
   },
   muhurtaIcon: {
     color: COLORS.gold,

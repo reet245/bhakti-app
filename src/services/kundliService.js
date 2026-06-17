@@ -31,5 +31,9 @@ export async function generateKundli(request) {
     return apiResponse.data;
   }
 
+  if (response.ok && apiResponse?.success === true && apiResponse.calculationMeta) {
+    return apiResponse;
+  }
+
   throw new Error(apiResponse?.message || GENERATION_ERROR_MESSAGE);
 }
