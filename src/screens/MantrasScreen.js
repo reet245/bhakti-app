@@ -1,12 +1,10 @@
 import { useMemo, useState } from 'react';
 import {
   Image,
-  ImageBackground,
   Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  StatusBar,
   Text,
   TextInput,
   TouchableOpacity,
@@ -14,20 +12,17 @@ import {
   View,
 } from 'react-native';
 
+import DevotionalBackground from '../components/DevotionalBackground';
+import BhaktiBackButton from '../components/BhaktiBackButton';
+import BhaktiBottomNav, {
+  getBhaktiBottomNavContentPadding,
+} from '../components/BhaktiBottomNav';
+import { useBhaktiTopPadding } from '../components/BhaktiLayout';
 import {
   MANTRA_LIBRARY,
   getCategoryById,
   getDeityById,
 } from '../data/mantrasData';
-
-const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
-const LOTUS_IMAGE = require('../../assets/horoscope/decorations/lotus-divider.png');
-const ICONS = {
-  calendar: require('../../assets/icon/calender.png'),
-  kundli: require('../../assets/icon/kundli.png'),
-  mantras: require('../../assets/icon/mantras.png'),
-  puja: require('../../assets/icon/puja.png'),
-};
 
 const DEVOTIONAL_FONT = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
 const VIEW_ALL_ID = 'all';
@@ -43,13 +38,6 @@ const DEITY_ORDER = [
   'ram',
 ];
 
-const BOTTOM_NAV_ITEMS = [
-  { label: 'Puja', screen: 'Puja', image: ICONS.puja },
-  { label: 'Calendar', screen: 'Calendar', image: ICONS.calendar },
-  { label: 'Mantras', screen: 'Mantras', image: ICONS.mantras },
-  { label: 'Kundli', screen: 'Kundli', image: ICONS.kundli },
-];
-
 const POPULAR_MANTRA_ORDER = [
   'om-namah-shivaya',
   'maha-mrityunjaya',
@@ -60,6 +48,7 @@ const POPULAR_MANTRA_ORDER = [
 
 export default function MantrasScreen({ navigation }) {
   const { width, height } = useWindowDimensions();
+  const topPadding = useBhaktiTopPadding(width, 'compact');
   const [searchText, setSearchText] = useState('');
   const [selectedDeityId, setSelectedDeityId] = useState(VIEW_ALL_ID);
   const [playingId, setPlayingId] = useState(null);
@@ -67,19 +56,16 @@ export default function MantrasScreen({ navigation }) {
   const [showAllMantras, setShowAllMantras] = useState(false);
 
   const responsiveStyles = useMemo(() => {
-    const statusTop = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
     const compactWidth = Math.min(width, 520);
     const horizontalPadding = Math.max(14, Math.min(20, compactWidth * 0.045));
     const contentWidth = Math.max(282, Math.min(width - horizontalPadding * 2, 620));
     const deityWidth = Math.max(88, Math.min(108, contentWidth * 0.255));
     const deityHeight = Math.max(108, Math.min(126, height * 0.145));
-    const bottomNavHeight = Math.max(70, Math.min(82, height * 0.092));
-
     return {
       content: {
         paddingHorizontal: horizontalPadding,
-        paddingTop: statusTop + Math.max(8, height * 0.012),
-        paddingBottom: bottomNavHeight + Math.max(18, height * 0.026),
+        paddingTop: topPadding,
+        paddingBottom: getBhaktiBottomNavContentPadding(height, Math.max(18, height * 0.026)),
       },
       contentWidth,
       scrollerEdgePadding: Math.max(0, (width - contentWidth) / 2),
@@ -91,12 +77,10 @@ export default function MantrasScreen({ navigation }) {
         height: deityHeight,
       },
       bottomNav: {
-        minHeight: bottomNavHeight,
         paddingHorizontal: horizontalPadding,
-        paddingBottom: Math.max(8, height * 0.012),
       },
     };
-  }, [height, width]);
+  }, [height, topPadding, width]);
 
   const deityOptions = useMemo(() => (
     DEITY_ORDER.map((deityId) => getDeityById(deityId)).filter(Boolean)
@@ -133,15 +117,6 @@ export default function MantrasScreen({ navigation }) {
 
   const visibleMantras = showAllMantras ? filteredMantras : filteredMantras.slice(0, 5);
 
-  const handleBack = () => {
-    if (navigation?.canGoBack?.()) {
-      navigation.goBack();
-      return;
-    }
-
-    navigation?.navigate?.('Home');
-  };
-
   const showAllItems = () => {
     setSelectedDeityId(VIEW_ALL_ID);
     setShowAllMantras(false);
@@ -164,9 +139,7 @@ export default function MantrasScreen({ navigation }) {
   };
 
   return (
-    <ImageBackground source={BG_IMAGE} style={styles.background} resizeMode="cover">
-      <View style={styles.overlay} />
-
+    <DevotionalBackground style={styles.background}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView
           style={styles.container}
@@ -174,10 +147,7 @@ export default function MantrasScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
         >
           <View style={[styles.topRow, { width: responsiveStyles.contentWidth }]}>
-            <TouchableOpacity style={styles.backButton} activeOpacity={0.78} onPress={handleBack}>
-              <Image source={LOTUS_IMAGE} style={styles.backLotus} resizeMode="contain" />
-              <Text style={styles.backChevron}>{'<'}</Text>
-            </TouchableOpacity>
+            <BhaktiBackButton navigation={navigation} />
 
             <View style={[styles.searchBox, responsiveStyles.search]}>
               <Text style={styles.searchIcon}>{'\u2315'}</Text>
@@ -236,9 +206,13 @@ export default function MantrasScreen({ navigation }) {
           </View>
         </ScrollView>
 
-        <BottomNav navigation={navigation} responsiveStyles={responsiveStyles} />
+        <BhaktiBottomNav
+          activeTab="Mantras"
+          horizontalPadding={responsiveStyles.bottomNav.paddingHorizontal}
+          navigation={navigation}
+        />
       </SafeAreaView>
-    </ImageBackground>
+    </DevotionalBackground>
   );
 }
 
@@ -336,41 +310,11 @@ function MantraListRow({
   );
 }
 
-function BottomNav({ navigation, responsiveStyles }) {
-  return (
-    <View style={[styles.bottomNav, responsiveStyles.bottomNav]}>
-      <View style={styles.bottomNavInner}>
-        {BOTTOM_NAV_ITEMS.map((item) => {
-          const isSelected = item.screen === 'Mantras';
-
-          return (
-            <TouchableOpacity
-              key={item.screen}
-              style={[styles.bottomNavItem, isSelected && styles.bottomNavItemSelected]}
-              activeOpacity={0.82}
-              onPress={() => navigation?.navigate?.(item.screen)}
-            >
-              <Image source={item.image} style={styles.bottomNavIcon} resizeMode="contain" />
-              <Text style={[styles.bottomNavLabel, isSelected && styles.bottomNavLabelSelected]} numberOfLines={1}>
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   background: {
     flex: 1,
     width: '100%',
     height: '100%',
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 247, 228, 0.76)',
   },
   safeArea: {
     flex: 1,
@@ -386,34 +330,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     columnGap: 9,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 250, 238, 0.95)',
-    borderWidth: 1,
-    borderColor: 'rgba(216, 177, 92, 0.54)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#8A5A12',
-    shadowOpacity: 0.11,
-    shadowRadius: 7,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-  },
-  backLotus: {
-    width: 27,
-    height: 17,
-    opacity: 0.9,
-  },
-  backChevron: {
-    position: 'absolute',
-    left: 8,
-    top: 8,
-    color: '#5C3A0E',
-    fontSize: 17,
-    fontWeight: '900',
   },
   searchBox: {
     flex: 1,
@@ -627,54 +543,5 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontWeight: '800',
     textAlign: 'center',
-  },
-  bottomNav: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(255, 247, 228, 0.7)',
-  },
-  bottomNavInner: {
-    minHeight: 58,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 250, 239, 0.98)',
-    borderWidth: 1,
-    borderColor: 'rgba(216, 177, 92, 0.5)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    shadowColor: '#6F4716',
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: -3 },
-    elevation: 8,
-  },
-  bottomNavItem: {
-    flex: 1,
-    minWidth: 0,
-    height: 52,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 2,
-  },
-  bottomNavItemSelected: {
-    backgroundColor: '#F3D27D',
-  },
-  bottomNavIcon: {
-    width: 23,
-    height: 23,
-    marginBottom: 3,
-  },
-  bottomNavLabel: {
-    color: '#7A5520',
-    fontSize: 10,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  bottomNavLabelSelected: {
-    color: '#3F2713',
   },
 });

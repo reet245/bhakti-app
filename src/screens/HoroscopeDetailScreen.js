@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import * as Speech from 'expo-speech';
 
+import BhaktiBackButton from '../components/BhaktiBackButton';
+import { useBhaktiTopPadding } from '../components/BhaktiLayout';
 import { useLanguage } from '../context/LanguageContext';
 import { getDailyHoroscopes } from '../services/horoscopeService';
 
@@ -40,6 +42,7 @@ const FALLBACK_HOROSCOPE = {
 
 export default function HoroscopeDetailScreen({ navigation, route }) {
   const { width } = useWindowDimensions();
+  const topPadding = useBhaktiTopPadding(width, 'title', { usesCoreSafeArea: false });
   const { currentLanguage, t } = useLanguage();
   const safeLanguage = currentLanguage === 'hi' ? 'hi' : 'en';
   const [horoscopeText, setHoroscopeText] = useState(FALLBACK_HOROSCOPE[safeLanguage]);
@@ -125,10 +128,8 @@ export default function HoroscopeDetailScreen({ navigation, route }) {
   return (
     <ImageBackground source={BG_IMAGE} style={styles.background} resizeMode="cover">
       <View style={styles.overlay} />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity style={styles.backButton} activeOpacity={0.78} onPress={() => navigation.goBack()}>
-          <Text style={styles.backButtonText}>{'\u2039'} Back</Text>
-        </TouchableOpacity>
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: topPadding }]} showsVerticalScrollIndicator={false}>
+        <BhaktiBackButton navigation={navigation} style={styles.backButton} />
 
         <View style={styles.detailCard}>
           <View style={styles.topRow}>
@@ -185,23 +186,11 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingTop: 56,
     paddingBottom: 34,
   },
   backButton: {
     alignSelf: 'flex-start',
-    borderRadius: 999,
-    backgroundColor: 'rgba(255, 248, 232, 0.94)',
-    borderWidth: 1,
-    borderColor: 'rgba(198, 143, 42, 0.48)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
     marginBottom: 14,
-  },
-  backButtonText: {
-    color: '#7C4B0B',
-    fontSize: 13,
-    fontWeight: '900',
   },
   detailCard: {
     width: '100%',

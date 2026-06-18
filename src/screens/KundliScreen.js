@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import {
   Alert,
   Image,
-  ImageBackground,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -18,14 +17,15 @@ import {
 import * as Location from 'expo-location';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import BhaktiBackButton, { navigateBackSafely } from '../components/BhaktiBackButton';
+import BhaktiBottomNav, { getBhaktiBottomNavContentPadding } from '../components/BhaktiBottomNav';
+import DevotionalBackground from '../components/DevotionalBackground';
 import { generateKundli as requestKundli } from '../services/kundliService';
 
-const BACKGROUND_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
 const BELL_IMAGE = require('../../assets/horoscope/decorations/hanging-bell.png');
 const KUNDLI_ZODIAC_WHEEL = require('../../assets/kundli/kundli-zodiac-wheel.png');
 
 const COLORS = {
-  backgroundOverlay: 'rgba(255, 246, 226, 0.62)',
   parchment: 'rgba(255, 251, 239, 0.96)',
   parchmentStrong: '#FFF8E8',
   cream: '#F9EAC7',
@@ -496,7 +496,7 @@ export default function KundliScreen({ navigation }) {
       setFormStep((current) => current - 1);
       return;
     }
-    navigation.goBack();
+    navigateBackSafely(navigation);
   };
 
   const generateKundli = async () => {
@@ -640,15 +640,10 @@ export default function KundliScreen({ navigation }) {
   const resultDisplayDate = safeValue(resultProfile?.birthDate);
   const resultDisplayTime = safeValue(resultProfile?.birthTime);
   const resultDisplayPlace = safeValue(resultProfile?.placeName);
-  const ScreenBackground = screen === 'home' ? View : ImageBackground;
 
   return (
-    <ScreenBackground
-      style={[styles.background, screen === 'home' && styles.homeBackground]}
-      {...(screen === 'home' ? {} : { source: BACKGROUND_IMAGE, resizeMode: 'cover' })}
-    >
-      <StatusBar style={screen === 'home' ? 'dark' : 'light'} />
-      {screen !== 'home' && <View style={styles.backgroundOverlay} />}
+    <DevotionalBackground style={styles.background}>
+      <StatusBar style="dark" />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
           style={styles.flex}
@@ -663,8 +658,8 @@ export default function KundliScreen({ navigation }) {
                   ? layout.homeHorizontalPadding
                   : layout.horizontalPadding,
                 paddingBottom: screen === 'home'
-                  ? Math.max(30, height * 0.045)
-                  : Math.max(34, height * 0.055),
+                  ? getBhaktiBottomNavContentPadding(height, Math.max(30, height * 0.045))
+                  : getBhaktiBottomNavContentPadding(height, Math.max(34, height * 0.055)),
               },
             ]}
             keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
@@ -756,10 +751,11 @@ export default function KundliScreen({ navigation }) {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
+        <BhaktiBottomNav activeTab="Kundli" navigation={navigation} />
       </SafeAreaView>
 
       <HouseModal house={selectedHouse} onClose={() => setSelectedHouse(null)} />
-    </ScreenBackground>
+    </DevotionalBackground>
   );
 }
 
@@ -767,14 +763,7 @@ function KundliHomePage({ layout, onBack, onCreate }) {
   return (
     <View style={styles.homePage}>
       <View style={styles.homeTopBar}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          onPress={onBack}
-          style={({ pressed }) => [styles.homeBackButton, pressed && styles.pressed]}
-        >
-          <Text style={styles.homeBackIcon}>{'\u2190'}</Text>
-        </Pressable>
+        <BhaktiBackButton onPress={onBack} />
       </View>
 
       <View style={styles.homeHero}>
@@ -874,14 +863,7 @@ function KundliFormHeader({ layout, onBack, title }) {
         ]}
         resizeMode="contain"
       />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Go back"
-        onPress={onBack}
-        style={({ pressed }) => [styles.formBackButton, pressed && styles.pressed]}
-      >
-        <Text style={styles.backButtonText}>{'\u2039'}</Text>
-      </Pressable>
+      <BhaktiBackButton onPress={onBack} style={styles.formBackButton} />
       <View style={styles.formHeaderCopy}>
         <Text style={styles.formHeaderEyebrow}>{'\u2726'} JANAM KUNDLI {'\u2726'}</Text>
         <Text style={styles.formHeaderTitle}>{title}</Text>
@@ -912,14 +894,11 @@ function KundliResultHeader({ layout, onBack, onShare, title }) {
         resizeMode="contain"
       />
 
-      <Pressable
-        accessibilityRole="button"
+      <BhaktiBackButton
         accessibilityLabel="Back to Review Details"
         onPress={onBack}
-        style={({ pressed }) => [styles.resultHeaderButton, styles.resultHeaderBack, pressed && styles.pressed]}
-      >
-        <Text style={styles.backButtonText}>{'\u2039'}</Text>
-      </Pressable>
+        style={styles.resultHeaderBack}
+      />
 
       <View style={styles.resultHeaderCopy}>
         <Text style={styles.resultHeaderEyebrow}>{'\u2726'} JANAM KUNDLI {'\u2726'}</Text>
@@ -2066,13 +2045,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  backgroundOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: COLORS.backgroundOverlay,
-  },
-  homeBackground: {
-    backgroundColor: '#FFF8EA',
-  },
   safeArea: {
     flex: 1,
   },
@@ -2091,19 +2063,6 @@ const styles = StyleSheet.create({
     height: 54,
     justifyContent: 'center',
     marginBottom: 8,
-  },
-  homeBackButton: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: -10,
-  },
-  homeBackIcon: {
-    color: '#4A2E14',
-    fontSize: 29,
-    lineHeight: 32,
-    fontWeight: '500',
   },
   homeHero: {
     width: '100%',
@@ -2254,14 +2213,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 9,
     left: 0,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 250, 237, 0.92)',
-    borderWidth: 1,
-    borderColor: COLORS.border,
     zIndex: 4,
   },
   formHeaderCopy: {
@@ -2320,7 +2271,10 @@ const styles = StyleSheet.create({
     zIndex: 4,
   },
   resultHeaderBack: {
+    position: 'absolute',
+    top: 9,
     left: 0,
+    zIndex: 4,
   },
   resultHeaderShare: {
     right: 0,
@@ -2354,13 +2308,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '900',
     marginTop: -2,
-  },
-  backButtonText: {
-    color: COLORS.text,
-    fontSize: 30,
-    fontWeight: '700',
-    lineHeight: 32,
-    marginTop: -3,
   },
   stepWrap: {
     flexDirection: 'row',

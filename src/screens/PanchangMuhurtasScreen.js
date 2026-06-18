@@ -5,7 +5,6 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  StatusBar,
   Text,
   TouchableOpacity,
   useWindowDimensions,
@@ -13,6 +12,8 @@ import {
 } from 'react-native';
 
 import { normalizePanchangData } from '../services/panchangService';
+import BhaktiBackButton, { BhaktiBackSpacer } from '../components/BhaktiBackButton';
+import { useBhaktiTopPadding } from '../components/BhaktiLayout';
 
 const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
 const DEVOTIONAL_FONT = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
@@ -32,11 +33,11 @@ function iconForMuhurtam(item) {
 }
 
 export default function PanchangMuhurtasScreen({ navigation, route }) {
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
+  const topPadding = useBhaktiTopPadding(width, 'title');
   const [activeFilter, setActiveFilter] = useState('All');
   const panchang = normalizePanchangData(route?.params?.panchang, getTodayParts());
   const contentWidth = Math.max(282, Math.min(width - Math.max(28, width * 0.09), 660));
-  const statusTop = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
 
   const visibleMuhurtas = useMemo(() => {
     if (activeFilter === 'All') return panchang.muhurtas;
@@ -48,15 +49,13 @@ export default function PanchangMuhurtasScreen({ navigation, route }) {
       <View style={styles.overlay} />
       <SafeAreaView style={styles.safeArea}>
         <ScrollView
-          contentContainerStyle={[styles.content, { width: contentWidth, paddingTop: statusTop + Math.max(8, height * 0.012) }]}
+          contentContainerStyle={[styles.content, { width: contentWidth, paddingTop: topPadding }]}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <TouchableOpacity style={styles.iconButton} activeOpacity={0.78} onPress={() => navigation.goBack()}>
-              <Text style={styles.iconText}>{'<'}</Text>
-            </TouchableOpacity>
+            <BhaktiBackButton navigation={navigation} />
             <Text style={styles.headerTitle}>Today's Muhurta</Text>
-            <View style={styles.headerSpacer} />
+            <BhaktiBackSpacer />
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
@@ -105,17 +104,6 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   content: { alignSelf: 'center', paddingBottom: 28 },
   header: { minHeight: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 250, 239, 0.96)',
-    borderWidth: 1,
-    borderColor: 'rgba(216, 177, 92, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconText: { color: '#5C3A0E', fontSize: 22, fontWeight: '900' },
   headerTitle: {
     flex: 1,
     color: '#3F2713',
@@ -124,7 +112,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textAlign: 'center',
   },
-  headerSpacer: { width: 40 },
   filterRow: { paddingVertical: 12 },
   filterChip: {
     minHeight: 34,

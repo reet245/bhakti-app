@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   ImageBackground,
   Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  StatusBar,
   Text,
   TouchableOpacity,
   useWindowDimensions,
@@ -19,14 +17,13 @@ import {
   getPanchangFromAPI,
   normalizePanchangData,
 } from '../services/panchangService';
+import BhaktiBackButton, { BhaktiBackSpacer } from '../components/BhaktiBackButton';
+import BhaktiBottomNav, {
+  getBhaktiBottomNavContentPadding,
+} from '../components/BhaktiBottomNav';
+import { useBhaktiTopPadding } from '../components/BhaktiLayout';
 
 const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
-const ICONS = {
-  calendar: require('../../assets/icon/calender.png'),
-  kundli: require('../../assets/icon/kundli.png'),
-  mantras: require('../../assets/icon/mantras.png'),
-  puja: require('../../assets/icon/puja.png'),
-};
 
 const DEVOTIONAL_FONT = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
 const FALLBACK_LOCATION = { latitude: 28.6139, longitude: 77.2090 };
@@ -42,13 +39,6 @@ const COLORS = {
   borderGold: 'rgba(201, 148, 22, 0.22)',
   shadow: '#8A5A10',
 };
-
-const BOTTOM_NAV_ITEMS = [
-  { label: 'Puja', screen: 'Puja', image: ICONS.puja },
-  { label: 'Calendar', screen: 'Calendar', image: ICONS.calendar },
-  { label: 'Mantras', screen: 'Mantras', image: ICONS.mantras },
-  { label: 'Kundli', screen: 'Kundli', image: ICONS.kundli },
-];
 
 function getDateParts(date) {
   return {
@@ -104,34 +94,9 @@ function SectionHeader({ title, actionLabel = 'View All', onPress }) {
   );
 }
 
-function BottomNav({ navigation, responsiveStyles }) {
-  return (
-    <View style={[styles.bottomNav, responsiveStyles.bottomNav]}>
-      <View style={styles.bottomNavInner}>
-        {BOTTOM_NAV_ITEMS.map((item) => {
-          const isSelected = item.screen === 'Calendar';
-
-          return (
-            <TouchableOpacity
-              key={item.screen}
-              style={[styles.bottomNavItem, isSelected && styles.bottomNavItemSelected]}
-              activeOpacity={0.82}
-              onPress={() => navigation?.navigate?.(item.screen)}
-            >
-              <Image source={item.image} style={styles.bottomNavIcon} resizeMode="contain" />
-              <Text style={[styles.bottomNavLabel, isSelected && styles.bottomNavLabelSelected]} numberOfLines={1}>
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
 export default function CalendarScreen({ navigation }) {
   const { width, height } = useWindowDimensions();
+  const topPadding = useBhaktiTopPadding(width, 'title');
   const today = useMemo(() => new Date(), []);
   const dateParts = useMemo(() => getDateParts(today), [today]);
   const [panchang, setPanchang] = useState(null);
@@ -141,18 +106,15 @@ export default function CalendarScreen({ navigation }) {
   const [coords, setCoords] = useState(FALLBACK_LOCATION);
 
   const responsiveStyles = useMemo(() => {
-    const statusTop = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
     const compactWidth = Math.min(width, 430);
     const horizontalPadding = 16;
     const contentWidth = Math.max(286, Math.min(width - horizontalPadding * 2, 430));
     const dateBadgeSize = Math.max(88, Math.min(104, compactWidth * 0.25));
-    const bottomNavHeight = Math.max(70, Math.min(82, height * 0.092));
-
     return {
       content: {
         paddingHorizontal: horizontalPadding,
-        paddingTop: statusTop + Math.max(3, height * 0.005),
-        paddingBottom: bottomNavHeight + 94,
+        paddingTop: topPadding,
+        paddingBottom: getBhaktiBottomNavContentPadding(height, 94),
       },
       contentWidth,
       dateDashboard: {
@@ -165,12 +127,10 @@ export default function CalendarScreen({ navigation }) {
         borderRadius: dateBadgeSize / 2,
       },
       bottomNav: {
-        minHeight: bottomNavHeight,
         paddingHorizontal: horizontalPadding,
-        paddingBottom: Math.max(8, height * 0.012),
       },
     };
-  }, [height, width]);
+  }, [height, topPadding, width]);
 
   useEffect(() => {
     async function loadLocation() {
@@ -255,15 +215,6 @@ export default function CalendarScreen({ navigation }) {
   const featuredFestival = panchang?.festivals?.[0];
   const monthYear = today.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
   const weekday = today.toLocaleDateString('en-GB', { weekday: 'long' });
-  const handleHeaderBack = () => {
-    if (navigation?.canGoBack?.()) {
-      navigation.goBack();
-      return;
-    }
-
-    navigation?.navigate?.('Home');
-  };
-
   return (
     <ImageBackground source={BG_IMAGE} style={styles.background} resizeMode="cover">
       <View style={styles.overlay} />
@@ -276,17 +227,9 @@ export default function CalendarScreen({ navigation }) {
         >
           <View style={[styles.header, { width: responsiveStyles.contentWidth }]}>
             <View style={styles.headerTopRow}>
-              <TouchableOpacity
-                style={styles.headerBackButton}
-                activeOpacity={0.68}
-                onPress={handleHeaderBack}
-                accessibilityRole="button"
-                accessibilityLabel="Go back"
-              >
-                <Text style={styles.headerBackArrow}>{'\u2039'}</Text>
-              </TouchableOpacity>
+              <BhaktiBackButton navigation={navigation} />
               <Text style={styles.screenTitle}>Panchang</Text>
-              <View style={styles.headerActionSpacer} />
+              <BhaktiBackSpacer />
             </View>
             <Text style={styles.screenDate}>{formatHeaderDate(today)}</Text>
             <TouchableOpacity style={styles.locationPill} activeOpacity={0.82}>
@@ -381,7 +324,11 @@ export default function CalendarScreen({ navigation }) {
           </View>
         </ScrollView>
 
-        <BottomNav navigation={navigation} responsiveStyles={responsiveStyles} />
+        <BhaktiBottomNav
+          activeTab="Calendar"
+          horizontalPadding={responsiveStyles.bottomNav.paddingHorizontal}
+          navigation={navigation}
+        />
       </SafeAreaView>
     </ImageBackground>
   );
@@ -413,24 +360,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     alignSelf: 'stretch',
-  },
-  headerBackButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-  },
-  headerBackArrow: {
-    color: COLORS.textDark,
-    fontSize: 34,
-    lineHeight: 36,
-    fontWeight: '800',
-    marginLeft: 1,
-    marginTop: -2,
-  },
-  headerActionSpacer: {
-    width: 40,
-    height: 40,
   },
   screenTitle: {
     color: COLORS.textDark,
@@ -784,53 +713,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
     marginLeft: 8,
-  },
-  bottomNav: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'flex-end',
-  },
-  bottomNavInner: {
-    minHeight: 56,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 247, 227, 0.98)',
-    borderWidth: 1,
-    borderColor: COLORS.borderGold,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    shadowColor: COLORS.shadow,
-    shadowOpacity: 0.16,
-    shadowRadius: 13,
-    shadowOffset: { width: 0, height: -3 },
-    elevation: 8,
-  },
-  bottomNavItem: {
-    flex: 1,
-    minWidth: 0,
-    height: 50,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 2,
-  },
-  bottomNavItemSelected: {
-    backgroundColor: COLORS.cardGoldLight,
-  },
-  bottomNavIcon: {
-    width: 22,
-    height: 22,
-    marginBottom: 3,
-  },
-  bottomNavLabel: {
-    color: COLORS.textMuted,
-    fontSize: 10,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  bottomNavLabelSelected: {
-    color: COLORS.textDark,
   },
 });

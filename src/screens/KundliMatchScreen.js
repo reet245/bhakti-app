@@ -1,6 +1,7 @@
 import { useState, useContext } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { ThemeContext } from '../../App';
+import BhaktiBackButton from '../components/BhaktiBackButton';
 import { useLanguage } from '../context/LanguageContext';
 
 // ---------------------------------------------------------
@@ -23,7 +24,7 @@ function calculateCompatibility(dob1, dob2, t) {
   return { score, message, emoji };
 }
 
-export default function KundliMatchScreen() {
+export default function KundliMatchScreen({ navigation }) {
   const { theme, isDark } = useContext(ThemeContext);
   const { t } = useLanguage();
 
@@ -57,6 +58,7 @@ export default function KundliMatchScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <BhaktiBackButton navigation={navigation} style={styles.backButton} />
 
         <Text style={styles.emoji}>❤️</Text>
         <Text style={[styles.heading, { color: theme.text }]}>{t('kundliMatching')}</Text>
@@ -132,6 +134,7 @@ export default function KundliMatchScreen() {
 const styles = StyleSheet.create({
   container:      { flex: 1 },
   scrollContent:  { padding: 24, alignItems: 'center', paddingBottom: 40 },
+  backButton:     { alignSelf: 'flex-start', marginBottom: 8 },
   emoji:          { fontSize: 56, marginBottom: 8 },
   heading:        { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 4 },
   subtitle:       { fontSize: 14, textAlign: 'center', marginBottom: 24 },

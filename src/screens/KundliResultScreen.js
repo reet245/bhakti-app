@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import BhaktiBackButton from '../components/BhaktiBackButton';
 import { useLanguage } from '../context/LanguageContext';
 
 // ============================================================
@@ -138,7 +139,7 @@ function getKundliDetails(dob, tob) {
 // ============================================================
 // COMPONENT
 // ============================================================
-export default function KundliResultScreen({ route }) {
+export default function KundliResultScreen({ navigation, route }) {
   const { t } = useLanguage();
   const {
     name = "Unknown",
@@ -196,6 +197,7 @@ export default function KundliResultScreen({ route }) {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        <BhaktiBackButton navigation={navigation} style={styles.backButton} />
         <Text style={styles.emoji}>📜</Text>
         <Text style={styles.heading}>{t('kundli')}</Text>
         <Text style={styles.subtitle}>{t('celestialBlueprint')}</Text>
@@ -538,6 +540,10 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
     paddingBottom: 40,
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    marginBottom: 8,
   },
   emoji: {
     fontSize: 56,

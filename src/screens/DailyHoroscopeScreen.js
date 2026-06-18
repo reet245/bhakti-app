@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
+import BhaktiBackButton from '../components/BhaktiBackButton';
+import BhaktiBottomNav, { getBhaktiBottomNavContentPadding } from '../components/BhaktiBottomNav';
 import { useLanguage } from '../context/LanguageContext';
 
 const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
@@ -171,6 +173,7 @@ export default function DailyHoroscopeScreen() {
     return {
       content: {
         paddingTop: height * 0.012,
+        paddingBottom: getBhaktiBottomNavContentPadding(height, 24),
       },
       headerCard: {
         paddingHorizontal: compactWidth * 0.05,
@@ -458,14 +461,11 @@ export default function DailyHoroscopeScreen() {
           <Image source={HANGING_BELL_IMAGE} style={[styles.headerBell, responsiveStyles.headerBell, styles.rightBellLower, responsiveStyles.rightBellLower]} resizeMode="contain" />
           <Image source={DIYA_IMAGE} style={[styles.headerDiya, responsiveStyles.headerDiya, styles.headerDiyaLeft, responsiveStyles.headerDiyaLeft]} resizeMode="contain" />
           <Image source={DIYA_IMAGE} style={[styles.headerDiya, responsiveStyles.headerDiya, styles.headerDiyaRight, responsiveStyles.headerDiyaRight]} resizeMode="contain" />
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.75}
+          <BhaktiBackButton
             accessibilityLabel={t('back')}
-          >
-            <Text style={styles.backButtonText}>{'<'}</Text>
-          </TouchableOpacity>
+            navigation={navigation}
+            style={styles.backButton}
+          />
           <View style={[styles.headerCenter, responsiveStyles.headerCenter]}>
             <Text style={[styles.title, responsiveStyles.title]}>{t('dailyHoroscope')}</Text>
             <View style={[styles.dateRow, responsiveStyles.dateRow]}>
@@ -643,6 +643,7 @@ export default function DailyHoroscopeScreen() {
           </View>
         </View>
       </ScrollView>
+      <BhaktiBottomNav activeTab="Horoscope" navigation={navigation} />
     </ImageBackground>
   );
 }
@@ -660,10 +661,11 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
+    backgroundColor: '#FFF7E6',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 246, 226, 0.62)',
+    backgroundColor: 'rgba(255, 247, 228, 0.68)',
   },
   container: {
     flex: 1,
@@ -671,7 +673,6 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: 34,
   },
   headerCard: {
     backgroundColor: 'transparent',
@@ -751,21 +752,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 14,
     left: 14,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#FFF8E8',
-    borderWidth: 1,
-    borderColor: '#E8D3A2',
-    alignItems: 'center',
-    justifyContent: 'center',
     zIndex: 6,
-  },
-  backButtonText: {
-    color: '#5C3A0E',
-    fontSize: 24,
-    fontWeight: '900',
-    marginTop: -2,
   },
   headerCenter: {
     alignItems: 'center',
@@ -938,12 +925,12 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingVertical: 16,
     paddingHorizontal: 12,
-    backgroundColor: '#F6E2A8',
+    backgroundColor: 'rgba(255, 250, 239, 0.96)',
     borderRadius: 26,
     borderWidth: 1,
-    borderColor: 'rgba(156, 106, 24, 0.25)',
+    borderColor: 'rgba(216, 177, 92, 0.46)',
     shadowColor: '#8A5A12',
-    shadowOpacity: 0.14,
+    shadowOpacity: 0.1,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 5 },
     elevation: 4,
@@ -956,7 +943,7 @@ const styles = StyleSheet.create({
     width: 112,
     height: 112,
     borderRadius: 56,
-    backgroundColor: 'rgba(255, 236, 160, 0.2)',
+    backgroundColor: 'rgba(239, 216, 168, 0.16)',
   },
   selectorCornerGlowRight: {
     position: 'absolute',
@@ -965,7 +952,7 @@ const styles = StyleSheet.create({
     width: 122,
     height: 122,
     borderRadius: 61,
-    backgroundColor: 'rgba(245, 216, 144, 0.18)',
+    backgroundColor: 'rgba(255, 248, 232, 0.18)',
   },
   sectionHeadingRow: {
     flexDirection: 'row',
@@ -1033,21 +1020,21 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   signCircleShellSelected: {
-    backgroundColor: 'rgba(255, 225, 120, 0.78)',
-    borderColor: '#D8A12D',
+    backgroundColor: 'rgba(239, 212, 135, 0.9)',
+    borderColor: 'rgba(201, 148, 22, 0.68)',
     borderWidth: 2,
-    shadowColor: '#FFD66B',
-    shadowOpacity: 0.65,
-    shadowRadius: 16,
+    shadowColor: '#B87918',
+    shadowOpacity: 0.24,
+    shadowRadius: 12,
     shadowOffset: { width: 0, height: 0 },
     elevation: 10,
   },
   signSelectedHalo: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: 999,
-    backgroundColor: 'rgba(255, 211, 82, 0.26)',
+    backgroundColor: 'rgba(239, 216, 168, 0.22)',
     borderWidth: 2,
-    borderColor: 'rgba(216, 161, 45, 0.5)',
+    borderColor: 'rgba(216, 177, 92, 0.38)',
     transform: [{ scale: 1.16 }],
   },
   signCircle: {
@@ -1063,7 +1050,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   signCircleSelected: {
-    backgroundColor: 'rgba(255, 224, 116, 0.34)',
+    backgroundColor: 'rgba(255, 248, 232, 0.28)',
   },
   signIcon: {
     width: 34,
@@ -1101,13 +1088,13 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 720,
     alignSelf: 'center',
-    backgroundColor: '#F6E2A8',
+    backgroundColor: 'rgba(255, 250, 239, 0.96)',
     borderRadius: 26,
     padding: 0,
     borderWidth: 1,
-    borderColor: 'rgba(156, 106, 24, 0.25)',
-    shadowColor: '#9C6420',
-    shadowOpacity: 0.16,
+    borderColor: 'rgba(216, 177, 92, 0.46)',
+    shadowColor: '#8A5A12',
+    shadowOpacity: 0.1,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 5 },
     elevation: 4,
@@ -1120,9 +1107,9 @@ const styles = StyleSheet.create({
     width: 190,
     height: 190,
     borderRadius: 95,
-    backgroundColor: 'rgba(246, 205, 105, 0.26)',
+    backgroundColor: 'rgba(239, 216, 168, 0.18)',
     borderWidth: 1,
-    borderColor: 'rgba(216, 177, 92, 0.16)',
+    borderColor: 'rgba(216, 177, 92, 0.12)',
   },
   resultDashboard: {
     flexDirection: 'row',
@@ -1134,7 +1121,7 @@ const styles = StyleSheet.create({
     flexBasis: '42%',
     maxWidth: '43%',
     height: '100%',
-    backgroundColor: 'rgba(243, 209, 138, 0.9)',
+    backgroundColor: 'rgba(255, 247, 227, 0.74)',
     alignItems: 'stretch',
     justifyContent: 'stretch',
     alignSelf: 'stretch',
@@ -1244,10 +1231,10 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     minHeight: 40,
-    backgroundColor: 'rgba(255, 248, 220, 0.72)',
+    backgroundColor: 'rgba(255, 250, 239, 0.86)',
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: 'rgba(156, 106, 24, 0.22)',
+    borderColor: 'rgba(216, 177, 92, 0.32)',
     paddingVertical: 5,
     paddingHorizontal: 5,
     shadowColor: '#8A6425',
@@ -1286,10 +1273,10 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     minHeight: 36,
-    backgroundColor: 'rgba(248, 231, 184, 0.74)',
+    backgroundColor: 'rgba(255, 247, 227, 0.84)',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(156, 106, 24, 0.22)',
+    borderColor: 'rgba(216, 177, 92, 0.3)',
     paddingVertical: 5,
     paddingHorizontal: 5,
     justifyContent: 'center',

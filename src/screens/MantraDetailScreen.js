@@ -1,26 +1,26 @@
 import { useMemo, useState } from 'react';
 import {
   Image,
-  ImageBackground,
   Platform,
   SafeAreaView,
   ScrollView,
   Share,
   StyleSheet,
-  StatusBar,
   Text,
   TouchableOpacity,
   useWindowDimensions,
   View,
 } from 'react-native';
 
+import DevotionalBackground from '../components/DevotionalBackground';
+import BhaktiBackButton from '../components/BhaktiBackButton';
+import { useBhaktiTopPadding } from '../components/BhaktiLayout';
 import {
   MANTRA_LIBRARY,
   getCategoryById,
   getDeityById,
 } from '../data/mantrasData';
 
-const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
 const HANGING_BELL_IMAGE = require('../../assets/horoscope/decorations/hanging-bell.png');
 const LOTUS_DIVIDER_IMAGE = require('../../assets/horoscope/decorations/lotus-divider.png');
 
@@ -29,6 +29,7 @@ const CHANT_COUNT_OPTIONS = [11, 21, 108];
 
 export default function MantraDetailScreen({ navigation, route }) {
   const { width, height } = useWindowDimensions();
+  const headerTopPadding = useBhaktiTopPadding(width, 'hero');
   const mantra = MANTRA_LIBRARY.find((item) => item.id === route?.params?.mantraId) ?? MANTRA_LIBRARY[0];
   const deity = getDeityById(mantra.deityId);
   const category = getCategoryById(mantra.categoryId);
@@ -39,7 +40,6 @@ export default function MantraDetailScreen({ navigation, route }) {
   const [isFavorite, setIsFavorite] = useState(false);
 
   const responsiveStyles = useMemo(() => {
-    const statusTop = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
     const compactWidth = Math.min(width, 520);
     const horizontalPadding = Math.max(14, Math.min(22, compactWidth * 0.045));
     const contentWidth = Math.max(280, Math.min(width - horizontalPadding * 2, 680));
@@ -54,7 +54,7 @@ export default function MantraDetailScreen({ navigation, route }) {
       },
       header: {
         minHeight: Math.max(150, Math.min(210, height * 0.23)),
-        paddingTop: statusTop + Math.max(42, height * 0.052),
+        paddingTop: headerTopPadding,
         paddingHorizontal: Math.max(18, compactWidth * 0.052),
       },
       bell: {
@@ -87,16 +87,7 @@ export default function MantraDetailScreen({ navigation, route }) {
         lineHeight: Math.max(27, Math.min(34, compactWidth * 0.076)),
       },
     };
-  }, [height, width]);
-
-  const handleBack = () => {
-    if (navigation?.canGoBack?.()) {
-      navigation.goBack();
-      return;
-    }
-
-    navigation?.navigate?.('Mantras');
-  };
+  }, [headerTopPadding, height, width]);
 
   const handleShare = async () => {
     try {
@@ -117,9 +108,7 @@ export default function MantraDetailScreen({ navigation, route }) {
   };
 
   return (
-    <ImageBackground source={BG_IMAGE} style={styles.background} resizeMode="cover">
-      <View style={styles.overlay} />
-
+    <DevotionalBackground style={styles.background}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView
           style={styles.container}
@@ -130,9 +119,7 @@ export default function MantraDetailScreen({ navigation, route }) {
             <Image source={HANGING_BELL_IMAGE} style={[styles.headerBell, styles.leftBell, responsiveStyles.bell]} resizeMode="contain" />
             <Image source={HANGING_BELL_IMAGE} style={[styles.headerBell, styles.rightBell, responsiveStyles.bell]} resizeMode="contain" />
 
-            <TouchableOpacity style={styles.backButton} activeOpacity={0.78} onPress={handleBack}>
-              <Text style={styles.backButtonText}>{'<'}</Text>
-            </TouchableOpacity>
+            <BhaktiBackButton navigation={navigation} style={styles.backButton} />
 
             <Text style={[styles.headerTitle, responsiveStyles.headerTitle]}>Mantra Details</Text>
             <View style={styles.lotusDividerWrap}>
@@ -241,7 +228,7 @@ export default function MantraDetailScreen({ navigation, route }) {
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
-    </ImageBackground>
+    </DevotionalBackground>
   );
 }
 
@@ -250,10 +237,6 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 246, 226, 0.68)',
   },
   safeArea: {
     flex: 1,
@@ -291,26 +274,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 14,
     left: 8,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255, 248, 232, 0.92)',
-    borderWidth: 1,
-    borderColor: 'rgba(216, 177, 92, 0.66)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#8A5A12',
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
     zIndex: 6,
-  },
-  backButtonText: {
-    color: '#5C3A0E',
-    fontSize: 24,
-    fontWeight: '900',
-    marginTop: -2,
   },
   headerTitle: {
     color: '#3F2713',

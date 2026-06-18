@@ -7,7 +7,6 @@ import {
   ScrollView,
   Share,
   StyleSheet,
-  StatusBar,
   Text,
   TouchableOpacity,
   useWindowDimensions,
@@ -16,6 +15,8 @@ import {
 
 import { festivals, getFestivalById } from '../data/festivalData';
 import { festivalImages } from '../data/festivalImages';
+import BhaktiBackButton from '../components/BhaktiBackButton';
+import { useBhaktiTopPadding } from '../components/BhaktiLayout';
 
 const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
 const DEVOTIONAL_FONT = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
@@ -52,11 +53,11 @@ function showShareFallback() {
 
 export default function FestivalDetailScreen({ navigation, route }) {
   const { width, height } = useWindowDimensions();
+  const iconTop = useBhaktiTopPadding(width, 'overlay');
   const festival = getFestivalById(route?.params?.festivalId) ?? route?.params?.festival ?? festivals[0];
   const imageSource = festivalImages[festival?.imageKey];
   const storyText = festival?.story || STORY_FALLBACK;
   const dateText = festival?.dateText || festival?.date;
-  const statusTop = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
   const contentWidth = Math.max(282, Math.min(width - Math.max(24, width * 0.07), 720));
   const compactWidth = Math.min(width, 520);
   const heroHeight = Math.max(260, Math.min(380, height * 0.42, width * 0.98));
@@ -64,16 +65,6 @@ export default function FestivalDetailScreen({ navigation, route }) {
   const titleSize = Math.max(27, Math.min(38, compactWidth * 0.078));
   const subtitleSize = Math.max(13, Math.min(16, compactWidth * 0.035));
   const storySize = Math.max(15, Math.min(17, compactWidth * 0.039));
-  const iconTop = statusTop + Math.max(10, height * 0.014);
-
-  const handleBack = () => {
-    if (navigation?.canGoBack?.()) {
-      navigation.goBack();
-      return;
-    }
-
-    navigation?.navigate?.('UpcomingFestivals');
-  };
 
   const handleShare = async () => {
     const message = buildShareMessage(festival, storyText);
@@ -121,13 +112,7 @@ export default function FestivalDetailScreen({ navigation, route }) {
             )}
             <View style={styles.heroShade} />
 
-            <TouchableOpacity
-              style={[styles.floatButton, styles.backButton, { top: iconTop }]}
-              activeOpacity={0.82}
-              onPress={handleBack}
-            >
-              <Text style={styles.floatButtonText}>{'<'}</Text>
-            </TouchableOpacity>
+            <BhaktiBackButton navigation={navigation} style={[styles.backButton, { top: iconTop }]} />
 
             <TouchableOpacity
               style={[styles.floatButton, styles.shareButton, { top: iconTop }]}
@@ -240,16 +225,12 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   backButton: {
+    position: 'absolute',
     left: 16,
+    zIndex: 2,
   },
   shareButton: {
     right: 16,
-  },
-  floatButtonText: {
-    color: '#4A2D11',
-    fontSize: 23,
-    fontWeight: '900',
-    lineHeight: 27,
   },
   shareIcon: {
     color: '#5B3511',

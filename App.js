@@ -2,6 +2,7 @@
 import { useState, createContext, useContext } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 // import * as Notifications from 'expo-notifications';  // <-- Temporarily disabled for Expo Go compatibility
 import AppNavigator from './src/navigation/AppNavigator';
 import { LanguageProvider } from './src/context/LanguageContext';
@@ -187,16 +188,18 @@ export default function App() {
     // ThemeContext.Provider makes { theme, isDark, toggleTheme }
     // available to every screen in the tree without prop drilling.
     // Screens access it with: useContext(ThemeContext)
-    <ThemeContext.Provider value={{ theme, isDark, toggleTheme }}>
-      <LanguageProvider>
-        <NavigationContainer>
-          {/* StatusBar style tracks the active theme */}
-          <StatusBar style={isDark ? 'light' : 'dark'} />
+    <SafeAreaProvider>
+      <ThemeContext.Provider value={{ theme, isDark, toggleTheme }}>
+        <LanguageProvider>
+          <NavigationContainer>
+            {/* StatusBar style tracks the active theme */}
+            <StatusBar style={isDark ? 'light' : 'dark'} />
 
-          {/* AppNavigator contains all our screens (Home, Settings) */}
-          <AppNavigator />
-        </NavigationContainer>
-      </LanguageProvider>
-    </ThemeContext.Provider>
+            {/* AppNavigator contains all our screens (Home, Settings) */}
+            <AppNavigator />
+          </NavigationContainer>
+        </LanguageProvider>
+      </ThemeContext.Provider>
+    </SafeAreaProvider>
   );
 }

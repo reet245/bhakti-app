@@ -8,7 +8,6 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  StatusBar,
   Text,
   TouchableOpacity,
   Vibration,
@@ -17,10 +16,12 @@ import {
 } from 'react-native';
 import { Audio, ResizeMode, Video } from 'expo-av';
 
+import BhaktiBackButton, { BhaktiBackSpacer } from '../components/BhaktiBackButton';
+import BhaktiBottomNav, { getBhaktiBottomNavContentPadding } from '../components/BhaktiBottomNav';
+import { useBhaktiTopPadding } from '../components/BhaktiLayout';
+import DevotionalBackground from '../components/DevotionalBackground';
 import { deities, pujaItems } from '../data/pujaData';
 import { useLanguage } from '../context/LanguageContext';
-
-const PUJA_BG_IMAGE = require('../../assets/backgrounds/puja-bg.png');
 
 const categories = [
   { id: 'All', labelKey: 'all' },
@@ -29,9 +30,11 @@ const categories = [
   { id: 'Shakti', labelKey: 'shakti' },
   { id: 'Vishnu', labelKey: 'vishnu' },
 ];
-export default function PujaScreen() {
+export default function PujaScreen({ navigation }) {
   const { t } = useLanguage();
   const { width, height } = useWindowDimensions();
+  const topPadding = useBhaktiTopPadding(width, 'title');
+  const templeTopPadding = useBhaktiTopPadding(width, 'overlay', { usesCoreSafeArea: false });
   const [viewMode, setViewMode] = useState('chooseDeity');
   const [selectedDeity, setSelectedDeity] = useState(null);
   const [activeCategory, setActiveCategory] = useState('All');
@@ -59,7 +62,6 @@ export default function PujaScreen() {
       : deities.filter(deity => deity.category === activeCategory);
 
   const responsiveStyles = useMemo(() => {
-    const statusTop = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
     const horizontalPadding = Math.max(16, Math.min(30, width * 0.05));
     const maxContentWidth = width >= 720 ? 760 : 520;
     const contentWidth = Math.max(260, Math.min(width - horizontalPadding * 2, maxContentWidth));
@@ -76,8 +78,8 @@ export default function PujaScreen() {
     return {
       chooseContent: {
         paddingHorizontal: horizontalPadding,
-        paddingTop: statusTop + Math.max(12, height * 0.018),
-        paddingBottom: Math.max(32, height * 0.045),
+        paddingTop: topPadding,
+        paddingBottom: getBhaktiBottomNavContentPadding(height, Math.max(24, height * 0.035)),
       },
       contentWidth,
       header: {
@@ -85,7 +87,7 @@ export default function PujaScreen() {
         minHeight: Math.max(58, Math.min(82, height * 0.1)),
       },
       headerText: {
-        paddingHorizontal: Math.max(12, Math.min(42, contentWidth * 0.08)),
+        paddingHorizontal: 0,
       },
       title: {
         fontSize: titleSize,
@@ -128,7 +130,7 @@ export default function PujaScreen() {
         marginBottom: Math.max(2, Math.min(4, cardWidth * 0.015)),
       },
     };
-  }, [height, width]);
+  }, [height, topPadding, width]);
 
   useEffect(() => {
     if (!diyaActive) {
@@ -286,6 +288,15 @@ export default function PujaScreen() {
     resetPuja();
     setSelectedDeity(deity);
     setViewMode('temple');
+  }
+
+  function handleChooseDeityBack() {
+    if (navigation?.canGoBack?.()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation?.navigate?.('Home');
   }
 
   function backToChooseDeity() {
@@ -453,8 +464,7 @@ export default function PujaScreen() {
 
   function renderChooseDeity() {
     return (
-      <ImageBackground source={PUJA_BG_IMAGE} style={styles.chooseBackground} resizeMode="cover">
-        <View style={styles.chooseOverlay} />
+      <DevotionalBackground style={styles.chooseBackground}>
         <SafeAreaView style={styles.screen}>
           <ScrollView
             style={styles.screen}
@@ -462,8 +472,19 @@ export default function PujaScreen() {
             showsVerticalScrollIndicator={false}
           >
             <View style={[styles.header, responsiveStyles.header]}>
-              <View style={[styles.headerText, responsiveStyles.headerText]}>
-                <Text style={[styles.title, responsiveStyles.title]}>{t('chooseYourDeity')}</Text>
+              <View style={styles.chooseHeaderTopRow}>
+                <BhaktiBackButton onPress={handleChooseDeityBack} />
+                <View style={[styles.headerText, responsiveStyles.headerText]}>
+                  <Text
+                    style={[styles.title, responsiveStyles.title]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
+                  >
+                    {t('chooseYourDeity')}
+                  </Text>
+                </View>
+                <BhaktiBackSpacer />
               </View>
             </View>
 
@@ -520,8 +541,9 @@ export default function PujaScreen() {
               ))}
             </View>
           </ScrollView>
+          <BhaktiBottomNav activeTab="Puja" navigation={navigation} />
         </SafeAreaView>
-      </ImageBackground>
+      </DevotionalBackground>
     );
   }
 
@@ -810,14 +832,11 @@ export default function PujaScreen() {
         </View>
         )}
 
-        <View style={[styles.templeTopBar, showAartiVideo && styles.templeTopBarVideo]}>
-          <TouchableOpacity
-            style={[styles.templeBackButton, showAartiVideo && styles.templeBackButtonVideo]}
+        <View style={[styles.templeTopBar, { paddingTop: templeTopPadding }, showAartiVideo && styles.templeTopBarVideo]}>
+          <BhaktiBackButton
             onPress={handleTempleBack}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.backText, showAartiVideo && styles.backTextVideo]}>{'<'}</Text>
-          </TouchableOpacity>
+            style={[styles.templeBackButton, showAartiVideo && styles.templeBackButtonVideo]}
+          />
           {!showAartiVideo && (
             <View style={styles.templeTitleWrap}>
               <Text style={styles.templeDeityName}>{t(deity.labelKey || deity.name)}</Text>
@@ -972,10 +991,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  chooseOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 245, 220, 0.58)',
-  },
   chooseContent: {
     alignItems: 'center',
   },
@@ -983,6 +998,7 @@ const styles = StyleSheet.create({
     color: '#3A220D',
     fontWeight: '900',
     textAlign: 'center',
+    maxWidth: '100%',
   },
   subtitle: {
     color: '#8B6A3E',
@@ -994,31 +1010,18 @@ const styles = StyleSheet.create({
   header: {
     justifyContent: 'center',
   },
-  headerText: {
-    width: '100%',
+  chooseHeaderTopRow: {
+    minHeight: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    alignSelf: 'stretch',
   },
-  backButton: {
-    position: 'absolute',
-    left: 0,
-    top: 8,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  headerText: {
+    flex: 1,
+    minWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFF7E8',
-    borderWidth: 1,
-    borderColor: '#E8C982',
-    zIndex: 2,
-  },
-  backText: {
-    color: '#5A3518',
-    fontSize: 24,
-    lineHeight: 28,
-    fontWeight: '900',
-  },
-  backTextVideo: {
-    color: '#FFF7E8',
   },
   categoryScroller: {
     flexGrow: 0,
@@ -1100,7 +1103,6 @@ const styles = StyleSheet.create({
     right: 0,
     minHeight: 112,
     paddingHorizontal: 20,
-    paddingTop: 26,
     flexDirection: 'row',
     alignItems: 'flex-start',
     zIndex: 50,
@@ -1109,20 +1111,10 @@ const styles = StyleSheet.create({
     zIndex: 120,
   },
   templeBackButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 247, 232, 0.88)',
-    borderWidth: 1,
-    borderColor: '#E8C982',
     marginTop: 3,
     zIndex: 2,
   },
   templeBackButtonVideo: {
-    backgroundColor: 'rgba(0, 0, 0, 0.38)',
-    borderColor: 'rgba(255, 247, 232, 0.5)',
     zIndex: 121,
   },
   templeTitleWrap: {

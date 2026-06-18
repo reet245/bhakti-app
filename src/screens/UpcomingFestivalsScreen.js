@@ -6,7 +6,6 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  StatusBar,
   Text,
   TouchableOpacity,
   useWindowDimensions,
@@ -16,6 +15,8 @@ import {
 import { festivals } from '../data/festivalData';
 import { festivalImages } from '../data/festivalImages';
 import { useLanguage } from '../context/LanguageContext';
+import BhaktiBackButton, { BhaktiBackSpacer } from '../components/BhaktiBackButton';
+import { useBhaktiTopPadding } from '../components/BhaktiLayout';
 
 const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
 const DEVOTIONAL_FONT = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
@@ -104,11 +105,11 @@ function FestivalSticker({ festival, responsiveStyles }) {
 export default function UpcomingFestivalsScreen({ navigation }) {
   const { t } = useLanguage();
   const { width, height } = useWindowDimensions();
+  const topPadding = useBhaktiTopPadding(width, 'title');
   const [activeTab, setActiveTab] = useState('upcoming');
 
   const responsiveStyles = useMemo(() => {
     const compactWidth = Math.min(width, 520);
-    const statusTop = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
     const horizontalPadding = Math.max(14, Math.min(24, compactWidth * 0.045));
     const contentWidth = Math.max(280, Math.min(width - horizontalPadding * 2, 720));
     const titleSize = Math.max(24, Math.min(34, compactWidth * 0.07));
@@ -125,7 +126,7 @@ export default function UpcomingFestivalsScreen({ navigation }) {
     return {
       content: {
         paddingHorizontal: horizontalPadding,
-        paddingTop: statusTop + Math.max(14, height * 0.02),
+        paddingTop: topPadding,
         paddingBottom: Math.max(30, height * 0.045),
       },
       contentInner: {
@@ -212,7 +213,7 @@ export default function UpcomingFestivalsScreen({ navigation }) {
         fontSize: Math.max(12, Math.min(14, compactWidth * 0.03)),
       },
     };
-  }, [height, width]);
+  }, [height, topPadding, width]);
 
   const festivalSections = useMemo(() => {
     const today = getTodayStart();
@@ -248,7 +249,11 @@ export default function UpcomingFestivalsScreen({ navigation }) {
           <View style={[styles.contentInner, responsiveStyles.contentInner]}>
             <View style={[styles.header, responsiveStyles.header]}>
               <View pointerEvents="none" style={styles.headerGlow} />
-              <Text style={[styles.title, responsiveStyles.title]}>{t('upcomingFestivals')}</Text>
+              <View style={styles.headerTopRow}>
+                <BhaktiBackButton navigation={navigation} />
+                <Text style={[styles.title, responsiveStyles.title]}>{t('upcomingFestivals')}</Text>
+                <BhaktiBackSpacer />
+              </View>
               <Text style={[styles.subtitle, responsiveStyles.subtitle]}>
                 {t('stayConnectedCelebrations')}
               </Text>
@@ -355,6 +360,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     overflow: 'visible',
   },
+  headerTopRow: {
+    minHeight: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    alignSelf: 'stretch',
+    zIndex: 1,
+  },
   headerGlow: {
     position: 'absolute',
     top: '-22%',
@@ -398,14 +411,10 @@ const styles = StyleSheet.create({
   tabButton: {
     flex: 1,
     alignItems: 'center',
+    backgroundColor: 'transparent',
   },
   tabButtonActive: {
     backgroundColor: 'rgba(255, 248, 232, 0.94)',
-    shadowColor: '#8A6A3F',
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
   },
   tabText: {
     color: '#8A6425',

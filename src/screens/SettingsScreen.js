@@ -1,11 +1,15 @@
 import { useContext, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, View, TouchableOpacity, useWindowDimensions } from 'react-native';
 
 import { ThemeContext } from '../../App';
+import BhaktiBackButton from '../components/BhaktiBackButton';
+import { useBhaktiTopPadding } from '../components/BhaktiLayout';
 import { useLanguage } from '../context/LanguageContext';
 import { languages } from '../i18n/translations';
 
 export default function SettingsScreen({ navigation }) {
+  const { width } = useWindowDimensions();
+  const topPadding = useBhaktiTopPadding(width, 'title');
   const { theme, isDark, toggleTheme } = useContext(ThemeContext);
   const { currentLanguage, setLanguage, t } = useLanguage();
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
@@ -14,9 +18,6 @@ export default function SettingsScreen({ navigation }) {
 
   const cardBg = isDark ? '#16213e' : '#fffaf0';
   const cardBorder = isDark ? '#2e3a5e' : '#e9d39a';
-
-  const btnBg = isDark ? '#4a4370' : '#7c3aed';
-  const btnShadow = isDark ? '#4a4370' : '#7c3aed';
 
   const pillBg = isDark ? '#1a1a2e' : '#fff7df';
   const pillBorder = isDark ? '#4a4370' : '#e4c879';
@@ -36,11 +37,16 @@ export default function SettingsScreen({ navigation }) {
 
   return (
     <>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <ScrollView
-        style={[styles.container, { backgroundColor: theme.background }]}
-        contentContainerStyle={styles.contentContainer}
+        style={styles.container}
+        contentContainerStyle={[styles.contentContainer, { paddingTop: topPadding }]}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.headerRow}>
+          <BhaktiBackButton navigation={navigation} />
+        </View>
+
         <Text style={styles.emoji}>⚙️</Text>
         <Text style={[styles.heading, { color: theme.text }]}>{t('settings')}</Text>
         <Text style={[styles.subtitle, { color: theme.mutedText }]}>
@@ -126,18 +132,8 @@ export default function SettingsScreen({ navigation }) {
           <Text style={[styles.chevron, { color: gold }]}>›</Text>
         </TouchableOpacity>
 
-        <View style={[styles.divider, { backgroundColor: theme.accent }]} />
-
-        <TouchableOpacity
-          style={[styles.button, {
-            backgroundColor: btnBg,
-            shadowColor: btnShadow,
-          }]}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.buttonText}>? {t('goBack')}</Text>
-        </TouchableOpacity>
       </ScrollView>
+      </SafeAreaView>
 
       <Modal
         visible={languageModalVisible}
@@ -215,15 +211,22 @@ export default function SettingsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },
   contentContainer: {
     flexGrow: 1,
     alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: 30,
-    paddingVertical: 36,
+    paddingBottom: 36,
+  },
+  headerRow: {
+    width: '100%',
+    alignItems: 'flex-start',
+    marginBottom: 10,
   },
   emoji: {
     fontSize: 56,
@@ -316,21 +319,6 @@ const styles = StyleSheet.create({
   chevron: {
     fontSize: 32,
     fontWeight: '300',
-  },
-  button: {
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    elevation: 3,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
   },
   modalBackdrop: {
     flex: 1,

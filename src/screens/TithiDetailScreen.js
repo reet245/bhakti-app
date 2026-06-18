@@ -1,6 +1,8 @@
-import { Share, ImageBackground, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View, StatusBar } from 'react-native';
+import { Share, ImageBackground, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 
 import { normalizePanchangData } from '../services/panchangService';
+import BhaktiBackButton from '../components/BhaktiBackButton';
+import { useBhaktiTopPadding } from '../components/BhaktiLayout';
 
 const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
 const DEVOTIONAL_FONT = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
@@ -11,10 +13,10 @@ function getTodayParts() {
 }
 
 export default function TithiDetailScreen({ navigation, route }) {
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
+  const topPadding = useBhaktiTopPadding(width, 'title');
   const panchang = normalizePanchangData(route?.params?.panchang, getTodayParts());
   const contentWidth = Math.max(282, Math.min(width - Math.max(28, width * 0.09), 660));
-  const statusTop = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
 
   const auspiciousFor = [
     'Mantra japa and quiet prayer',
@@ -44,13 +46,11 @@ export default function TithiDetailScreen({ navigation, route }) {
       <View style={styles.overlay} />
       <SafeAreaView style={styles.safeArea}>
         <ScrollView
-          contentContainerStyle={[styles.content, { paddingTop: statusTop + Math.max(8, height * 0.012), width: contentWidth }]}
+          contentContainerStyle={[styles.content, { paddingTop: topPadding, width: contentWidth }]}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <TouchableOpacity style={styles.iconButton} activeOpacity={0.78} onPress={() => navigation.goBack()}>
-              <Text style={styles.iconText}>{'<'}</Text>
-            </TouchableOpacity>
+            <BhaktiBackButton navigation={navigation} />
             <Text style={styles.headerTitle}>Tithi Detail</Text>
             <TouchableOpacity style={styles.iconButton} activeOpacity={0.78} onPress={shareTithi}>
               <Text style={styles.shareIcon}>{'\u2197'}</Text>
@@ -121,7 +121,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconText: { color: '#5C3A0E', fontSize: 22, fontWeight: '900' },
   shareIcon: { color: '#8A520B', fontSize: 16, fontWeight: '900' },
   headerTitle: {
     flex: 1,

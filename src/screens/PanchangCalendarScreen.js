@@ -6,7 +6,6 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  StatusBar,
   Text,
   TouchableOpacity,
   useWindowDimensions,
@@ -17,6 +16,8 @@ import {
   getPanchangFromAPI,
   normalizePanchangData,
 } from '../services/panchangService';
+import BhaktiBackButton from '../components/BhaktiBackButton';
+import { useBhaktiTopPadding } from '../components/BhaktiLayout';
 
 const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
 const FALLBACK_LOCATION = { latitude: 28.6139, longitude: 77.2090 };
@@ -48,6 +49,7 @@ function markerForDay(day) {
 
 export default function PanchangCalendarScreen({ navigation, route }) {
   const { width, height } = useWindowDimensions();
+  const topPadding = useBhaktiTopPadding(width, 'title');
   const today = useMemo(() => new Date(), []);
   const initialDate = route?.params?.selectedDateISO
     ? new Date(route.params.selectedDateISO)
@@ -61,7 +63,6 @@ export default function PanchangCalendarScreen({ navigation, route }) {
   const [errorMessage, setErrorMessage] = useState(null);
 
   const responsiveStyles = useMemo(() => {
-    const statusTop = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
     const compactWidth = Math.min(width, 540);
     const horizontalPadding = Math.max(14, Math.min(22, compactWidth * 0.045));
     const contentWidth = Math.max(282, Math.min(width - horizontalPadding * 2, 680));
@@ -69,7 +70,7 @@ export default function PanchangCalendarScreen({ navigation, route }) {
     return {
       content: {
         paddingHorizontal: horizontalPadding,
-        paddingTop: statusTop + Math.max(8, height * 0.012),
+        paddingTop: topPadding,
         paddingBottom: Math.max(26, height * 0.035),
       },
       contentWidth,
@@ -77,7 +78,7 @@ export default function PanchangCalendarScreen({ navigation, route }) {
         minHeight: Math.max(43, Math.min(52, height * 0.058)),
       },
     };
-  }, [height, width]);
+  }, [height, topPadding, width]);
 
   const currentMonth = currentDate.getMonth();
   const currentYear = currentDate.getFullYear();
@@ -160,9 +161,7 @@ export default function PanchangCalendarScreen({ navigation, route }) {
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={[styles.content, responsiveStyles.content]} showsVerticalScrollIndicator={false}>
           <View style={[styles.header, { width: responsiveStyles.contentWidth }]}>
-            <TouchableOpacity style={styles.iconButton} activeOpacity={0.78} onPress={() => navigation.goBack()}>
-              <Text style={styles.iconText}>{'<'}</Text>
-            </TouchableOpacity>
+            <BhaktiBackButton navigation={navigation} />
             <Text style={styles.headerTitle}>Panchang Calendar</Text>
             <TouchableOpacity style={styles.iconButton} activeOpacity={0.78}>
               <Text style={styles.filterIcon}>{'\u2699'}</Text>
@@ -310,11 +309,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(216, 177, 92, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconText: {
-    color: '#5C3A0E',
-    fontSize: 22,
-    fontWeight: '900',
   },
   filterIcon: {
     color: '#8A520B',
