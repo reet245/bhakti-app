@@ -1,0 +1,41 @@
+name: Verify Bhakti
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm test
+      - run: npm run check:expo
+        env:
+          EXPO_NO_CACHE: '1'
+      - run: npm run build:web
+        env:
+          EXPO_PUBLIC_API_BASE_URL: https://ci.example.invalid
+          CI: '1'
+      # High findings with no compatible fix are recorded in docs/FIX_STATUS.md.
+      # Critical advisories always block this job; every audit remains visible.
+      - run: npm audit --omit=dev --audit-level=critical
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bhakti-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - run: mvn -B verify

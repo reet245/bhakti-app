@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import useDevotionalStyles from '../hooks/useDevotionalStyles';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   ImageBackground,
@@ -12,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import * as Location from 'expo-location';
+import { useIsFocused } from '@react-navigation/native';
 
 import {
   getPanchangFromAPI,
@@ -22,11 +24,13 @@ import BhaktiBottomNav, {
   getBhaktiBottomNavContentPadding,
 } from '../components/BhaktiBottomNav';
 import { useBhaktiTopPadding } from '../components/BhaktiLayout';
+import LocationPicker, { searchLocations } from '../features/panchang/LocationPicker';
+import { deviceTimezone } from '../features/panchang/date';
+import { usePanchangLocation, usePanchangToday } from '../features/panchang/locationStore';
 
 const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
 
 const DEVOTIONAL_FONT = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
-const FALLBACK_LOCATION = { latitude: 28.6139, longitude: 77.2090 };
 
 const COLORS = {
   background: '#F7E8BE',
@@ -57,6 +61,7 @@ function formatHeaderDate(date) {
 }
 
 function PanchangItem({ icon, label, value }) {
+  const styles = useDevotionalStyles(baseStyles);
   return (
     <View style={styles.panchangItem}>
       <Text style={styles.panchangIcon}>{icon}</Text>
@@ -71,6 +76,7 @@ function PanchangItem({ icon, label, value }) {
 }
 
 function PanchangInfoRow({ left, right, isLast }) {
+  const styles = useDevotionalStyles(baseStyles);
   return (
     <View style={[styles.panchangInfoRow, !isLast && styles.panchangInfoRowBorder]}>
       <PanchangItem {...left} />
@@ -81,6 +87,7 @@ function PanchangInfoRow({ left, right, isLast }) {
 }
 
 function SectionHeader({ title, actionLabel = 'View All', onPress }) {
+  const styles = useDevotionalStyles(baseStyles);
   return (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -95,15 +102,25 @@ function SectionHeader({ title, actionLabel = 'View All', onPress }) {
 }
 
 export default function CalendarScreen({ navigation }) {
+  const styles = useDevotionalStyles(baseStyles);
+  const isFocused = useIsFocused();
   const { width, height } = useWindowDimensions();
   const topPadding = useBhaktiTopPadding(width, 'title');
-  const today = useMemo(() => new Date(), []);
+  const [location, setLocation] = usePanchangLocation();
+  const today = usePanchangToday(location.timezone, navigation);
   const dateParts = useMemo(() => getDateParts(today), [today]);
   const [panchang, setPanchang] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
-  const [locationLabel, setLocationLabel] = useState('New Delhi, India');
-  const [coords, setCoords] = useState(FALLBACK_LOCATION);
+  const locationLabel = location.locationName;
+  const [showLocation, setShowLocation] = useState(false);
+  const [draftLocation, setDraftLocation] = useState(location);
+  const [locationMessage, setLocationMessage] = useState('');
+  const [detecting, setDetecting] = useState(false);
+  const locationGeneration = useRef(0);
+  const [refresh, setRefresh] = useState(0);
+  useEffect(() => { setDraftLocation(location); }, [location]);
+  useEffect(() => () => { locationGeneration.current += 1; }, []);
 
   const responsiveStyles = useMemo(() => {
     const compactWidth = Math.min(width, 430);
@@ -132,61 +149,69 @@ export default function CalendarScreen({ navigation }) {
     };
   }, [height, topPadding, width]);
 
-  useEffect(() => {
-    async function loadLocation() {
+  const detectLocation = async () => {
+    const id = ++locationGeneration.current;
+    setDetecting(true);
+    setLocationMessage('');
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') return;
+        if (id !== locationGeneration.current) return;
+        if (status !== 'granted') { setLocationMessage('Location permission was not granted. Search for a place or enter coordinates.'); return; }
 
         const currentLocation = await Location.getCurrentPositionAsync({});
         const nextCoords = {
           latitude: currentLocation.coords.latitude,
           longitude: currentLocation.coords.longitude,
         };
-        setCoords(nextCoords);
-
         const place = await Location.reverseGeocodeAsync(nextCoords);
         const name = place?.[0]?.city || place?.[0]?.district || place?.[0]?.region;
-        const country = place?.[0]?.country || 'India';
-        if (name) setLocationLabel(`${name}, ${country}`);
+        const country = place?.[0]?.country;
+        let timezone = deviceTimezone();
+        try {
+          const candidates = await searchLocations(name || '');
+          const nearest = candidates.sort((a, b) => Math.hypot(a.latitude - nextCoords.latitude, a.longitude - nextCoords.longitude) - Math.hypot(b.latitude - nextCoords.latitude, b.longitude - nextCoords.longitude))[0];
+          if (nearest && Math.hypot(nearest.latitude - nextCoords.latitude, nearest.longitude - nextCoords.longitude) < 1) timezone = nearest.timezone;
+        } catch { /* The user can edit the timezone below. */ }
+        if (id !== locationGeneration.current) return;
+        setDraftLocation({ ...nextCoords, locationName: [name, country].filter(Boolean).join(', ') || 'Current location', timezone });
+        setLocationMessage('Current coordinates detected. Check the timezone and select Use location.');
       } catch (error) {
-        console.warn('Panchang Home: location fallback used.', error?.message);
+        if (id === locationGeneration.current) setLocationMessage('Could not detect your location. Search for a place or enter coordinates.');
+      } finally {
+        if (id === locationGeneration.current) setDetecting(false);
       }
-    }
-
-    loadLocation();
-  }, []);
+  };
 
   useEffect(() => {
+    if (!isFocused) return;
+    let active = true;
+    const controller = new AbortController();
     async function loadPanchang() {
       setLoading(true);
       setErrorMessage(null);
+      setPanchang(null);
 
       try {
         const data = await getPanchangFromAPI({
           ...dateParts,
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          locationName: locationLabel,
-          timezone: 'Asia/Kolkata',
-          ayanamsa: 'LAHIRI',
+          ...location,
+          signal: controller.signal,
         });
         const mappedPanchang = normalizePanchangData(data, dateParts);
-        if (typeof __DEV__ === 'undefined' || __DEV__) {
-          console.log('[Bhakti Panchang] CalendarScreen received mapped object', mappedPanchang);
-        }
-        setPanchang(mappedPanchang);
+        if (active) setPanchang(mappedPanchang);
       } catch (error) {
-        console.warn('Panchang Home: API failed.', error?.message);
-        setErrorMessage('Real Panchang data unavailable. Please try again.');
-        setPanchang(normalizePanchangData(null, dateParts));
+        if (active && !controller.signal.aborted) {
+          setErrorMessage(error?.message || 'Panchang data unavailable. Please try again.');
+          setPanchang(normalizePanchangData(null, dateParts));
+        }
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
 
     loadPanchang();
-  }, [coords, dateParts, locationLabel]);
+    return () => { active = false; controller.abort(); };
+  }, [location, dateParts, refresh, isFocused]);
 
   const panchangRows = panchang ? [
     [
@@ -211,7 +236,7 @@ export default function CalendarScreen({ navigation }) {
     ],
   ] : [];
 
-  const auspiciousMuhurtas = panchang?.muhurtas?.filter((item) => item.type === 'auspicious').slice(1, 4) ?? [];
+  const auspiciousMuhurtas = panchang?.muhurtas?.filter((item) => item.type === 'auspicious').slice(0, 3) ?? [];
   const featuredFestival = panchang?.festivals?.[0];
   const monthYear = today.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
   const weekday = today.toLocaleDateString('en-GB', { weekday: 'long' });
@@ -232,11 +257,18 @@ export default function CalendarScreen({ navigation }) {
               <BhaktiBackSpacer />
             </View>
             <Text style={styles.screenDate}>{formatHeaderDate(today)}</Text>
-            <TouchableOpacity style={styles.locationPill} activeOpacity={0.82}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Change Panchang location" onPress={() => { locationGeneration.current += 1; setDetecting(false); setShowLocation((current) => !current); }} style={styles.locationPill} activeOpacity={0.82}>
               <Text style={styles.locationIcon}>{'\u25CE'}</Text>
               <Text style={styles.locationText} numberOfLines={1}>{locationLabel}</Text>
               <Text style={styles.locationArrow}>{'\u2304'}</Text>
             </TouchableOpacity>
+            {showLocation ? <View style={{ width: '100%' }}>
+              <Text style={styles.loadingText}>Use location saves its name, coordinates and timezone on this device for Panchang and horoscope. You can clear it in Settings. Detection requires location permission.</Text>
+              <LocationPicker value={draftLocation} onChange={(value) => { locationGeneration.current += 1; setDetecting(false); setDraftLocation(value); }} />
+              <TouchableOpacity accessibilityRole="button" onPress={detectLocation} disabled={detecting} style={styles.locationPill}><Text style={styles.locationText}>{detecting ? 'Detecting location...' : 'Detect current location'}</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityRole="button" onPress={() => { if (setLocation(draftLocation)) { setShowLocation(false); setLocationMessage(''); } else setLocationMessage('Select a place or enter valid coordinates and an IANA timezone.'); }} style={styles.locationPill}><Text style={styles.locationText}>Use location</Text></TouchableOpacity>
+              {locationMessage ? <Text style={styles.errorText}>{locationMessage}</Text> : null}
+            </View> : null}
           </View>
 
           <View style={[styles.dateDashboard, responsiveStyles.dateDashboard]}>
@@ -264,7 +296,7 @@ export default function CalendarScreen({ navigation }) {
             <SectionHeader
               title="Today's Panchang"
               actionLabel="View Calendar"
-              onPress={() => navigation.navigate('PanchangCalendar', { selectedDateISO: panchang?.dateISO })}
+              onPress={() => navigation.navigate('PanchangCalendar', { selectedDateISO: panchang?.dateISO, location })}
             />
             <View style={styles.panchangCard}>
               {loading ? (
@@ -275,6 +307,8 @@ export default function CalendarScreen({ navigation }) {
               ) : (
                 <>
                   {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+                  {panchang?.partial ? <Text style={styles.errorText}>Some Panchang fields are unavailable from the data source.</Text> : null}
+                  {errorMessage ? <TouchableOpacity accessibilityRole="button" onPress={() => setRefresh((value) => value + 1)}><Text style={styles.sectionActionText}>Retry</Text></TouchableOpacity> : null}
                   {panchangRows.map((row, index) => (
                     <PanchangInfoRow
                       key={`${row[0].label}-${row[1].label}`}
@@ -299,7 +333,7 @@ export default function CalendarScreen({ navigation }) {
                 </TouchableOpacity>
               )) : (
                 <View style={styles.muhurtaUnavailableCard}>
-                  <Text style={styles.muhurtaUnavailableText}>Muhurta data is not included in Phase 1.</Text>
+                  <Text style={styles.muhurtaUnavailableText}>Muhurta times are unavailable from the current data source.</Text>
                 </View>
               )}
             </View>
@@ -316,7 +350,7 @@ export default function CalendarScreen({ navigation }) {
                 <Text style={styles.festivalIcon}>{'\u273A'}</Text>
               </View>
               <View style={styles.festivalCopy}>
-                <Text style={styles.festivalName} numberOfLines={1}>{featuredFestival?.name || 'Daily Panchang Observance'}</Text>
+                <Text style={styles.festivalName} numberOfLines={1}>{featuredFestival?.name || 'No festival listed for this date'}</Text>
                 <Text style={styles.festivalText} numberOfLines={1}>{featuredFestival?.date || 'Today'} | Tap to view details</Text>
               </View>
               <Text style={styles.festivalArrow}>{'>'}</Text>
@@ -334,7 +368,7 @@ export default function CalendarScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   background: {
     flex: 1,
   },

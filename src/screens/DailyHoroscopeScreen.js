@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import useDevotionalStyles from '../hooks/useDevotionalStyles';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Image,
@@ -11,11 +12,15 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import BhaktiBackButton from '../components/BhaktiBackButton';
 import BhaktiBottomNav, { getBhaktiBottomNavContentPadding } from '../components/BhaktiBottomNav';
 import { useLanguage } from '../context/LanguageContext';
+import { getDailyHoroscopes, unavailableHoroscopes } from '../services/horoscopeService';
+import { getPanchangFromAPI } from '../services/panchangService';
+import { usePanchangLocation, usePanchangToday } from '../features/panchang/locationStore';
+import { dateParts, dateISO } from '../features/panchang/date';
 
 const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
 const HANGING_BELL_IMAGE = require('../../assets/horoscope/decorations/hanging-bell.png');
@@ -42,27 +47,27 @@ const ZODIAC_SIGNS = [
 
 const INSIGHT_ITEMS = {
   en: [
-    { id: 'love', icon: '\u2665', label: 'Love', value: 'Positive vibes in relationships.' },
-    { id: 'career', icon: '\u2609', label: 'Career', value: 'New opportunities are coming.' },
-    { id: 'health', icon: '\u2726', label: 'Health', value: 'Take care of your diet and rest.' },
+    { id: 'love', icon: '\u2665', label: 'Love', value: 'Unavailable' },
+    { id: 'career', icon: '\u2609', label: 'Career', value: 'Unavailable' },
+    { id: 'health', icon: '\u2726', label: 'Health', value: 'Unavailable' },
   ],
   hi: [
-    { id: 'love', icon: '\u2665', label: '\u092a\u094d\u0930\u0947\u092e', value: '\u0930\u093f\u0936\u094d\u0924\u094b\u0902 \u092e\u0947\u0902 \u0938\u0915\u093e\u0930\u093e\u0924\u094d\u092e\u0915 \u090a\u0930\u094d\u091c\u093e \u0930\u0939\u0947\u0917\u0940\u0964' },
-    { id: 'career', icon: '\u2609', label: '\u0915\u0930\u093f\u092f\u0930', value: '\u0928\u090f \u0905\u0935\u0938\u0930 \u0906\u092a\u0915\u0940 \u0913\u0930 \u0906 \u0930\u0939\u0947 \u0939\u0948\u0902\u0964' },
-    { id: 'health', icon: '\u2726', label: '\u0938\u094d\u0935\u093e\u0938\u094d\u0925\u094d\u092f', value: '\u0906\u0939\u093e\u0930 \u0914\u0930 \u0906\u0930\u093e\u092e \u0915\u093e \u0927\u094d\u092f\u093e\u0928 \u0930\u0916\u0947\u0902\u0964' },
+    { id: 'love', icon: '\u2665', label: 'प्रेम', value: 'अनुपलब्ध' },
+    { id: 'career', icon: '\u2609', label: 'करियर', value: 'अनुपलब्ध' },
+    { id: 'health', icon: '\u2726', label: 'स्वास्थ्य', value: 'अनुपलब्ध' },
   ],
 };
 
 const RESULT_LUCKY_ITEMS = {
   en: [
-    { id: 'luckyColor', label: 'Lucky Color', value: 'Golden' },
-    { id: 'luckyNumber', label: 'Lucky Number', value: '8' },
-    { id: 'auspiciousTime', label: 'Auspicious Time', value: '10:45 AM - 12:30 PM' },
+    { id: 'luckyColor', label: 'Lucky Color', value: 'Unavailable' },
+    { id: 'luckyNumber', label: 'Lucky Number', value: 'Unavailable' },
+    { id: 'auspiciousTime', label: 'Auspicious Time', value: 'Unavailable' },
   ],
   hi: [
-    { id: 'luckyColor', label: '\u0936\u0941\u092d \u0930\u0902\u0917', value: '\u0938\u0941\u0928\u0939\u0930\u093e' },
-    { id: 'luckyNumber', label: '\u0936\u0941\u092d \u0905\u0902\u0915', value: '\u096e' },
-    { id: 'auspiciousTime', label: '\u0936\u0941\u092d \u0938\u092e\u092f', value: '\u0938\u0941\u092c\u0939 10:45 - \u0926\u094b\u092a\u0939\u0930 12:30' },
+    { id: 'luckyColor', label: 'शुभ रंग', value: 'अनुपलब्ध' },
+    { id: 'luckyNumber', label: 'शुभ अंक', value: 'अनुपलब्ध' },
+    { id: 'auspiciousTime', label: 'शुभ समय', value: 'अनुपलब्ध' },
   ],
 };
 
@@ -73,31 +78,13 @@ const RESULT_CARD_TEXT = {
   },
   hi: {
     heading: '\u0906\u091c \u0915\u093e \u0930\u093e\u0936\u093f\u092b\u0932',
-    button: 'View Detailed Horoscope',
+    button: 'विस्तृत राशिफल देखें',
   },
 };
 
 const HEADER_BLESSING_TEXT = {
   en: '|| \u0938\u0930\u094d\u0935\u0947 \u092d\u0935\u0928\u094d\u0924\u0941 \u0938\u0941\u0916\u093f\u0928\u0903 \u0938\u0930\u094d\u0935\u0947 \u0938\u0928\u094d\u0924\u0941 \u0928\u093f\u0930\u093e\u092e\u092f\u093e\u0903 ||',
   hi: '|| \u0938\u0930\u094d\u0935\u0947 \u092d\u0935\u0928\u094d\u0924\u0941 \u0938\u0941\u0916\u093f\u0928\u0903 \u0938\u0930\u094d\u0935\u0947 \u0938\u0928\u094d\u0924\u0941 \u0928\u093f\u0930\u093e\u092e\u092f\u093e\u0903 ||',
-};
-
-const HEADER_PANCHANG_PILL = {
-  en: 'Panchang: Shukla Paksha',
-  hi: '\u092a\u0902\u091a\u093e\u0902\u0917: \u0936\u0941\u0915\u094d\u0932 \u092a\u0915\u094d\u0937',
-};
-
-const HEADER_PANCHANG_ITEMS = {
-  en: [
-    { icon: 'N', label: 'Nakshatra', value: 'Rohini', image: NAKSHATRA_IMAGE },
-    { icon: 'S', label: 'Moon Sign', value: 'Taurus', image: MOON_SIGN_IMAGE },
-    { icon: 'T', label: 'Tithi', value: 'Dwitiya', image: TITHI_IMAGE },
-  ],
-  hi: [
-    { icon: 'N', label: '\u0928\u0915\u094d\u0937\u0924\u094d\u0930', value: '\u0930\u094b\u0939\u093f\u0923\u0940', image: NAKSHATRA_IMAGE },
-    { icon: 'S', label: '\u091a\u0902\u0926\u094d\u0930 \u0930\u093e\u0936\u093f', value: '\u0935\u0943\u0937\u092d', image: MOON_SIGN_IMAGE },
-    { icon: 'T', label: '\u0924\u093f\u0925\u093f', value: '\u0926\u094d\u0935\u093f\u0924\u0940\u092f\u093e', image: TITHI_IMAGE },
-  ],
 };
 
 const ZODIAC_SELECTOR_TITLE = "Choose your zodiac sign to read today's guidance";
@@ -126,11 +113,47 @@ const HEADER_SPARKLES = [
 ];
 
 export default function DailyHoroscopeScreen() {
+  const styles = useDevotionalStyles(baseStyles);
   const navigation = useNavigation();
   const { width, height } = useWindowDimensions();
   const { t, currentLanguage } = useLanguage();
   const safeLanguage = currentLanguage === 'hi' ? 'hi' : 'en';
   const [selectedSignId, setSelectedSignId] = useState('aries');
+  const [location] = usePanchangLocation();
+  const today = usePanchangToday(location.timezone, navigation);
+  const dayKey = dateISO(today);
+  const [horoscopes, setHoroscopes] = useState(() => unavailableHoroscopes(safeLanguage));
+  const [isLoading, setIsLoading] = useState(true);
+  const [retry, setRetry] = useState(0);
+  const [panchang, setPanchang] = useState(null);
+  const unavailable = safeLanguage === 'hi' ? 'अनुपलब्ध' : 'Unavailable';
+  const headerPanchangItems = [
+    { label: safeLanguage === 'hi' ? 'नक्षत्र' : 'Nakshatra', image: NAKSHATRA_IMAGE, value: panchang?.nakshatra || unavailable },
+    { label: safeLanguage === 'hi' ? 'योग' : 'Yoga', image: MOON_SIGN_IMAGE, value: panchang?.yoga || unavailable },
+    { label: safeLanguage === 'hi' ? 'तिथि' : 'Tithi', image: TITHI_IMAGE, value: panchang?.tithi || unavailable },
+  ];
+
+  useFocusEffect(useCallback(() => {
+    const controller = new AbortController();
+    let active = true;
+    setIsLoading(true);
+    setHoroscopes(unavailableHoroscopes(safeLanguage));
+    getDailyHoroscopes(safeLanguage, { signal: controller.signal })
+      .then((data) => { if (active) setHoroscopes(data); })
+      .catch(() => { if (active) setHoroscopes(unavailableHoroscopes(safeLanguage)); })
+      .finally(() => { if (active) setIsLoading(false); });
+    return () => { active = false; controller.abort(); };
+  }, [safeLanguage, dayKey, retry]));
+
+  useFocusEffect(useCallback(() => {
+    const controller = new AbortController();
+    let active = true;
+    setPanchang(null);
+    getPanchangFromAPI({ ...dateParts(today), ...location, signal: controller.signal })
+      .then((data) => { if (active) setPanchang(data); })
+      .catch(() => { if (active) setPanchang(null); });
+    return () => { active = false; controller.abort(); };
+  }, [dayKey, location, retry]));
   const selectedSignScale = useRef(new Animated.Value(1)).current;
   const sparkleBreath = useRef(new Animated.Value(0)).current;
 
@@ -144,13 +167,13 @@ export default function DailyHoroscopeScreen() {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
-    }).format(new Date())
-  ), [safeLanguage]);
+    }).format(today)
+  ), [safeLanguage, dayKey]);
   const formattedWeekday = useMemo(() => (
     new Intl.DateTimeFormat(safeLanguage === 'hi' ? 'hi-IN' : 'en-GB', {
       weekday: 'long',
-    }).format(new Date())
-  ), [safeLanguage]);
+    }).format(today)
+  ), [safeLanguage, dayKey]);
   const responsiveStyles = useMemo(() => {
     const compactWidth = Math.min(width, 520);
     const contentWidth = Math.min(width - 32, 620);
@@ -473,11 +496,11 @@ export default function DailyHoroscopeScreen() {
             </View>
             <View style={[styles.panchangPill, responsiveStyles.panchangPill]}>
               <View style={styles.panchangDot} />
-              <Text style={[styles.panchangPillText, responsiveStyles.panchangPillText]}>{HEADER_PANCHANG_PILL[safeLanguage]}</Text>
+              <Text style={[styles.panchangPillText, responsiveStyles.panchangPillText]}>{`${safeLanguage === 'hi' ? 'पंचांग' : 'Panchang'}: ${panchang?.paksha || unavailable}`}</Text>
               <View style={styles.panchangDot} />
             </View>
             <View style={[styles.headerInfoRow, responsiveStyles.headerInfoRow]}>
-              {HEADER_PANCHANG_ITEMS[safeLanguage].map((item) => (
+              {headerPanchangItems.map((item) => (
                 <View key={item.label} style={[styles.headerInfoColumn, responsiveStyles.headerInfoColumn]}>
                   <View style={[styles.panchangSticker, responsiveStyles.panchangSticker]}>
                     {item.image ? (
@@ -502,6 +525,7 @@ export default function DailyHoroscopeScreen() {
                 </View>
               ))}
             </View>
+            <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('Calendar')}><Text style={[styles.headerInfoValue, { textAlign: 'center' }]}>{location.locationName}</Text></TouchableOpacity>
             <Text style={[styles.headerBlessing, responsiveStyles.headerBlessing]}>{HEADER_BLESSING_TEXT[safeLanguage]}</Text>
             <View style={[styles.lotusDividerWrap, responsiveStyles.lotusDividerWrap]}>
               <View style={[styles.lotusLineGroup, styles.lotusLineGroupLeft]}>
@@ -531,7 +555,7 @@ export default function DailyHoroscopeScreen() {
               adjustsFontSizeToFit
               minimumFontScale={0.75}
             >
-              {ZODIAC_SELECTOR_TITLE}
+              {safeLanguage === 'hi' ? 'आज का राशिफल पढ़ने के लिए अपनी राशि चुनें' : ZODIAC_SELECTOR_TITLE}
             </Text>
             <View style={[styles.zodiacTitleLineWrap, responsiveStyles.zodiacTitleLine]}>
               <View style={[styles.zodiacTitleLine, styles.zodiacTitleLineStrong]} />
@@ -642,6 +666,15 @@ export default function DailyHoroscopeScreen() {
             </View>
           </View>
         </View>
+        <View style={styles.luckyPanel}>
+          <Text style={styles.panelTitle}>{safeLanguage === 'hi' ? `${selectedSign.hindiName} राशिफल` : `${selectedName} guidance`}</Text>
+          <Text style={styles.horoscopePreview}>{isLoading ? t('loading') : horoscopes[selectedSignId]?.horoscope}</Text>
+          {!!horoscopes[selectedSignId]?.date && <Text style={styles.providerNote}>{`${safeLanguage === 'hi' ? 'स्रोत की तारीख' : 'Provider date'}: ${horoscopes[selectedSignId].date}`}</Text>}
+          <Text style={styles.providerNote}>{safeLanguage === 'hi' ? 'स्रोत प्रेम, करियर, स्वास्थ्य, शुभ रंग, अंक या शुभ समय के अलग परिणाम नहीं देता है।' : 'The source does not supply separate love, career, health, lucky color, number or auspicious time results.'}</Text>
+          <TouchableOpacity style={styles.detailButton} onPress={() => setRetry((value) => value + 1)} disabled={isLoading}>
+            <Text style={styles.detailButtonText}>{safeLanguage === 'hi' ? 'फिर से लोड करें' : 'Refresh'}</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
       <BhaktiBottomNav activeTab="Horoscope" navigation={navigation} />
     </ImageBackground>
@@ -649,6 +682,7 @@ export default function DailyHoroscopeScreen() {
 }
 
 function SafeZodiacImage({ source, fallback, style, resizeMode = 'contain' }) {
+  const styles = useDevotionalStyles(baseStyles);
   if (!source) {
     return <Text style={styles.imageFallback}>{fallback}</Text>;
   }
@@ -656,7 +690,9 @@ function SafeZodiacImage({ source, fallback, style, resizeMode = 'contain' }) {
   return <Image source={source} style={style} resizeMode={resizeMode} />;
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
+  horoscopePreview: { color: '#4D3218', fontSize: 15, lineHeight: 24 },
+  providerNote: { color: '#76501F', fontSize: 12, lineHeight: 18, marginTop: 10 },
   background: {
     flex: 1,
     width: '100%',

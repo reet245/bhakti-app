@@ -73,7 +73,7 @@ const deities = [
     mantra: 'Om Shreem Mahalakshmiyei Namaha',
     image: require('../../assets/deities/full/laxmi-ma.png'),
     thumbnailImage: require('../../assets/deities/thumbnails/laxmi-ma.png'),
-    aartiAudio: null,
+    aartiAudio: require('../../assets/sounds/laxmi-aarti.mp3'),
     aartiVideo: null,
     preferredPrasad: 'Kheer',
   },

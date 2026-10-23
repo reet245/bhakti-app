@@ -40,7 +40,7 @@ const ICONS = {
 const FEATURES = [
   { labelKey: 'panchang', icon: ICONS.calendar, screen: 'Calendar', subtitle: 'Tithi, Nakshatra,\nMuhurat & more' },
   { labelKey: 'kundli', icon: ICONS.kundli, screen: 'Kundli', subtitle: 'Your personal\nbirth chart' },
-  { labelKey: 'puja', icon: ICONS.puja, screen: 'Puja', subtitle: 'Book Puja,\nOnline Seva' },
+  { labelKey: 'puja', icon: ICONS.puja, screen: 'Puja', subtitle: 'Virtual Puja,\nAarti & Offerings' },
   { labelKey: 'mantras', icon: ICONS.mantras, screen: 'Mantras', subtitle: 'Sacred chants\nfor peace & power' },
   { labelKey: 'dailyHoroscope', icon: ICONS.horoscope, screen: 'DailyHoroscope', subtitle: 'Daily predictions\nfor your sign' },
   { labelKey: 'upcomingFestivals', icon: ICONS.fasting, screen: 'UpcomingFestivals', subtitle: 'Never miss an\nauspicious day' },
@@ -49,10 +49,11 @@ const FEATURES = [
 const LOTUS_MARK = '\u2741';
 
 function HomeModuleCard({ item, title, cardWidth, cardHeight, medallionSize, iconSize, onPress }) {
+  const { theme, isDark } = useContext(ThemeContext);
   return (
     <TouchableOpacity
       key={item.labelKey}
-      style={[styles.moduleCard, { width: cardWidth, height: cardHeight }]}
+      style={[styles.moduleCard, { width: cardWidth, height: cardHeight, backgroundColor: isDark ? 'rgba(26,34,64,0.94)' : 'rgba(255,248,230,0.9)' }]}
       onPress={onPress}
       activeOpacity={0.78}
       accessibilityRole="button"
@@ -89,14 +90,14 @@ function HomeModuleCard({ item, title, cardWidth, cardHeight, medallionSize, ico
 
       <View style={styles.cardTextBlock}>
         <Text
-          style={styles.moduleTitle}
+          style={[styles.moduleTitle, { color: theme.text }]}
           numberOfLines={2}
           adjustsFontSizeToFit
           minimumFontScale={0.88}
         >
           {title}
         </Text>
-        <Text style={styles.moduleSubtitle} numberOfLines={2}>
+        <Text style={[styles.moduleSubtitle, { color: theme.textSecondary }]} numberOfLines={2}>
           {item.subtitle}
         </Text>
       </View>

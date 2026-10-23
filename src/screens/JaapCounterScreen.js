@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import useDevotionalCopy from '../hooks/useDevotionalCopy';
+import useDevotionalStyles from '../hooks/useDevotionalStyles';
+import { useMemo } from 'react';
 import {
   Image,
   Platform,
@@ -10,6 +12,8 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+
+import useJaapSession from '../hooks/useJaapSession';
 
 import DevotionalBackground from '../components/DevotionalBackground';
 import BhaktiBackButton from '../components/BhaktiBackButton';
@@ -25,32 +29,22 @@ const LOTUS_DIVIDER_IMAGE = require('../../assets/horoscope/decorations/lotus-di
 
 const DEVOTIONAL_FONT = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
 
-function formatElapsedTime(startedAt, count) {
-  if (!startedAt || count === 0) {
-    return '0m';
-  }
-
-  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
-  const minutes = Math.floor(elapsedSeconds / 60);
-  const seconds = elapsedSeconds % 60;
-
-  if (minutes === 0) {
-    return `${seconds}s`;
-  }
-
-  return `${minutes}m ${seconds}s`;
+function formatElapsedTime(elapsedMs) {
+  const seconds = Math.floor(elapsedMs / 1000);
+  return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 }
 
 export default function JaapCounterScreen({ navigation, route }) {
+  const styles = useDevotionalStyles(baseStyles);
+  const { ui, isHindi } = useDevotionalCopy();
   const { width, height } = useWindowDimensions();
   const headerTopPadding = useBhaktiTopPadding(width, 'hero');
   const mantra = MANTRA_LIBRARY.find((item) => item.id === route?.params?.mantraId) ?? MANTRA_LIBRARY[0];
   const deity = getDeityById(mantra.deityId);
   const category = getCategoryById(mantra.categoryId);
-  const targetCount = Number.parseInt(route?.params?.targetCount, 10) || 108;
-  const [count, setCount] = useState(0);
-  const [isActive, setIsActive] = useState(false);
-  const [startedAt, setStartedAt] = useState(null);
+  const requestedTarget = Number.parseInt(route?.params?.targetCount, 10);
+  const targetCount = Number.isInteger(requestedTarget) && requestedTarget > 0 && requestedTarget <= 99999 ? requestedTarget : 108;
+  const { count, isActive, elapsedMs, ready, error, start: startJaap, pause: pauseJaap, increment: incrementCount, reset: resetCounter } = useJaapSession(`${mantra.id}:${targetCount}`);
 
   const responsiveStyles = useMemo(() => {
     const compactWidth = Math.min(width, 520);
@@ -107,29 +101,10 @@ export default function JaapCounterScreen({ navigation, route }) {
     };
   }, [headerTopPadding, height, width]);
 
-  const completedMala = Math.floor(count / targetCount);
+  const completedMala = Math.floor(count / 108);
   const completedCount = Math.min(count, targetCount);
   const isComplete = count >= targetCount;
-  const elapsedTime = formatElapsedTime(startedAt, count);
-
-  const startJaap = () => {
-    setIsActive(true);
-    setStartedAt((value) => value ?? Date.now());
-  };
-
-  const incrementCount = () => {
-    if (!isActive) {
-      startJaap();
-    }
-
-    setCount((value) => Math.min(value + 1, 99999));
-  };
-
-  const resetCounter = () => {
-    setCount(0);
-    setIsActive(false);
-    setStartedAt(null);
-  };
+  const elapsedTime = formatElapsedTime(elapsedMs);
 
   return (
     <DevotionalBackground style={styles.background}>
@@ -145,7 +120,7 @@ export default function JaapCounterScreen({ navigation, route }) {
 
             <BhaktiBackButton navigation={navigation} style={styles.backButton} />
 
-            <Text style={[styles.headerTitle, responsiveStyles.headerTitle]}>Jaap Counter</Text>
+            <Text style={[styles.headerTitle, responsiveStyles.headerTitle]}>{ui('Jaap Counter')}</Text>
             <Text style={styles.subtitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.76}>
               {mantra.title}
             </Text>
@@ -170,7 +145,7 @@ export default function JaapCounterScreen({ navigation, route }) {
                   {mantra.title}
                 </Text>
                 <Text style={styles.mantraMeta} numberOfLines={1}>
-                  {`${deity.englishName} | ${category.label}`}
+                  {`${isHindi ? deity.hindiName : deity.englishName} | ${ui(category.label)}`}
                 </Text>
               </View>
             </View>
@@ -178,6 +153,8 @@ export default function JaapCounterScreen({ navigation, route }) {
             <TouchableOpacity
               style={[styles.counterCircle, responsiveStyles.counter, isActive && styles.counterCircleActive]}
               activeOpacity={0.9}
+              disabled={!ready}
+              accessibilityLabel="Add one chant"
               onPress={incrementCount}
             >
               {Array.from({ length: 24 }).map((_, index) => {
@@ -210,24 +187,26 @@ export default function JaapCounterScreen({ navigation, route }) {
                   {count}
                 </Text>
                 <Text style={styles.targetText}>{`/${targetCount}`}</Text>
-                <Text style={styles.tapHint}>{isActive ? 'Tap to count' : 'Start or tap'}</Text>
+                <Text style={styles.tapHint}>{ui(isActive ? 'Tap to count' : 'Start or tap')}</Text>
               </View>
             </TouchableOpacity>
 
+            {!!error && <Text accessibilityRole="alert" style={styles.completionText}>{ui(error)}</Text>}
+            {!ready && <Text style={styles.completionText}>{ui('Loading saved progress…')}</Text>}
             {isComplete && (
               <View style={styles.completionCard}>
-                <Text style={styles.completionTitle}>Jaap complete</Text>
-                <Text style={styles.completionText}>Your devotional count has reached the target.</Text>
+                <Text style={styles.completionTitle}>{ui('Jaap complete')}</Text>
+                <Text style={styles.completionText}>{ui('Your devotional count has reached the target.')}</Text>
               </View>
             )}
 
             <View style={styles.buttonRow}>
-              <TouchableOpacity style={[styles.primaryButton, styles.flexButton]} activeOpacity={0.86} onPress={startJaap}>
-                <Text style={styles.primaryButtonText}>{isActive ? 'Jaap Active' : 'Start Jaap'}</Text>
+              <TouchableOpacity style={[styles.primaryButton, styles.flexButton]} activeOpacity={0.86} disabled={!ready} onPress={isActive ? pauseJaap : startJaap}>
+                <Text style={styles.primaryButtonText}>{ui(isActive ? 'Pause Jaap' : count > 0 ? 'Resume Jaap' : 'Start Jaap')}</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={[styles.resetButton, styles.flexButton]} activeOpacity={0.84} onPress={resetCounter}>
-                <Text style={styles.resetButtonText}>Reset</Text>
+              <TouchableOpacity style={[styles.resetButton, styles.flexButton]} activeOpacity={0.84} disabled={!ready} onPress={resetCounter}>
+                <Text style={styles.resetButtonText}>{ui('Reset')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -235,9 +214,9 @@ export default function JaapCounterScreen({ navigation, route }) {
           <View style={[styles.statsSection, responsiveStyles.card]}>
             <View style={styles.statsGrid}>
               {[
-                { label: 'Mala', value: `${completedMala}` },
-                { label: 'Completed', value: `${completedCount}/${targetCount}` },
-                { label: 'Time', value: elapsedTime },
+                { label: ui('Mala'), value: `${completedMala}` },
+                { label: ui('Completed'), value: `${completedCount}/${targetCount}` },
+                { label: ui('Time'), value: elapsedTime },
               ].map((item) => (
                 <View key={item.label} style={[styles.statsCard, responsiveStyles.statsCard]}>
                   <Text style={styles.statsLabel}>{item.label}</Text>
@@ -254,7 +233,7 @@ export default function JaapCounterScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   background: {
     flex: 1,
     width: '100%',

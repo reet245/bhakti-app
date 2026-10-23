@@ -1,6 +1,7 @@
 package com.bhakti.backend;
 
 import com.bhakti.backend.client.VedAstroClient;
+import com.bhakti.backend.client.GeocodingClient;
 import com.bhakti.backend.exception.ExternalApiException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,7 +25,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = "rate-limit.enabled=false")
 @AutoConfigureMockMvc
 class KundliControllerIntegrationTest {
 
@@ -37,9 +38,14 @@ class KundliControllerIntegrationTest {
     @MockBean
     private VedAstroClient vedAstroClient;
 
+    @MockBean
+    private GeocodingClient geocodingClient;
+
     @BeforeEach
     void setUp() throws Exception {
         reset(vedAstroClient);
+        reset(geocodingClient);
+        when(geocodingClient.search(anyString())).thenReturn(objectMapper.readTree("{\"results\":[]}"));
         stubCompleteVedAstroResponse();
     }
 
@@ -71,6 +77,7 @@ class KundliControllerIntegrationTest {
                 .andExpect(jsonPath("$.calculationMeta.precision").value("ACCURATE"))
                 .andExpect(jsonPath("$.birthSummary.lagna").value("Sagittarius"))
                 .andExpect(jsonPath("$.birthSummary.rashi").value("Aquarius"))
+                .andExpect(jsonPath("$.birthSummary.sunSign").value("Cancer"))
                 .andExpect(jsonPath("$.birthSummary.nakshatra").value("Dhanishta"))
                 .andExpect(jsonPath("$.birthSummary.nakshatraPada").value("3"))
                 .andExpect(jsonPath("$.charts.d1.type").value("D1"))
@@ -146,20 +153,21 @@ class KundliControllerIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value(
-                        "We could not find the birth place coordinates. Please select a valid place and try again."
+                        "Birthplace was not found. Enter coordinates and an IANA timezone manually."
                 ));
     }
 
     @Test
     void generateKundliReturnsBadGatewayForCoreVedAstroFailure() throws Exception {
-        when(vedAstroClient.fetchGeneralAstroData(any())).thenThrow(new ExternalApiException("VedAstro failed."));
+        when(vedAstroClient.fetchGeneralAstroData(any()))
+                .thenThrow(new ExternalApiException("Upstream provider detail should stay internal."));
 
         mockMvc.perform(post("/api/v1/kundli/generate")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequest()))
                 .andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("VedAstro failed."));
+                .andExpect(jsonPath("$.message").value("Service is temporarily unavailable. Please try again later."));
     }
 
     @Test

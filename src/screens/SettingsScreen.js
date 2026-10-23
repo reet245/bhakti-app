@@ -1,11 +1,13 @@
-import { useContext, useState } from 'react';
-import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, View, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { useContext, useState, useEffect } from 'react';
+import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, View, TouchableOpacity, Switch, useWindowDimensions } from 'react-native';
 
 import { ThemeContext } from '../../App';
 import BhaktiBackButton from '../components/BhaktiBackButton';
 import { useBhaktiTopPadding } from '../components/BhaktiLayout';
 import { useLanguage } from '../context/LanguageContext';
 import { languages } from '../i18n/translations';
+import { clearSavedPanchangLocation } from '../features/panchang/locationStore';
+import { getReminderEnabled, setReminderEnabled, supportsReminders } from '../services/reminderService';
 
 export default function SettingsScreen({ navigation }) {
   const { width } = useWindowDimensions();
@@ -13,6 +15,22 @@ export default function SettingsScreen({ navigation }) {
   const { theme, isDark, toggleTheme } = useContext(ThemeContext);
   const { currentLanguage, setLanguage, t } = useLanguage();
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const [reminderEnabled, setReminder] = useState(false);
+  const [reminderBusy, setReminderBusy] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState('');
+  const hindi = currentLanguage === 'hi';
+  useEffect(() => {
+    let active = true;
+    getReminderEnabled().then((enabled) => { if (active) setReminder(enabled); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+  const changeReminder = async (enabled) => {
+    setReminderBusy(true);
+    setSettingsMessage('');
+    try { setReminder(await setReminderEnabled(enabled)); }
+    catch (error) { setSettingsMessage(error.message); }
+    finally { setReminderBusy(false); }
+  };
 
   const selectedLanguage = languages.find((language) => language.code === currentLanguage) ?? languages[0];
 
@@ -132,6 +150,26 @@ export default function SettingsScreen({ navigation }) {
           <Text style={[styles.chevron, { color: gold }]}>›</Text>
         </TouchableOpacity>
 
+        <View style={[styles.section, { backgroundColor: cardBg, borderColor: cardBorder, marginTop: 18 }]}>
+          <Text style={[styles.languageRowTitle, { color: theme.text }]}>{hindi ? 'दैनिक अनुस्मारक' : 'Daily reminder'}</Text>
+          <Text style={[styles.languageRowValue, { color: theme.mutedText }]}>{supportsReminders()
+            ? (hindi ? 'हर दिन स्थानीय समयानुसार सुबह 9 बजे। अनुमति केवल चालू करते समय माँगी जाएगी।' : 'Every day at 9 AM local time. Permission is requested only when you turn this on.')
+            : (hindi ? 'अनुस्मारक इंस्टॉल किए हुए भक्ति ऐप में उपलब्ध हैं।' : 'Reminders are available in an installed Bhakti development or release build.')}</Text>
+          <Switch accessibilityLabel={hindi ? 'दैनिक अनुस्मारक' : 'Daily reminder'} value={reminderEnabled} onValueChange={changeReminder} disabled={reminderBusy || !supportsReminders()} />
+        </View>
+        <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('Privacy')} style={[styles.languageRow, { backgroundColor: cardBg, borderColor: cardBorder, marginTop: 18 }]}>
+          <Text style={[styles.languageRowTitle, { color: theme.text }]}>{hindi ? 'गोपनीयता और डेटा' : 'Privacy & data'}</Text>
+          <Text style={[styles.chevron, { color: gold }]}>›</Text>
+        </TouchableOpacity>
+        <TouchableOpacity accessibilityRole="button" onPress={async () => {
+          try {
+            await clearSavedPanchangLocation();
+            setSettingsMessage(hindi ? 'सहेजा हुआ पंचांग स्थान मिटा दिया गया।' : 'Saved Panchang location cleared.');
+          } catch { setSettingsMessage(hindi ? 'स्थान नहीं मिटाया जा सका।' : 'Could not clear saved location. Please try again.'); }
+        }} style={[styles.languageRow, { backgroundColor: cardBg, borderColor: cardBorder, marginTop: 18 }]}>
+          <Text style={[styles.languageRowTitle, { color: theme.text }]}>{hindi ? 'सहेजा पंचांग स्थान मिटाएँ' : 'Clear saved Panchang location'}</Text>
+        </TouchableOpacity>
+        {!!settingsMessage && <Text accessibilityRole="alert" style={{ color: theme.text, marginTop: 14 }}>{settingsMessage}</Text>}
       </ScrollView>
       </SafeAreaView>
 

@@ -31,15 +31,7 @@ public class PanchangController {
             @RequestParam(defaultValue = "Asia/Kolkata") String timezone,
             @RequestParam(defaultValue = "LAHIRI") String ayanamsa
     ) {
-        log.info(
-                "Panchang daily endpoint hit. date={} lat={} lon={} locationName={} timezone={} ayanamsa={}",
-                date,
-                lat,
-                lon,
-                locationName,
-                timezone,
-                ayanamsa
-        );
+        log.debug("Panchang daily request received");
 
         return ApiResponse.success(panchangService.getDailyPanchang(
                 date,

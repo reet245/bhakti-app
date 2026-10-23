@@ -1,6 +1,9 @@
-import { useMemo, useState } from 'react';
+import useDevotionalCopy from '../hooks/useDevotionalCopy';
+import useDevotionalStyles from '../hooks/useDevotionalStyles';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Image,
+  Linking,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -11,6 +14,9 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+
+import useBundledAudio from '../hooks/useBundledAudio';
+import { useDevotionalState, toggleMantraFavorite } from '../hooks/useDevotionalState';
 
 import DevotionalBackground from '../components/DevotionalBackground';
 import BhaktiBackButton from '../components/BhaktiBackButton';
@@ -25,9 +31,11 @@ const HANGING_BELL_IMAGE = require('../../assets/horoscope/decorations/hanging-b
 const LOTUS_DIVIDER_IMAGE = require('../../assets/horoscope/decorations/lotus-divider.png');
 
 const DEVOTIONAL_FONT = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
-const CHANT_COUNT_OPTIONS = [11, 21, 108];
+const CHANT_COUNT_OPTIONS = [1, 9, 11, 21, 108];
 
 export default function MantraDetailScreen({ navigation, route }) {
+  const styles = useDevotionalStyles(baseStyles);
+  const { ui, isHindi } = useDevotionalCopy();
   const { width, height } = useWindowDimensions();
   const headerTopPadding = useBhaktiTopPadding(width, 'hero');
   const mantra = MANTRA_LIBRARY.find((item) => item.id === route?.params?.mantraId) ?? MANTRA_LIBRARY[0];
@@ -36,8 +44,12 @@ export default function MantraDetailScreen({ navigation, route }) {
   const recommendedCount = Number.parseInt(mantra.chantCount, 10);
   const initialCount = CHANT_COUNT_OPTIONS.includes(recommendedCount) ? recommendedCount : 108;
   const [selectedCount, setSelectedCount] = useState(initialCount);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
+  useEffect(() => { setSelectedCount(initialCount); }, [mantra.id, initialCount]);
+  const { playingId, loadingId, error: audioError, toggle: toggleAudio } = useBundledAudio();
+  const { favorites, ready, error: storageError } = useDevotionalState();
+  const isPlaying = playingId === mantra.id;
+  const isLoading = loadingId === mantra.id;
+  const isFavorite = favorites.includes(mantra.id);
 
   const responsiveStyles = useMemo(() => {
     const compactWidth = Math.min(width, 520);
@@ -93,7 +105,7 @@ export default function MantraDetailScreen({ navigation, route }) {
     try {
       await Share.share({
         title: mantra.title,
-        message: `${mantra.title}\n${deity.englishName} | ${category.label}\n\n${mantra.text}`,
+        message: `${mantra.title}${mantra.isExcerpt ? ' (partial text)' : ''}\n${isHindi ? deity.hindiName : deity.englishName} | ${ui(category.label)}\n\n${mantra.text}`,
       });
     } catch (error) {
       console.warn('Unable to share mantra:', error);
@@ -121,7 +133,7 @@ export default function MantraDetailScreen({ navigation, route }) {
 
             <BhaktiBackButton navigation={navigation} style={styles.backButton} />
 
-            <Text style={[styles.headerTitle, responsiveStyles.headerTitle]}>Mantra Details</Text>
+            <Text style={[styles.headerTitle, responsiveStyles.headerTitle]}>{ui('Mantra Details')}</Text>
             <View style={styles.lotusDividerWrap}>
               <View style={[styles.dividerLine, styles.dividerLineLeft]} />
               <Image source={LOTUS_DIVIDER_IMAGE} style={styles.lotusDivider} resizeMode="contain" />
@@ -145,29 +157,32 @@ export default function MantraDetailScreen({ navigation, route }) {
               {mantra.title}
             </Text>
             <Text style={styles.deityName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.78}>
-              {deity.englishName}
+              {isHindi ? deity.hindiName : deity.englishName}
             </Text>
 
             <View style={styles.categoryBadge}>
-              <Text style={styles.categoryBadgeText}>{category.label}</Text>
+              <Text style={styles.categoryBadgeText}>{ui(category.label)}</Text>
             </View>
           </View>
 
           <View style={[styles.mantraCard, responsiveStyles.card]}>
             <View style={styles.mantraCardHeader}>
-              <Text style={styles.panelTitle}>Sacred Chant</Text>
+              <Text style={styles.panelTitle}>{ui('Sacred Chant')}</Text>
               <View style={styles.actionRow}>
                 <TouchableOpacity
                   style={[styles.roundAction, responsiveStyles.actionButton]}
                   activeOpacity={0.82}
-                  onPress={() => setIsPlaying((value) => !value)}
+                  accessibilityLabel={ui(isLoading ? 'Cancel loading recording' : isPlaying ? 'Stop recording' : mantra.audio ? 'Play recording' : 'Recording unavailable')}
+                  onPress={() => toggleAudio(mantra.id, mantra.audio)}
                 >
-                  <Text style={styles.roundActionText}>{isPlaying ? '\u275a\u275a' : '\u25b6'}</Text>
+                  <Text style={styles.roundActionText}>{isLoading ? '…' : isPlaying ? '\u25a0' : mantra.audio ? '\u25b6' : '—'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.roundAction, responsiveStyles.actionButton, isFavorite && styles.favoriteAction]}
                   activeOpacity={0.82}
-                  onPress={() => setIsFavorite((value) => !value)}
+                  disabled={!ready}
+                  accessibilityLabel={ui(isFavorite ? 'Remove from favorites' : 'Add to favorites')}
+                  onPress={() => toggleMantraFavorite(mantra.id)}
                 >
                   <Text style={[styles.roundActionText, isFavorite && styles.favoriteText]}>
                     {isFavorite ? '\u2665' : '\u2661'}
@@ -183,17 +198,22 @@ export default function MantraDetailScreen({ navigation, route }) {
               </View>
             </View>
 
+            {!!(audioError || storageError) && <Text accessibilityRole="alert" style={styles.transliterationText}>{ui(audioError || storageError)}</Text>}
+            {!mantra.audio && <Text style={styles.transliterationText}>{ui('A matching recording is not available yet.')}</Text>}
+            {mantra.isExcerpt && <Text style={styles.transliterationText}>{ui('Partial text. The complete work is not available in this edition.')}</Text>}
             <Text style={[styles.mantraText, responsiveStyles.mantraText]}>{mantra.text}</Text>
             <Text style={styles.transliterationText}>{mantra.transliteration}</Text>
+            {!!mantra.textSource && <TouchableOpacity onPress={() => Linking.openURL(mantra.textSource).catch(() => {})}><Text style={styles.transliterationText}>{ui('Read text source')}</Text></TouchableOpacity>}
           </View>
 
           <View style={[styles.infoSection, responsiveStyles.card]}>
+            {isHindi && <Text style={styles.transliterationText}>अर्थ और विवरण का स्रोत अभी अंग्रेज़ी में उपलब्ध है।</Text>}
             <View style={styles.infoGrid}>
               {[
-                { label: 'Meaning', value: mantra.meaning },
-                { label: 'Benefits', value: mantra.benefits },
-                { label: 'Best time to chant', value: mantra.bestTime },
-                { label: 'Recommended chant count', value: `${mantra.chantCount} Times` },
+                { label: ui('Meaning'), value: mantra.meaning },
+                { label: ui('Benefits'), value: mantra.benefits },
+                { label: ui('Best time to chant'), value: mantra.bestTime },
+                { label: ui('Recommended chant count'), value: `${mantra.chantCount} ${isHindi ? 'बार' : 'Times'}` },
               ].map((item) => (
                 <View key={item.label} style={[styles.infoCard, responsiveStyles.infoCard]}>
                   <Text style={styles.infoLabel}>{item.label}</Text>
@@ -202,7 +222,7 @@ export default function MantraDetailScreen({ navigation, route }) {
               ))}
             </View>
 
-            <Text style={styles.chipTitle}>Chant count</Text>
+            <Text style={styles.chipTitle}>{ui('Chant count')}</Text>
             <View style={styles.chipRow}>
               {CHANT_COUNT_OPTIONS.map((count) => {
                 const isSelected = selectedCount === count;
@@ -215,7 +235,7 @@ export default function MantraDetailScreen({ navigation, route }) {
                     onPress={() => setSelectedCount(count)}
                   >
                     <Text style={[styles.countChipText, isSelected && styles.countChipTextSelected]}>
-                      {`${count} Times`}
+                      {`${count} ${isHindi ? 'बार' : 'Times'}`}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -224,7 +244,7 @@ export default function MantraDetailScreen({ navigation, route }) {
           </View>
 
           <TouchableOpacity style={[styles.startButton, responsiveStyles.card]} activeOpacity={0.86} onPress={startJaap}>
-            <Text style={styles.startButtonText}>Start Jaap</Text>
+            <Text style={styles.startButtonText}>{ui('Start Jaap')}</Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -232,7 +252,7 @@ export default function MantraDetailScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   background: {
     flex: 1,
     width: '100%',

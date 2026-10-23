@@ -1,5 +1,6 @@
 server:
   port: ${PORT:8080}
+  forward-headers-strategy: none
 
 spring:
   application:
@@ -17,15 +18,30 @@ vedastro:
   api:
     base-url: ${VEDASTRO_BASE_URL:https://api.vedastro.org/api}
     key: ${VEDASTRO_API_KEY:}
-    timeout-ms: ${VEDASTRO_API_TIMEOUT_MS:30000}
+    timeout-ms: ${VEDASTRO_API_TIMEOUT_MS:8000}
 
 cors:
-  allowed-origins: ${ALLOWED_ORIGINS:*}
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:8081,http://localhost:19006}
 
 rate-limit:
   enabled: ${RATE_LIMIT_ENABLED:true}
   max-requests: ${RATE_LIMIT_MAX_REQUESTS:30}
   window-ms: ${RATE_LIMIT_WINDOW_MS:60000}
+  kundli-max-requests: ${RATE_LIMIT_KUNDLI_MAX_REQUESTS:5}
+  max-clients: ${RATE_LIMIT_MAX_CLIENTS:10000}
+  max-concurrent-requests: ${MAX_CONCURRENT_REQUESTS:16}
+  trusted-proxies: ${TRUSTED_PROXY_IPS:}
+
+geocoding:
+  api:
+    url: ${GEOCODING_API_URL:https://geocoding-api.open-meteo.com/v1/search}
+    key: ${GEOCODING_API_KEY:}
+    timeout-ms: ${GEOCODING_API_TIMEOUT_MS:5000}
+
+horoscope:
+  feed-url: ${HOROSCOPE_FEED_URL:https://feeds.feedburner.com/dayhoroscope}
+  timezone: ${HOROSCOPE_TIMEZONE:Asia/Kolkata}
+  timeout-ms: ${HOROSCOPE_TIMEOUT_MS:5000}
 
 management:
   endpoints:

@@ -1,4 +1,7 @@
 import { Image, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import useDevotionalStyles from '../hooks/useDevotionalStyles';
+import { useLanguage } from '../context/LanguageContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const COLORS = {
   cardCream: 'rgba(255, 247, 227, 0.98)',
@@ -38,6 +41,10 @@ export function getBhaktiBottomNavContentPadding(height, extraPadding = 24) {
 }
 
 export default function BhaktiBottomNav({ activeTab, horizontalPadding, navigation, style }) {
+  const styles = useDevotionalStyles(baseStyles);
+  const { currentLanguage } = useLanguage();
+  const insets = useSafeAreaInsets();
+  const labels = currentLanguage === 'hi' ? { Puja: 'पूजा', Calendar: 'पंचांग', Mantras: 'मंत्र', Horoscope: 'राशिफल', Kundli: 'कुंडली' } : {};
   const { width, height } = useWindowDimensions();
   const compactWidth = Math.min(width, 520);
   const navHorizontalPadding = horizontalPadding ?? Math.max(14, Math.min(20, compactWidth * 0.045));
@@ -52,7 +59,7 @@ export default function BhaktiBottomNav({ activeTab, horizontalPadding, navigati
         {
           minHeight: getBhaktiBottomNavHeight(height),
           paddingHorizontal: navHorizontalPadding,
-          paddingBottom: getBhaktiBottomNavBottomPadding(height),
+          paddingBottom: Math.max(getBhaktiBottomNavBottomPadding(height), insets.bottom + 6),
         },
         style,
       ]}
@@ -65,7 +72,7 @@ export default function BhaktiBottomNav({ activeTab, horizontalPadding, navigati
             <TouchableOpacity
               key={item.id}
               accessibilityRole="button"
-              accessibilityLabel={item.label}
+              accessibilityLabel={labels[item.id] || item.label}
               activeOpacity={0.82}
               onPress={() => navigation?.navigate?.(item.screen)}
               style={[styles.bottomNavItem, { height: itemHeight }, isSelected && styles.bottomNavItemSelected]}
@@ -81,7 +88,7 @@ export default function BhaktiBottomNav({ activeTab, horizontalPadding, navigati
                 numberOfLines={1}
                 style={[styles.bottomNavLabel, { fontSize: labelSize }, isSelected && styles.bottomNavLabelSelected]}
               >
-                {item.label}
+                {labels[item.id] || item.label}
               </Text>
             </TouchableOpacity>
           );
@@ -91,7 +98,7 @@ export default function BhaktiBottomNav({ activeTab, horizontalPadding, navigati
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   bottomNav: {
     position: 'absolute',
     left: 0,

@@ -1,11 +1,13 @@
 // import { useEffect } from 'react';  // <-- Temporarily disabled for Expo Go compatibility
-import { useState, createContext, useContext } from 'react';
+import { useState, createContext, useEffect, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 // import * as Notifications from 'expo-notifications';  // <-- Temporarily disabled for Expo Go compatibility
 import AppNavigator from './src/navigation/AppNavigator';
 import { LanguageProvider } from './src/context/LanguageContext';
+import { initializeReminderHandler } from './src/services/reminderService';
 
 // ============================================================
 // THEME SYSTEM
@@ -141,7 +143,24 @@ export default function App() {
   // Call toggleTheme() from any screen to switch at runtime.
   // --------------------------------------------------------
   const [isDark, setIsDark] = useState(true);
-  const toggleTheme = () => setIsDark((prev) => !prev);
+  useEffect(() => { initializeReminderHandler().catch(() => {}); }, []);
+  const [themeReady, setThemeReady] = useState(false);
+  const themeChanged = useRef(false);
+  const toggleTheme = () => {
+    themeChanged.current = true;
+    setIsDark((prev) => !prev);
+    setThemeReady(true);
+  };
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.getItem('appTheme').then((saved) => {
+      if (active && !themeChanged.current && ['dark', 'light'].includes(saved)) setIsDark(saved === 'dark');
+    }).catch(() => {}).finally(() => { if (active) setThemeReady(true); });
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    if (themeReady) AsyncStorage.setItem('appTheme', isDark ? 'dark' : 'light').catch(() => {});
+  }, [isDark, themeReady]);
 
   // The active theme object — passed down via ThemeContext.
   const theme = isDark ? darkTheme : lightTheme;

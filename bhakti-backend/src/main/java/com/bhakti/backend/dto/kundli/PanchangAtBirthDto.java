@@ -8,6 +8,7 @@ public record PanchangAtBirthDto(
         String tithi,
         String karana,
         String yoga,
-        String paksha
+        String paksha,
+        String sunSign
 ) {
 }

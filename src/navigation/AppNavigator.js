@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import HomeScreen from '../screens/HomeScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import PrivacyScreen from '../screens/PrivacyScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import PanchangCalendarScreen from '../screens/PanchangCalendarScreen';
 import TithiDetailScreen from '../screens/TithiDetailScreen';
@@ -50,6 +51,7 @@ export default function AppNavigator() {
       />
 
       {/* Screen 3: Calendar */}
+      <Stack.Screen name="Privacy" component={PrivacyScreen} options={{ title: 'Privacy & data' }} />
       <Stack.Screen
         name="Calendar"
         component={CalendarScreen}

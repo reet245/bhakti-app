@@ -1,37 +1,24 @@
-import { API_BASE_URL } from '../config/api';
+import { requestJson } from './http';
 
-const NETWORK_ERROR_MESSAGE = 'Could not connect to Kundli service. Please try again.';
 const GENERATION_ERROR_MESSAGE =
   'Unable to generate your Kundli right now. Please check your details and try again.';
 
-export async function generateKundli(request) {
-  let response;
-
-  try {
-    response = await fetch(`${API_BASE_URL}/api/v1/kundli/generate`, {
+export async function generateKundli(request, { signal } = {}) {
+  const apiResponse = await requestJson('/api/v1/kundli/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(request),
+      signal,
+      timeoutMs: 60000,
     });
-  } catch {
-    throw new Error(NETWORK_ERROR_MESSAGE);
-  }
 
-  let apiResponse;
-
-  try {
-    apiResponse = await response.json();
-  } catch {
-    throw new Error(GENERATION_ERROR_MESSAGE);
-  }
-
-  if (response.ok && apiResponse?.success === true && apiResponse.data) {
+  if (apiResponse?.success === true && apiResponse.data) {
     return apiResponse.data;
   }
 
-  if (response.ok && apiResponse?.success === true && apiResponse.calculationMeta) {
+  if (apiResponse?.success === true && apiResponse.calculationMeta) {
     return apiResponse;
   }
 

@@ -2,6 +2,7 @@ package com.bhakti.backend.client;
 
 import com.bhakti.backend.config.VedAstroApiProperties;
 import com.bhakti.backend.exception.ExternalApiException;
+import com.bhakti.backend.util.ProviderRequestBudget;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +19,7 @@ import org.springframework.web.client.RestClientResponseException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.nio.charset.StandardCharsets;
 
 @Component
 public class VedAstroClient {
@@ -130,7 +132,7 @@ public class VedAstroClient {
         try {
             JsonNode response = objectMapper.readTree(responseBody);
             JsonNode status = response.path("Status");
-            log.info("VedAstro {} response status={}", method, status.isMissingNode() ? "UNKNOWN" : status.asText());
+            log.debug("VedAstro {} response received", method);
 
             if ("Fail".equalsIgnoreCase(status.asText())) {
                 throw new ExternalApiException("VedAstro " + method + " returned an error.");
@@ -151,7 +153,8 @@ public class VedAstroClient {
         ensureBaseUrlConfigured();
 
         try {
-            String responseBody = restClient.post()
+            int timeout = ProviderRequestBudget.remainingTimeout(properties.timeoutMs());
+            String responseBody = restClient.mutate().requestFactory(requestFactory(timeout)).build().post()
                     .uri(calculateEndpoint(method))
                     .contentType(MediaType.APPLICATION_JSON)
                     .headers(headers -> {
@@ -160,8 +163,16 @@ public class VedAstroClient {
                         }
                     })
                     .body(requestBody)
-                    .retrieve()
-                    .body(String.class);
+                    .exchange((request, response) -> {
+                        if (!response.getStatusCode().is2xxSuccessful()) {
+                            throw new ExternalApiException("VedAstro " + method + " service failed.");
+                        }
+                        byte[] bytes = response.getBody().readNBytes(2 * 1024 * 1024 + 1);
+                        if (bytes.length > 2 * 1024 * 1024) {
+                            throw new ExternalApiException("VedAstro " + method + " response was too large.");
+                        }
+                        return new String(bytes, StandardCharsets.UTF_8);
+                    });
 
             if (!StringUtils.hasText(responseBody)) {
                 throw new ExternalApiException("VedAstro " + method + " returned an empty response.");
@@ -196,8 +207,8 @@ public class VedAstroClient {
 
     private SimpleClientHttpRequestFactory requestFactory(int timeoutMs) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(timeoutMs);
-        factory.setReadTimeout(timeoutMs);
+        factory.setConnectTimeout(Math.max(50, timeoutMs / 2));
+        factory.setReadTimeout(Math.max(50, timeoutMs / 2));
         return factory;
     }
 

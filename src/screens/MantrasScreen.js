@@ -1,3 +1,5 @@
+import useDevotionalCopy from '../hooks/useDevotionalCopy';
+import useDevotionalStyles from '../hooks/useDevotionalStyles';
 import { useMemo, useState } from 'react';
 import {
   Image,
@@ -11,6 +13,9 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+
+import useBundledAudio from '../hooks/useBundledAudio';
+import { useDevotionalState, toggleMantraFavorite } from '../hooks/useDevotionalState';
 
 import DevotionalBackground from '../components/DevotionalBackground';
 import BhaktiBackButton from '../components/BhaktiBackButton';
@@ -47,12 +52,14 @@ const POPULAR_MANTRA_ORDER = [
 ];
 
 export default function MantrasScreen({ navigation }) {
+  const styles = useDevotionalStyles(baseStyles);
+  const { ui, isHindi } = useDevotionalCopy();
   const { width, height } = useWindowDimensions();
   const topPadding = useBhaktiTopPadding(width, 'compact');
   const [searchText, setSearchText] = useState('');
   const [selectedDeityId, setSelectedDeityId] = useState(VIEW_ALL_ID);
-  const [playingId, setPlayingId] = useState(null);
-  const [favoriteIds, setFavoriteIds] = useState([]);
+  const { playingId, loadingId, error: audioError, toggle: toggleAudio } = useBundledAudio();
+  const { favorites: favoriteIds, ready, error: storageError } = useDevotionalState();
   const [showAllMantras, setShowAllMantras] = useState(false);
 
   const responsiveStyles = useMemo(() => {
@@ -126,16 +133,9 @@ export default function MantrasScreen({ navigation }) {
     navigation?.navigate?.('MantraDetail', { mantraId });
   };
 
-  const toggleFavorite = (mantraId) => {
-    setFavoriteIds((currentIds) => (
-      currentIds.includes(mantraId)
-        ? currentIds.filter((id) => id !== mantraId)
-        : [...currentIds, mantraId]
-    ));
-  };
-
   const togglePlay = (mantraId) => {
-    setPlayingId((currentId) => (currentId === mantraId ? null : mantraId));
+    const mantra = MANTRA_LIBRARY.find((item) => item.id === mantraId);
+    toggleAudio(mantraId, mantra?.audio);
   };
 
   return (
@@ -154,7 +154,7 @@ export default function MantrasScreen({ navigation }) {
               <TextInput
                 value={searchText}
                 onChangeText={setSearchText}
-                placeholder="Search mantras, aarti, chalisa..."
+                placeholder={ui('Search mantras, aarti, chalisa...')}
                 placeholderTextColor="#A67939"
                 returnKeyType="search"
                 style={styles.searchInput}
@@ -163,7 +163,7 @@ export default function MantrasScreen({ navigation }) {
           </View>
 
           <View style={[styles.sectionBlock, { width: responsiveStyles.contentWidth }]}>
-            <SectionHeader title="Deity Categories" onViewAll={showAllItems} />
+            <SectionHeader title={ui('Deity Categories')} onViewAll={showAllItems} />
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -181,15 +181,16 @@ export default function MantrasScreen({ navigation }) {
             </ScrollView>
           </View>
 
+          {!!(audioError || storageError) && <Text accessibilityRole="alert" style={styles.emptyText}>{ui(audioError || storageError)}</Text>}
           <View style={[styles.sectionBlock, styles.compactSectionBlock, { width: responsiveStyles.contentWidth }]}>
             <SectionHeader
-              title="Popular Mantras"
+              title={ui('Popular Mantras')}
               actionLabel={showAllMantras ? 'Show Less' : 'View All'}
               onViewAll={() => setShowAllMantras((value) => !value)}
             />
             {visibleMantras.length === 0 ? (
               <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>No mantras found.</Text>
+                <Text style={styles.emptyText}>{ui('No mantras found.')}</Text>
               </View>
             ) : visibleMantras.map((mantra, index) => (
               <MantraListRow
@@ -197,10 +198,12 @@ export default function MantrasScreen({ navigation }) {
                 mantra={mantra}
                 rank={index + 1}
                 isPlaying={playingId === mantra.id}
+                isLoading={loadingId === mantra.id}
+                favoritesReady={ready}
                 isFavorite={favoriteIds.includes(mantra.id)}
                 onPress={() => openMantraDetails(mantra.id)}
                 onPlay={() => togglePlay(mantra.id)}
-                onFavorite={() => toggleFavorite(mantra.id)}
+                onFavorite={() => toggleMantraFavorite(mantra.id)}
               />
             ))}
           </View>
@@ -217,12 +220,14 @@ export default function MantrasScreen({ navigation }) {
 }
 
 function SectionHeader({ title, actionLabel = 'View All', onViewAll }) {
+  const styles = useDevotionalStyles(baseStyles);
+  const { ui, isHindi } = useDevotionalCopy();
   return (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{title}</Text>
       {onViewAll ? (
         <TouchableOpacity activeOpacity={0.76} onPress={onViewAll}>
-          <Text style={styles.viewAllText}>{actionLabel}</Text>
+          <Text style={styles.viewAllText}>{ui(actionLabel)}</Text>
         </TouchableOpacity>
       ) : null}
     </View>
@@ -230,6 +235,8 @@ function SectionHeader({ title, actionLabel = 'View All', onViewAll }) {
 }
 
 function DeityCard({ deity, selected, responsiveStyles, onPress }) {
+  const styles = useDevotionalStyles(baseStyles);
+  const { ui, isHindi } = useDevotionalCopy();
   const cardImage = deity.thumbnailImage || deity.image;
 
   return (
@@ -249,7 +256,7 @@ function DeityCard({ deity, selected, responsiveStyles, onPress }) {
       </View>
       <View style={styles.deityNameBar}>
         <Text style={[styles.deityName, selected && styles.selectedLabel]} numberOfLines={1}>
-          {deity.englishName}
+          {isHindi ? deity.hindiName : deity.englishName}
         </Text>
       </View>
     </TouchableOpacity>
@@ -260,11 +267,15 @@ function MantraListRow({
   mantra,
   rank,
   isPlaying,
+  isLoading,
+  favoritesReady,
   isFavorite,
   onPress,
   onPlay,
   onFavorite,
 }) {
+  const styles = useDevotionalStyles(baseStyles);
+  const { ui, isHindi } = useDevotionalCopy();
   const deity = getDeityById(mantra.deityId);
   const category = getCategoryById(mantra.categoryId);
 
@@ -279,11 +290,12 @@ function MantraListRow({
           {mantra.title}
         </Text>
         <Text style={styles.rowMeta} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.76}>
-          {`${deity.englishName}  |  ${category.label}`}
+          {`${isHindi ? deity.hindiName : deity.englishName} | ${ui(category.label)}${mantra.audio ? '' : ` | ${ui('Audio unavailable')}`}`}
         </Text>
       </View>
 
       <TouchableOpacity
+        accessibilityLabel={ui(isLoading ? 'Cancel loading recording' : isPlaying ? 'Stop recording' : mantra.audio ? 'Play recording' : 'Recording unavailable')}
         style={[styles.rowIconButton, isPlaying && styles.activeIconButton]}
         activeOpacity={0.8}
         onPress={(event) => {
@@ -291,10 +303,12 @@ function MantraListRow({
           onPlay();
         }}
       >
-        <Text style={styles.rowIconText}>{isPlaying ? '\u275a\u275a' : '\u25b6'}</Text>
+        <Text style={styles.rowIconText}>{isLoading ? '…' : isPlaying ? '\u25a0' : mantra.audio ? '\u25b6' : '—'}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
+        disabled={!favoritesReady}
+        accessibilityLabel={ui(isFavorite ? 'Remove from favorites' : 'Add to favorites')}
         style={[styles.rowIconButton, isFavorite && styles.favoriteButton]}
         activeOpacity={0.8}
         onPress={(event) => {
@@ -310,7 +324,7 @@ function MantraListRow({
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   background: {
     flex: 1,
     width: '100%',

@@ -1,4 +1,5 @@
 package com.bhakti.backend.dto.panchang;
+import java.util.List;
 
 public record PanchangDailyResponse(
         String date,
@@ -21,6 +22,8 @@ public record PanchangDailyResponse(
         String ayanamsa,
         String ishtaKaala,
         String source,
-        boolean isRealData
+        boolean isRealData,
+        boolean partial,
+        List<String> missingFields
 ) {
 }

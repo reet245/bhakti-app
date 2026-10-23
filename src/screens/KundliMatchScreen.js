@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert 
 import { ThemeContext } from '../../App';
 import BhaktiBackButton from '../components/BhaktiBackButton';
 import { useLanguage } from '../context/LanguageContext';
+import { parseBirthDate } from '../features/kundli/model';
 
 // ---------------------------------------------------------
 // Compatibility calculation (logic unchanged)
@@ -26,7 +27,7 @@ function calculateCompatibility(dob1, dob2, t) {
 
 export default function KundliMatchScreen({ navigation }) {
   const { theme, isDark } = useContext(ThemeContext);
-  const { t } = useLanguage();
+  const { t, currentLanguage } = useLanguage();
 
   const [nameA, setNameA] = useState('');
   const [dobA,  setDobA]  = useState('');
@@ -48,7 +49,7 @@ export default function KundliMatchScreen({ navigation }) {
   const disclaimerColor  = isDark ? '#5a5282'  : '#9080c0';
 
   function handleMatch() {
-    if (!nameA || !dobA || !nameB || !dobB) {
+    if (!nameA.trim() || !nameB.trim() || !parseBirthDate(dobA) || !parseBirthDate(dobB)) {
       Alert.alert(t('missingDetails'), t('fillBothPersons'));
       return;
     }
@@ -58,6 +59,9 @@ export default function KundliMatchScreen({ navigation }) {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <Text accessibilityRole="alert" style={{ color: theme.text, padding: 14, backgroundColor: theme.card, marginBottom: 14 }}>
+          {currentLanguage === 'hi' ? 'केवल नमूना। यह वास्तविक जन्म-कुंडली मिलान नहीं है। सत्यापित मिलान प्रदाता अभी जुड़ा नहीं है।' : 'Demo only. This is a simulated score, not birth-chart matching. A verified matching provider is not connected yet.'}
+        </Text>
         <BhaktiBackButton navigation={navigation} style={styles.backButton} />
 
         <Text style={styles.emoji}>❤️</Text>
@@ -66,7 +70,7 @@ export default function KundliMatchScreen({ navigation }) {
 
         {/* Person A */}
         <View style={[styles.personCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <Text style={[styles.personTitle, { color: theme.text }]}>?? {t('personA')}</Text>
+          <Text style={[styles.personTitle, { color: theme.text }]}>{t('personA')}</Text>
           <View style={[styles.cardDivider, { backgroundColor: dividerColor }]} />
           <Text style={[styles.label, { color: theme.mutedText }]}>{t('fullName')}</Text>
           <TextInput
@@ -88,7 +92,7 @@ export default function KundliMatchScreen({ navigation }) {
 
         {/* Person B */}
         <View style={[styles.personCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <Text style={[styles.personTitle, { color: theme.text }]}>?? {t('personB')}</Text>
+          <Text style={[styles.personTitle, { color: theme.text }]}>{t('personB')}</Text>
           <View style={[styles.cardDivider, { backgroundColor: dividerColor }]} />
           <Text style={[styles.label, { color: theme.mutedText }]}>{t('fullName')}</Text>
           <TextInput
@@ -121,7 +125,7 @@ export default function KundliMatchScreen({ navigation }) {
             <Text style={[styles.resultNames, { color: theme.text }]}>{nameA} & {nameB}</Text>
             <Text style={[styles.resultMessage, { color: theme.mutedText }]}>{result.message}</Text>
             <Text style={[styles.disclaimer, { color: disclaimerColor }]}>
-              ?? {t('simulatedResult')}
+              {t('simulatedResult')}
             </Text>
           </View>
         )}

@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import useDevotionalStyles from '../hooks/useDevotionalStyles';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AppState,
   Image,
+  Linking,
   ImageBackground,
   ScrollView,
   StyleSheet,
@@ -9,12 +12,15 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Speech from 'expo-speech';
 
 import BhaktiBackButton from '../components/BhaktiBackButton';
 import { useBhaktiTopPadding } from '../components/BhaktiLayout';
 import { useLanguage } from '../context/LanguageContext';
-import { getDailyHoroscopes } from '../services/horoscopeService';
+import { usePanchangLocation, usePanchangToday } from '../features/panchang/locationStore';
+import { dateISO } from '../features/panchang/date';
+import { getDailyHoroscopes, unavailableHoroscopes } from '../services/horoscopeService';
 
 const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
 const LOTUS_DIVIDER_IMAGE = require('../../assets/horoscope/decorations/lotus-divider.png');
@@ -35,20 +41,23 @@ const ZODIAC_SIGNS = [
   { id: 'pisces', englishName: 'Pisces', englishRashi: 'Meen', zeroArtwork: require('../../assets/horoscope/zodiac-zero/pisces.png') },
 ];
 
-const FALLBACK_HOROSCOPE = {
-  en: 'Your daily guidance will appear here.',
-  hi: '\u0906\u092a\u0915\u093e \u0926\u0948\u0928\u093f\u0915 \u0930\u093e\u0936\u093f\u092b\u0932 \u092f\u0939\u093e\u0901 \u0926\u093f\u0916\u093e\u0908 \u0926\u0947\u0917\u093e\u0964',
-};
-
 export default function HoroscopeDetailScreen({ navigation, route }) {
+  const styles = useDevotionalStyles(baseStyles);
   const { width } = useWindowDimensions();
   const topPadding = useBhaktiTopPadding(width, 'title', { usesCoreSafeArea: false });
   const { currentLanguage, t } = useLanguage();
   const safeLanguage = currentLanguage === 'hi' ? 'hi' : 'en';
-  const [horoscopeText, setHoroscopeText] = useState(FALLBACK_HOROSCOPE[safeLanguage]);
+  const [horoscope, setHoroscope] = useState(null);
+  const [retry, setRetry] = useState(0);
+  const [speechError, setSpeechError] = useState('');
+  const [location] = usePanchangLocation();
+  const today = usePanchangToday(location.timezone, navigation);
+  const dayKey = dateISO(today);
+  const horoscopeText = horoscope?.horoscope || unavailableHoroscopes(safeLanguage)[route?.params?.signId || 'aries']?.horoscope;
   const [isLoading, setIsLoading] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const isScreenActive = useRef(true);
+  const speechSession = useRef(0);
 
   const selectedSign = useMemo(() => (
     ZODIAC_SIGNS.find((sign) => sign.id === route?.params?.signId) ?? ZODIAC_SIGNS[0]
@@ -57,72 +66,56 @@ export default function HoroscopeDetailScreen({ navigation, route }) {
   const imageSize = Math.max(128, Math.min(170, width * 0.42));
   const heroGap = width < 360 ? 12 : 16;
 
-  useEffect(() => {
-    let isActive = true;
-
-    async function loadHoroscope() {
-      setIsLoading(true);
-
-      try {
-        const horoscopes = await getDailyHoroscopes(safeLanguage);
-        const text = horoscopes?.[selectedSign.id]?.horoscope || FALLBACK_HOROSCOPE[safeLanguage];
-
-        if (isActive) {
-          setHoroscopeText(text);
-        }
-      } catch (error) {
-        if (isActive) {
-          setHoroscopeText(FALLBACK_HOROSCOPE[safeLanguage]);
-        }
-      } finally {
-        if (isActive) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    loadHoroscope();
-
-    return () => {
-      isActive = false;
-    };
-  }, [safeLanguage, selectedSign.id]);
-
-  const finishSpeaking = () => {
-    if (isScreenActive.current) {
-      setIsSpeaking(false);
-    }
-  };
-
-  useEffect(() => () => {
-    isScreenActive.current = false;
+  const stopSpeaking = useCallback(() => {
+    speechSession.current += 1;
     Speech.stop();
+    if (isScreenActive.current) setIsSpeaking(false);
   }, []);
 
+  useFocusEffect(useCallback(() => {
+    isScreenActive.current = true;
+    return () => { stopSpeaking(); isScreenActive.current = false; };
+  }, [stopSpeaking]));
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => { if (state !== 'active') stopSpeaking(); });
+    return () => subscription.remove();
+  }, [stopSpeaking]);
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    const controller = new AbortController();
+    stopSpeaking();
+    setIsLoading(true);
+    setHoroscope(null);
+    getDailyHoroscopes(safeLanguage, { signal: controller.signal })
+      .then((data) => { if (active) setHoroscope(data[selectedSign.id]); })
+      .catch(() => { if (active) setHoroscope(unavailableHoroscopes(safeLanguage)[selectedSign.id]); })
+      .finally(() => { if (active) setIsLoading(false); });
+    return () => { active = false; controller.abort(); };
+  }, [safeLanguage, selectedSign.id, dayKey, retry, stopSpeaking]));
+
   const handleListenHoroscope = async () => {
+    if (!horoscope?.available || isLoading) return;
+    if (isSpeaking) { stopSpeaking(); return; }
+    const session = ++speechSession.current;
+    setSpeechError('');
     try {
-      const alreadySpeaking = await Speech.isSpeakingAsync();
-
-      if (alreadySpeaking) {
-        Speech.stop();
-        setIsSpeaking(false);
-        return;
-      }
-
-      const textToRead = `${selectedSign.englishName}, ${selectedSign.englishRashi}. Detailed Horoscope. ${horoscopeText}`;
-
+      await Speech.stop();
+      if (!isScreenActive.current || session !== speechSession.current) return;
+      const finish = () => { if (isScreenActive.current && session === speechSession.current) setIsSpeaking(false); };
       setIsSpeaking(true);
-      Speech.speak(textToRead, {
-        language: safeLanguage === 'hi' ? 'hi-IN' : 'en-IN',
-        pitch: 1,
-        rate: 0.9,
-        onDone: finishSpeaking,
-        onStopped: finishSpeaking,
-        onError: finishSpeaking,
+      Speech.speak(`${selectedSign.englishName}. ${horoscopeText}`, {
+        language: safeLanguage === 'hi' ? 'hi-IN' : 'en-IN', pitch: 1, rate: 0.9,
+        onDone: finish, onStopped: finish,
+        onError: () => { finish(); if (isScreenActive.current && session === speechSession.current) setSpeechError('Speech is unavailable on this device.'); },
       });
-    } catch (error) {
-      setIsSpeaking(false);
-    }
+    } catch { if (isScreenActive.current && session === speechSession.current) { setIsSpeaking(false); setSpeechError('Speech is unavailable on this device.'); } }
+  };
+
+  const openSource = async () => {
+    if (!/^https:\/\//i.test(horoscope?.source || '')) return;
+    try { await Linking.openURL(horoscope.source); } catch { setSpeechError('The source link could not be opened.'); }
   };
 
   return (
@@ -155,17 +148,21 @@ export default function HoroscopeDetailScreen({ navigation, route }) {
             <View style={styles.dividerLine} />
           </View>
 
-          <Text style={styles.detailTitle}>Detailed Horoscope</Text>
+          <Text style={styles.detailTitle}>{safeLanguage === 'hi' ? 'विस्तृत राशिफल' : 'Detailed Horoscope'}</Text>
           <Text style={styles.horoscopeText}>{isLoading ? t('loading') : horoscopeText}</Text>
+          {!!horoscope?.date && <Text style={styles.sourceText}>{`${safeLanguage === 'hi' ? 'स्रोत की तारीख' : 'Provider date'}: ${horoscope.date}`}</Text>}
+          {!!horoscope?.source && <TouchableOpacity onPress={openSource}><Text style={styles.sourceText}>{safeLanguage === 'hi' ? 'राशिफल का स्रोत देखें' : 'Read the horoscope source'}</Text></TouchableOpacity>}
+          {!!speechError && <Text accessibilityRole="alert" style={styles.sourceText}>{speechError}</Text>}
+          {!horoscope?.available && !isLoading && <TouchableOpacity onPress={() => setRetry((value) => value + 1)}><Text style={styles.sourceText}>{safeLanguage === 'hi' ? 'फिर से लोड करें' : 'Try again'}</Text></TouchableOpacity>}
 
           <TouchableOpacity
-            style={[styles.listenButton, isLoading && styles.listenButtonDisabled]}
+            style={[styles.listenButton, (isLoading || !horoscope?.available) && styles.listenButtonDisabled]}
             activeOpacity={0.82}
             onPress={handleListenHoroscope}
-            disabled={isLoading}
+            disabled={isLoading || !horoscope?.available}
           >
             <Text style={styles.listenButtonText}>
-              {isSpeaking ? 'Stop Listening' : 'Listen to your Horoscope'}
+              {safeLanguage === 'hi' ? (isSpeaking ? 'सुनना बंद करें' : 'राशिफल सुनें') : (isSpeaking ? 'Stop Listening' : 'Listen to your Horoscope')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -174,7 +171,8 @@ export default function HoroscopeDetailScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
+  sourceText: { color: '#805318', fontSize: 13, lineHeight: 20, marginTop: 12 },
   background: {
     flex: 1,
     width: '100%',

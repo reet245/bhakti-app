@@ -1,3 +1,7 @@
+// Bundled calendar coverage is explicit; lunar dates must not be shifted into another year.
+export const FESTIVAL_COVERAGE = Object.freeze({ start: '2026-01-01', end: '2026-12-31', years: [2026] });
+export const FESTIVAL_DATE_NOTE = 'Bundled 2026 reference dates. Observance dates vary by region and tradition; confirm locally before planning a ritual or fast.';
+
 export const festivals = [
   {
     id: 'new-years-day',

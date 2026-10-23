@@ -1,3 +1,4 @@
+import useDevotionalStyles from '../hooks/useDevotionalStyles';
 import { useMemo, useState } from 'react';
 import {
   Image,
@@ -12,9 +13,11 @@ import {
   View,
 } from 'react-native';
 
-import { festivals } from '../data/festivalData';
+import { festivals, FESTIVAL_COVERAGE, FESTIVAL_DATE_NOTE } from '../data/festivalData';
 import { festivalImages } from '../data/festivalImages';
 import { useLanguage } from '../context/LanguageContext';
+import { usePanchangLocation, usePanchangToday } from '../features/panchang/locationStore';
+import { dateISO } from '../features/panchang/date';
 import BhaktiBackButton, { BhaktiBackSpacer } from '../components/BhaktiBackButton';
 import { useBhaktiTopPadding } from '../components/BhaktiLayout';
 
@@ -26,50 +29,17 @@ const tabs = [
   { id: 'past', labelKey: 'pastFestivals' },
 ];
 
-const monthNames = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-function parseFestivalDate(dateISO) {
-  return new Date(`${dateISO}T00:00:00`);
-}
-
-function getTodayStart() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return today;
-}
-
-function groupFestivalsByMonth(items) {
+function groupFestivalsByMonth(items, language) {
   return items.reduce((sections, festival) => {
-    const date = parseFestivalDate(festival.dateISO);
-    const monthIndex = date.getMonth();
-    const monthTitle = monthNames[monthIndex];
-    const sectionId = `${date.getFullYear()}-${String(monthIndex + 1).padStart(2, '0')}`;
+    const monthIndex = Number(festival.dateISO.slice(5, 7)) - 1;
+    const sectionId = festival.dateISO.slice(0, 7);
     const existingSection = sections.find((section) => section.id === sectionId);
-
-    if (existingSection) {
-      existingSection.festivals.push(festival);
-      return sections;
-    }
-
+    if (existingSection) { existingSection.festivals.push(festival); return sections; }
     sections.push({
       id: sectionId,
-      title: monthTitle,
+      title: new Intl.DateTimeFormat(language === 'hi' ? 'hi-IN' : 'en-IN', { month: 'long', year: 'numeric' }).format(new Date(Number(festival.dateISO.slice(0, 4)), monthIndex, 1, 12)),
       festivals: [festival],
     });
-
     return sections;
   }, []);
 }
@@ -85,6 +55,7 @@ function getInitials(name = '') {
 }
 
 function FestivalSticker({ festival, responsiveStyles }) {
+  const styles = useDevotionalStyles(baseStyles);
   const imageSource = festivalImages[festival?.imageKey];
 
   return (
@@ -103,7 +74,11 @@ function FestivalSticker({ festival, responsiveStyles }) {
 }
 
 export default function UpcomingFestivalsScreen({ navigation }) {
-  const { t } = useLanguage();
+  const styles = useDevotionalStyles(baseStyles);
+  const { t, currentLanguage } = useLanguage();
+  const [location] = usePanchangLocation();
+  const today = usePanchangToday(location.timezone, navigation);
+  const todayISO = dateISO(today);
   const { width, height } = useWindowDimensions();
   const topPadding = useBhaktiTopPadding(width, 'title');
   const [activeTab, setActiveTab] = useState('upcoming');
@@ -216,21 +191,17 @@ export default function UpcomingFestivalsScreen({ navigation }) {
   }, [height, topPadding, width]);
 
   const festivalSections = useMemo(() => {
-    const today = getTodayStart();
-    const sortedFestivals = [...festivals].sort(
-      (first, second) => parseFestivalDate(first.dateISO) - parseFestivalDate(second.dateISO),
-    );
-    const visibleFestivals = sortedFestivals.filter((festival) => {
-      const festivalDate = parseFestivalDate(festival.dateISO);
-      return activeTab === 'upcoming' ? festivalDate >= today : festivalDate < today;
-    });
+    const sortedFestivals = [...festivals].sort((first, second) => first.dateISO.localeCompare(second.dateISO));
+    const visibleFestivals = sortedFestivals.filter((festival) => activeTab === 'upcoming' ? festival.dateISO >= todayISO : festival.dateISO < todayISO);
+    return groupFestivalsByMonth(visibleFestivals, currentLanguage);
+  }, [activeTab, todayISO, currentLanguage]);
 
-    return groupFestivalsByMonth(visibleFestivals);
-  }, [activeTab]);
-
+  const beyondCoverage = todayISO > FESTIVAL_COVERAGE.end;
   const emptyMessage = activeTab === 'upcoming'
-    ? 'No upcoming festivals found.'
-    : 'No past festivals found.';
+    ? (beyondCoverage
+      ? (currentLanguage === 'hi' ? 'इस कैलेंडर में 2026 तक की तिथियाँ हैं। आगे की तिथियाँ अभी उपलब्ध नहीं हैं।' : 'This calendar contains dates through 2026. Later festival dates are not available yet.')
+      : (currentLanguage === 'hi' ? '2026 की शेष सूची में कोई उत्सव नहीं है।' : 'No more festivals in the bundled 2026 calendar.'))
+    : (currentLanguage === 'hi' ? 'इस सूची में पिछली तिथियाँ नहीं मिलीं।' : 'No past festivals in this calendar.');
 
   const openFestivalStory = (festival) => {
     navigation?.navigate?.('FestivalDetail', { festivalId: festival.id });
@@ -256,6 +227,9 @@ export default function UpcomingFestivalsScreen({ navigation }) {
               </View>
               <Text style={[styles.subtitle, responsiveStyles.subtitle]}>
                 {t('stayConnectedCelebrations')}
+                {'\n'}{currentLanguage === 'hi' ? '2026 की संदर्भ तिथियाँ। क्षेत्र और परंपरा के अनुसार तिथि की पुष्टि करें।' : FESTIVAL_DATE_NOTE}
+                {'\n'}{location.locationName}
+                {currentLanguage === 'hi' && '\nउत्सवों के नाम और कथाएँ अभी अंग्रेज़ी में उपलब्ध हैं।'}
               </Text>
             </View>
 
@@ -300,7 +274,7 @@ export default function UpcomingFestivalsScreen({ navigation }) {
                             </Text>
                             {!!(festival.dateText || festival.date) && (
                               <Text style={[styles.cardDate, responsiveStyles.cardDate]} numberOfLines={1}>
-                                {festival.dateText || festival.date}
+                                {new Intl.DateTimeFormat(currentLanguage === 'hi' ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(`${festival.dateISO}T12:00:00`))}
                               </Text>
                             )}
                             <Text style={[styles.cardMeaning, responsiveStyles.cardMeaning]} numberOfLines={2}>
@@ -311,7 +285,7 @@ export default function UpcomingFestivalsScreen({ navigation }) {
                                 style={[styles.cardAction, responsiveStyles.cardAction]}
                                 numberOfLines={1}
                               >
-                                View Story
+                                {currentLanguage === 'hi' ? 'कथा देखें' : 'View Story'}
                               </Text>
                               <Text style={[styles.cardActionArrow, responsiveStyles.cardAction]}>{'>'}</Text>
                             </View>
@@ -334,7 +308,7 @@ export default function UpcomingFestivalsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   background: {
     flex: 1,
     width: '100%',

@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import useDevotionalStyles from '../hooks/useDevotionalStyles';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
+  AppState,
+  BackHandler,
   Easing,
   Image,
   ImageBackground,
@@ -14,6 +18,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Audio, ResizeMode, Video } from 'expo-av';
 
 import BhaktiBackButton, { BhaktiBackSpacer } from '../components/BhaktiBackButton';
@@ -31,6 +36,7 @@ const categories = [
   { id: 'Vishnu', labelKey: 'vishnu' },
 ];
 export default function PujaScreen({ navigation }) {
+  const styles = useDevotionalStyles(baseStyles);
   const { t } = useLanguage();
   const { width, height } = useWindowDimensions();
   const topPadding = useBhaktiTopPadding(width, 'title');
@@ -55,6 +61,8 @@ export default function PujaScreen({ navigation }) {
   const aartiSoundRef = useRef(null);
   const bellSoundRef = useRef(null);
   const aartiSessionRef = useRef(0);
+  const bellSessionRef = useRef(0);
+  const screenActiveRef = useRef(true);
 
   const visibleDeities =
     activeCategory === 'All'
@@ -265,7 +273,7 @@ export default function PujaScreen({ navigation }) {
   }, [aartiActive, aartiMotionValue]);
 
   useEffect(() => {
-    if (!aartiActive) return;
+    if (!aartiActive) { stopAartiAudio(); return; }
 
     playAartiAudio();
   }, [aartiActive, selectedDeity]);
@@ -283,6 +291,33 @@ export default function PujaScreen({ navigation }) {
       stopAartiAudio();
     };
   }, [aartiMotionValue, bellSwingValue, diyaFlickerValue, smoke1, smoke2, smoke3, smoke4, smoke5]);
+
+  useFocusEffect(useCallback(() => {
+    screenActiveRef.current = true;
+    return () => {
+      screenActiveRef.current = false;
+      stopBellAudio(); stopAartiAudio();
+      setBellActive(false); setAartiActive(false);
+    };
+  }, []));
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') {
+        stopBellAudio(); stopAartiAudio();
+        setBellActive(false); setAartiActive(false);
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
+  useFocusEffect(useCallback(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (viewMode !== 'temple') return false;
+      handleTempleBack(); return true;
+    });
+    return () => subscription.remove();
+  }, [viewMode, aartiActive, selectedDeity]));
 
   function openTemple(deity) {
     resetPuja();
@@ -327,7 +362,6 @@ export default function PujaScreen({ navigation }) {
   }
 
   function handleFlowerPress() {
-    console.log('FLOWER PRESSED');
     setFlowers([
       {
         id: `${Date.now()}-${Math.random()}`,
@@ -347,7 +381,6 @@ export default function PujaScreen({ navigation }) {
   }
 
   function handlePrasadPress() {
-    console.log('PRASAD PRESSED');
     setPrasadVisible(prev => !prev);
   }
 
@@ -377,87 +410,71 @@ export default function PujaScreen({ navigation }) {
     }
   }
 
-  async function stopBellAudio() {
-    try {
-      if (bellSoundRef.current) {
-        await bellSoundRef.current.stopAsync();
-        await bellSoundRef.current.unloadAsync();
-        bellSoundRef.current = null;
-      }
-    } catch (error) {
-      console.log('Bell audio cleanup failed:', error);
-      bellSoundRef.current = null;
-    }
+  async function stopBellAudio(invalidateSession = true) {
+    if (invalidateSession) bellSessionRef.current += 1;
+    const sound = bellSoundRef.current;
+    bellSoundRef.current = null;
+    if (sound) await sound.unloadAsync().catch(() => {});
   }
 
   async function playBellAudio() {
+    const sessionId = ++bellSessionRef.current;
     try {
-      await stopBellAudio();
-
-      if (!pujaItems.bell?.audio) return;
-
+      await stopBellAudio(false);
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
+      if (!screenActiveRef.current || bellSessionRef.current !== sessionId) return;
       const { sound } = await Audio.Sound.createAsync(pujaItems.bell.audio, {
-        shouldPlay: true,
-        isLooping: true,
-        volume: 0.55,
+        shouldPlay: false, isLooping: true, volume: 0.55,
       });
+      if (!screenActiveRef.current || bellSessionRef.current !== sessionId) {
+        await sound.unloadAsync(); return;
+      }
       bellSoundRef.current = sound;
-    } catch (error) {
-      console.log('Bell audio failed:', error);
-      bellSoundRef.current = null;
+      await sound.playAsync();
+    } catch {
+      if (screenActiveRef.current && bellSessionRef.current === sessionId) {
+        await stopBellAudio(); setBellActive(false);
+        Alert.alert('Audio unavailable', 'The bell could not be played. Please try again.');
+      }
     }
   }
 
   async function stopAartiAudio(invalidateSession = true) {
-    if (invalidateSession) {
-      aartiSessionRef.current += 1;
-    }
-
-    try {
-      if (aartiSoundRef.current) {
-        await aartiSoundRef.current.stopAsync();
-        await aartiSoundRef.current.unloadAsync();
-        aartiSoundRef.current = null;
-      }
-    } catch (error) {
-      console.log('Aarti audio cleanup failed:', error);
-      aartiSoundRef.current = null;
+    if (invalidateSession) aartiSessionRef.current += 1;
+    const sound = aartiSoundRef.current;
+    aartiSoundRef.current = null;
+    if (sound) {
+      sound.setOnPlaybackStatusUpdate(null);
+      await sound.unloadAsync().catch(() => {});
     }
   }
 
   async function playAartiAudio() {
     const deity = selectedDeity || deities[0];
-    const sessionId = aartiSessionRef.current + 1;
-    aartiSessionRef.current = sessionId;
-
+    const sessionId = ++aartiSessionRef.current;
     try {
       await stopAartiAudio(false);
-
-      if (!deity?.aartiAudio) return;
-
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
+      if (!deity?.aartiAudio || !screenActiveRef.current || aartiSessionRef.current !== sessionId) return;
       const { sound } = await Audio.Sound.createAsync(deity.aartiAudio, {
-        shouldPlay: true,
-        isLooping: false,
-        volume: 0.75,
+        shouldPlay: false, isLooping: false, volume: 0.75,
       });
-
-      if (aartiSessionRef.current !== sessionId) {
-        await sound.unloadAsync();
-        return;
+      if (!screenActiveRef.current || aartiSessionRef.current !== sessionId) {
+        await sound.unloadAsync(); return;
       }
-
       aartiSoundRef.current = sound;
       sound.setOnPlaybackStatusUpdate(status => {
-        if (status.isLoaded && status.didJustFinish && aartiSessionRef.current === sessionId) {
-          aartiSoundRef.current = null;
-          sound.unloadAsync().catch(error => console.log('Aarti audio unload failed:', error));
-          setAartiActive(false);
+        if (!screenActiveRef.current || aartiSessionRef.current !== sessionId) return;
+        if ((status.isLoaded && status.didJustFinish) || (!status.isLoaded && status.error)) {
+          stopAartiAudio(); setAartiActive(false);
+          if (status.error) Alert.alert('Audio unavailable', 'The aarti could not be played. Please try again.');
         }
       });
-    } catch (error) {
-      console.log('Aarti audio failed:', error);
-      if (aartiSessionRef.current === sessionId) {
-        setAartiActive(false);
+      await sound.playAsync();
+    } catch {
+      if (screenActiveRef.current && aartiSessionRef.current === sessionId) {
+        await stopAartiAudio(); setAartiActive(false);
+        Alert.alert('Audio unavailable', 'The aarti could not be played. Please try again.');
       }
     }
   }
@@ -930,6 +947,7 @@ function isActionActive(actionId, state) {
 }
 
 function PujaActionButton({ item, image, label, active, animatedStyle, onPress }) {
+  const styles = useDevotionalStyles(baseStyles);
   if (!item && !image) return null;
 
   const actionLabel = label || item?.name || '';
@@ -954,6 +972,7 @@ function PujaActionButton({ item, image, label, active, animatedStyle, onPress }
 }
 
 function ScaledPujaIcon({ source, scale = 1.8 }) {
+  const styles = useDevotionalStyles(baseStyles);
   return (
     <Image
       source={source}
@@ -966,6 +985,7 @@ function ScaledPujaIcon({ source, scale = 1.8 }) {
 }
 
 function OfferingImage({ source, style, scale = 2.4, flipX = false }) {
+  const styles = useDevotionalStyles(baseStyles);
   const transform = flipX ? [{ scaleX: -1 }, { scale }] : [{ scale }];
 
   return (
@@ -981,7 +1001,7 @@ function OfferingImage({ source, style, scale = 2.4, flipX = false }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: 'transparent',

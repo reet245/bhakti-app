@@ -90,6 +90,7 @@ export const MANTRA_LIBRARY = [
   },
   {
     id: 'maha-mrityunjaya',
+    textSource: 'https://sanskritdocuments.org/doc_shiva/mahAmRRityunjayadhyAnam.html',
     title: 'Maha Mrityunjaya Mantra',
     deityId: 'shiv',
     categoryId: 'mantras',
@@ -98,11 +99,13 @@ export const MANTRA_LIBRARY = [
     bestTime: 'Brahma Muhurta',
     meaning: 'A prayer to Lord Shiva for healing, courage, and liberation from fear.',
     benefits: 'Protection, health, inner strength',
-    text: '\u0950 \u0924\u094d\u0930\u094d\u092f\u092e\u094d\u092c\u0915\u0902 \u092f\u091c\u093e\u092e\u0939\u0947\n\u0938\u0941\u0917\u0928\u094d\u0927\u093f\u0902 \u092a\u0941\u0937\u094d\u091f\u093f\u0935\u0930\u094d\u0927\u0928\u092e\u094d',
-    transliteration: 'Om Tryambakam Yajamahe\nSugandhim Pushti Vardhanam',
+    text: 'ॐ त्र्यम्बकं यजामहे\nसुगन्धिं पुष्टिवर्धनम् ।\nउर्वारुकमिव बन्धनान्\nमृत्योर्मुक्षीय माऽमृतात् ॥',
+    transliteration: 'Om Tryambakam Yajamahe\nSugandhim Pushti Vardhanam\nUrvarukam Iva Bandhanan\nMrityor Mukshiya Maamritat',
   },
   {
     id: 'shiv-aarti',
+    isExcerpt: true,
+    audio: require('../../assets/sounds/shiv-aarti.mp3'),
     title: 'Om Jai Shiv Omkara',
     deityId: 'shiv',
     categoryId: 'aarti',
@@ -116,6 +119,7 @@ export const MANTRA_LIBRARY = [
   },
   {
     id: 'ganesh-vakratunda',
+    textSource: 'https://sanskritdocuments.org/doc_ganesha/ganeshapratahsmarana.html',
     title: 'Vakratunda Mahakaya',
     deityId: 'ganesh',
     categoryId: 'mantras',
@@ -124,11 +128,13 @@ export const MANTRA_LIBRARY = [
     bestTime: 'Before new work',
     meaning: 'A prayer to Ganesh Ji to remove obstacles and bless new beginnings.',
     benefits: 'Clarity, success, obstacle removal',
-    text: '\u0935\u0915\u094d\u0930\u0924\u0941\u0923\u094d\u0921 \u092e\u0939\u093e\u0915\u093e\u092f\n\u0938\u0942\u0930\u094d\u092f\u0915\u094b\u091f\u093f \u0938\u092e\u092a\u094d\u0930\u092d',
-    transliteration: 'Vakratunda Mahakaya\nSuryakoti Samaprabha',
+    text: 'वक्रतुण्ड महाकाय\nसूर्यकोटिसमप्रभ ।\nनिर्विघ्नं कुरु मे देव\nसर्वकार्येषु सर्वदा ॥',
+    transliteration: 'Vakratunda Mahakaya\nSurya Koti Samaprabha\nNirvighnam Kuru Me Deva\nSarva Karyeshu Sarvada',
   },
   {
     id: 'ganesh-aarti',
+    isExcerpt: true,
+    audio: require('../../assets/sounds/ganesh-aarti.mp3'),
     title: 'Jai Ganesh Deva',
     deityId: 'ganesh',
     categoryId: 'aarti',
@@ -142,6 +148,7 @@ export const MANTRA_LIBRARY = [
   },
   {
     id: 'hanuman-chalisa',
+    isExcerpt: true,
     title: 'Hanuman Chalisa',
     deityId: 'hanuman',
     categoryId: 'chalisa',
@@ -155,6 +162,7 @@ export const MANTRA_LIBRARY = [
   },
   {
     id: 'hanuman-kavach',
+    isExcerpt: true,
     title: 'Hanuman Kavach',
     deityId: 'hanuman',
     categoryId: 'kavach',
@@ -168,6 +176,7 @@ export const MANTRA_LIBRARY = [
   },
   {
     id: 'durga-stuti',
+    isExcerpt: true,
     title: 'Ya Devi Sarva Bhuteshu',
     deityId: 'durga',
     categoryId: 'stotra',
@@ -181,6 +190,8 @@ export const MANTRA_LIBRARY = [
   },
   {
     id: 'durga-aarti',
+    isExcerpt: true,
+    audio: require('../../assets/sounds/durga-aarti.mp3'),
     title: 'Jai Ambe Gauri',
     deityId: 'durga',
     categoryId: 'aarti',
@@ -207,6 +218,7 @@ export const MANTRA_LIBRARY = [
   },
   {
     id: 'krishna-bhajan',
+    isExcerpt: true,
     title: 'Achyutam Keshavam',
     deityId: 'krishna',
     categoryId: 'bhajan',
@@ -220,6 +232,7 @@ export const MANTRA_LIBRARY = [
   },
   {
     id: 'ram-raksha',
+    isExcerpt: true,
     title: 'Shri Ram Raksha Stotra',
     deityId: 'ram',
     categoryId: 'stotra',
@@ -233,6 +246,7 @@ export const MANTRA_LIBRARY = [
   },
   {
     id: 'saraswati-vandana',
+    textSource: 'https://sanskritdocuments.org/~sanskrit/doc_trial/fortransfer/daksha2/Sharadanjali_hindi_sa.html',
     title: 'Saraswati Vandana',
     deityId: 'saraswati',
     categoryId: 'festival-special',
@@ -241,11 +255,12 @@ export const MANTRA_LIBRARY = [
     bestTime: 'Before study',
     meaning: 'A prayer to Saraswati Maa for wisdom, speech, and learning.',
     benefits: 'Knowledge, focus, creativity',
-    text: '\u092f\u093e \u0915\u0941\u0928\u094d\u0926\u0947\u0928\u094d\u0926\u0941 \u0924\u0941\u0937\u093e\u0930\u0939\u093e\u0930\u0927\u0935\u0932\u093e',
-    transliteration: 'Ya Kundendu Tushara Hara Dhavala',
+    text: 'या कुन्देन्दु-तुषार-हार-धवला या शुभ्र-वस्त्रावृता ।\nया वीणा-वर-दण्ड-मण्डितकरा या श्वेत-पद्मासना ॥\nया ब्रह्माच्युत-शंकर-प्रभृतिभिर्दैवैः सदा वन्दिता ।\nसा मां पातु सरस्वती भगवती निःशेष-जाड्यापहा ॥',
+    transliteration: 'Ya Kundendu Tushara Hara Dhavala Ya Shubhra Vastravrita\nYa Veena Vara Danda Mandita Kara Ya Shveta Padmasana\nYa Brahmachyuta Shankara Prabhritibhir Devaih Sada Vandita\nSa Mam Patu Saraswati Bhagavati Nihshesha Jadyapaha',
   },
   {
     id: 'santoshi-vrat-katha',
+    isExcerpt: true,
     title: 'Friday Vrat Katha',
     deityId: 'lakshmi',
     categoryId: 'vrat-katha',

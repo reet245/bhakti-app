@@ -1,3 +1,4 @@
+import useDevotionalStyles from '../hooks/useDevotionalStyles';
 import {
   ImageBackground,
   Platform,
@@ -10,43 +11,13 @@ import {
   View,
 } from 'react-native';
 
-import { normalizePanchangData } from '../services/panchangService';
+import { getFestivalItems, normalizePanchangData } from '../services/panchangService';
+import { FESTIVAL_COVERAGE, FESTIVAL_DATE_NOTE } from '../data/festivalData';
 import BhaktiBackButton, { BhaktiBackSpacer } from '../components/BhaktiBackButton';
 import { useBhaktiTopPadding } from '../components/BhaktiLayout';
 
 const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
 const DEVOTIONAL_FONT = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
-
-const UPCOMING_FESTIVALS = [
-  {
-    id: 'nirjala-ekadashi',
-    name: 'Nirjala Ekadashi',
-    date: 'Upcoming',
-    icon: '\u273A',
-    description: 'A sacred Ekadashi vrat dedicated to Vishnu bhakti and discipline.',
-  },
-  {
-    id: 'pradosh-vrat',
-    name: 'Pradosh Vrat',
-    date: 'Upcoming',
-    icon: '\u263D',
-    description: 'An evening vrat observed with prayers to Shiv Ji.',
-  },
-  {
-    id: 'sankashti-chaturthi',
-    name: 'Sankashti Chaturthi',
-    date: 'Upcoming',
-    icon: '\u0950',
-    description: 'A Ganesh Ji vrat for obstacle removal and blessings.',
-  },
-  {
-    id: 'ganga-dussehra',
-    name: 'Ganga Dussehra',
-    date: 'Upcoming',
-    icon: '\u2609',
-    description: 'A holy observance honoring Maa Ganga and purification.',
-  },
-];
 
 function getTodayParts() {
   const today = new Date();
@@ -54,10 +25,15 @@ function getTodayParts() {
 }
 
 export default function PanchangFestivalsScreen({ navigation, route }) {
+  const styles = useDevotionalStyles(baseStyles);
   const { width } = useWindowDimensions();
   const topPadding = useBhaktiTopPadding(width, 'title');
   const panchang = normalizePanchangData(route?.params?.panchang, getTodayParts());
-  const featuredFestival = panchang.festivals?.[0] || UPCOMING_FESTIVALS[0];
+  const featuredFestival = panchang.festivals?.[0] || {
+    name: 'No festival listed for this date', date: panchang.dateLabel,
+    description: 'The current festival library may not cover all regional observances or future years.',
+  };
+  const upcomingFestivals = getFestivalItems(panchang.dateISO, true).slice(0, 4);
   const contentWidth = Math.max(282, Math.min(width - Math.max(28, width * 0.09), 660));
 
   return (
@@ -70,9 +46,10 @@ export default function PanchangFestivalsScreen({ navigation, route }) {
         >
           <View style={styles.header}>
             <BhaktiBackButton navigation={navigation} />
-            <Text style={styles.headerTitle}>Today's Festivals</Text>
+            <Text style={styles.headerTitle}>Festivals</Text>
             <BhaktiBackSpacer />
           </View>
+          <Text style={styles.featuredDescription}>{FESTIVAL_DATE_NOTE}</Text>
 
           <View style={styles.featuredCard}>
             <View style={styles.featuredImage}>
@@ -88,7 +65,8 @@ export default function PanchangFestivalsScreen({ navigation, route }) {
             <Text style={styles.sectionTitle}>Upcoming Festivals</Text>
           </View>
 
-          {UPCOMING_FESTIVALS.map((festival) => (
+          {upcomingFestivals.length === 0 ? <Text style={styles.featuredDescription}>The bundled calendar ends on {FESTIVAL_COVERAGE.end}. No later dates are available. Future years require a verified calendar.</Text> : null}
+          {upcomingFestivals.map((festival) => (
             <View key={festival.id} style={styles.festivalRow}>
               <View style={styles.festivalIconWrap}>
                 <Text style={styles.festivalIcon}>{festival.icon}</Text>
@@ -110,7 +88,7 @@ export default function PanchangFestivalsScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   background: { flex: 1 },
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255, 247, 228, 0.76)' },
   safeArea: { flex: 1 },

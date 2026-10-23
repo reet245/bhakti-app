@@ -18,6 +18,7 @@ import com.bhakti.backend.dto.kundli.PanchangAtBirthDto;
 import com.bhakti.backend.dto.kundli.PlanetPositionDto;
 import com.bhakti.backend.dto.kundli.PredictionDto;
 import com.bhakti.backend.exception.ExternalApiException;
+import com.bhakti.backend.util.ProviderRequestBudget;
 import com.bhakti.backend.service.LocationResolutionService.LocationResolution;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
@@ -57,7 +58,8 @@ public class KundliService {
     private static final String CHART_STYLE = "NORTH_INDIAN";
     private static final Pattern TIMEZONE_OFFSET = Pattern.compile("^[+-](\\d{2}):(\\d{2})$");
     private static final Pattern HOUSE_NUMBER = Pattern.compile("(\\d+)");
-    private static final DateTimeFormatter INPUT_TIME = DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter INPUT_TIME = DateTimeFormatter.ofPattern("HH:mm")
+            .withResolverStyle(java.time.format.ResolverStyle.STRICT);
     private static final DateTimeFormatter PROFILE_DATE = DateTimeFormatter.ofPattern("dd MMM uuuu", Locale.ENGLISH);
     private static final DateTimeFormatter VEDASTRO_DATE = DateTimeFormatter.ofPattern("dd/MM/uuuu");
 
@@ -85,6 +87,10 @@ public class KundliService {
     }
 
     public KundliGenerateResponse generateKundli(KundliGenerateRequest request) {
+        return ProviderRequestBudget.within(25000, () -> calculateKundli(request));
+    }
+
+    private KundliGenerateResponse calculateKundli(KundliGenerateRequest request) {
         List<String> warnings = new ArrayList<>();
         BirthInput birthInput = validateAndNormalize(request, warnings);
         VedAstroBirthData vedAstroBirthData = new VedAstroBirthData(
@@ -166,6 +172,9 @@ public class KundliService {
         LocalTime birthTime = unknownTime ? LocalTime.NOON : parseBirthTime(request.birthTime());
         String ayanamsa = normalizeAyanamsa(request.ayanamsa());
         LocationInput location = resolveLocation(request, birthPlace, birthDate, birthTime);
+        if (birthDate.isAfter(LocalDate.now(ZoneOffset.of(location.timezoneOffset())))) {
+            throw new IllegalArgumentException("Birth date cannot be in the future.");
+        }
 
         if (unknownTime) {
             warnings.add("Birth time is unknown. Calculations use 12:00 local time and may be approximate.");
@@ -227,7 +236,12 @@ public class KundliService {
         }
 
         try {
-            return LocalDate.parse(value.trim(), DateTimeFormatter.ISO_LOCAL_DATE);
+            LocalDate date = LocalDate.parse(value.trim(), DateTimeFormatter.ISO_LOCAL_DATE);
+            if (date.isAfter(LocalDate.now(ZoneOffset.UTC).plusDays(1))) {
+                throw new IllegalArgumentException("Birth date cannot be in the future.");
+            }
+            if (date.getYear() < 1900) throw new IllegalArgumentException("Birth date must be in 1900 or later.");
+            return date;
         } catch (DateTimeParseException ex) {
             throw new IllegalArgumentException("Birth date must use yyyy-MM-dd format.");
         }
@@ -250,26 +264,30 @@ public class KundliService {
             throw new IllegalArgumentException(message);
         }
 
-        return value.trim();
+        String clean = value.trim();
+        if (clean.length() > 200 || clean.chars().anyMatch(Character::isISOControl)) {
+            throw new IllegalArgumentException("Text fields must be 200 characters or fewer without control characters.");
+        }
+        return clean;
     }
 
     private String normalizeAyanamsa(String value) {
         String ayanamsa = StringUtils.hasText(value) ? value.trim() : DEFAULT_AYANAMSA;
         String normalized = ayanamsa.replace('-', '_').replace(' ', '_').toUpperCase(Locale.ENGLISH);
 
-        if (!normalized.matches("^[A-Z0-9_]{1,50}$")) {
-            throw new IllegalArgumentException("Ayanamsa contains unsupported characters.");
+        if (!DEFAULT_AYANAMSA.equals(normalized)) {
+            throw new IllegalArgumentException("Only the LAHIRI ayanamsa is currently supported.");
         }
 
         return normalized;
     }
 
     private void validateCoordinates(double latitude, double longitude) {
-        if (latitude < -90 || latitude > 90) {
+        if (!Double.isFinite(latitude) || latitude < -90 || latitude > 90) {
             throw new IllegalArgumentException("Latitude must be between -90 and 90.");
         }
 
-        if (longitude < -180 || longitude > 180) {
+        if (!Double.isFinite(longitude) || longitude < -180 || longitude > 180) {
             throw new IllegalArgumentException("Longitude must be between -180 and 180.");
         }
     }
@@ -285,13 +303,19 @@ public class KundliService {
             if (matcher.matches()) {
                 int hours = Integer.parseInt(matcher.group(1));
                 int minutes = Integer.parseInt(matcher.group(2));
-                if (hours <= 14 && minutes <= 59) {
+                if (hours <= 14 && minutes <= 59 && (hours != 14 || minutes == 0)) {
                     return trimmed;
                 }
+                throw new IllegalArgumentException("Timezone offset must be between -14:00 and +14:00.");
             }
 
             try {
-                ZoneOffset offset = ZonedDateTime.of(birthDate, birthTime, ZoneId.of(trimmed)).getOffset();
+                ZoneId zone = ZoneId.of(trimmed);
+                var offsets = zone.getRules().getValidOffsets(birthDate.atTime(birthTime));
+                if (offsets.size() != 1) {
+                    throw new IllegalArgumentException("Birth time is ambiguous or does not exist due to daylight saving. Supply the correct UTC offset.");
+                }
+                ZoneOffset offset = offsets.get(0);
                 String id = offset.getId();
                 return "Z".equals(id) ? "+00:00" : id;
             } catch (DateTimeException ignored) {
@@ -339,7 +363,9 @@ public class KundliService {
                 tithi,
                 textPayload(generalData.get("Karana"), "Karana"),
                 firstText(nodeText(yoga, "Name"), textPayload(generalData.get("NithyaYoga"), "NithyaYoga")),
-                paksha
+                paksha,
+                firstText(nodeText(payload(generalData.get("SunSign"), "SunSign"), "Name"),
+                        textPayload(generalData.get("SunSign"), "SunSign"))
         );
     }
 
@@ -440,7 +466,7 @@ public class KundliService {
             JsonNode dashaResponse = vedAstroClient.fetchDasha(vedAstroBirthData, startStdTime, endStdTime);
             return mapDasha(dashaResponse, warnings);
         } catch (ExternalApiException ex) {
-            log.warn("VedAstro dasha section could not be calculated: {}", ex.getMessage());
+            log.warn("Kundli dasha section could not be calculated.");
             warnings.add("Dasha section could not be calculated by VedAstro.");
             return emptyDasha();
         }
@@ -509,7 +535,7 @@ public class KundliService {
             JsonNode predictionResponse = vedAstroClient.fetchPredictions(vedAstroBirthData);
             return mapPredictions(predictionResponse, warnings);
         } catch (ExternalApiException ex) {
-            log.warn("VedAstro predictions section could not be calculated: {}", ex.getMessage());
+            log.warn("Kundli predictions section could not be calculated.");
             warnings.add("Predictions section could not be calculated by VedAstro.");
             return List.of();
         }
@@ -679,7 +705,8 @@ public class KundliService {
             return -1;
         }
 
-        return Integer.parseInt(matcher.group(1));
+        try { return Integer.parseInt(matcher.group(1)); }
+        catch (NumberFormatException ex) { return -1; }
     }
 
     private String normalizePaksha(String value) {

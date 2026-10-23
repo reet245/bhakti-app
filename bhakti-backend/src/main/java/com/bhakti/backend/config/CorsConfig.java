@@ -12,7 +12,7 @@ public class CorsConfig implements WebMvcConfigurer {
 
     private final String allowedOrigins;
 
-    public CorsConfig(@Value("${cors.allowed-origins:*}") String allowedOrigins) {
+    public CorsConfig(@Value("${cors.allowed-origins:http://localhost:8081,http://localhost:19006}") String allowedOrigins) {
         this.allowedOrigins = allowedOrigins;
     }
 
@@ -22,6 +22,7 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowedOriginPatterns(parseAllowedOrigins())
                 .allowedMethods("GET", "POST", "OPTIONS")
                 .allowedHeaders("*")
+                .exposedHeaders("X-Request-Id", "Retry-After")
                 .maxAge(3600);
     }
 

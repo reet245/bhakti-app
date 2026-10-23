@@ -1,4 +1,5 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import useDevotionalStyles from '../hooks/useDevotionalStyles';
 
 const BACK_BUTTON_SIZE = 40;
 
@@ -14,6 +15,7 @@ export function navigateBackSafely(navigation, fallbackRoute = 'Home', fallbackP
 }
 
 export function BhaktiBackSpacer({ style }) {
+  const styles = useDevotionalStyles(baseStyles);
   return <View pointerEvents="none" style={[styles.spacer, style]} />;
 }
 
@@ -25,6 +27,7 @@ export default function BhaktiBackButton({
   onPress,
   style,
 }) {
+  const styles = useDevotionalStyles(baseStyles);
   const handlePress = () => {
     if (onPress) {
       onPress();
@@ -47,7 +50,7 @@ export default function BhaktiBackButton({
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   button: {
     width: BACK_BUTTON_SIZE,
     height: BACK_BUTTON_SIZE,

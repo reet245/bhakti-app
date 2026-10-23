@@ -1,10 +1,12 @@
 import { ImageBackground, StyleSheet, View } from 'react-native';
+import useDevotionalStyles from '../hooks/useDevotionalStyles';
 
 const DEVOTIONAL_BACKGROUND_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
 const DEVOTIONAL_BACKGROUND_FALLBACK = '#FFF7E6';
 const DEVOTIONAL_BACKGROUND_OVERLAY = 'rgba(255, 247, 228, 0.68)';
 
 export default function DevotionalBackground({ children, style }) {
+  const styles = useDevotionalStyles(baseStyles);
   return (
     <ImageBackground
       source={DEVOTIONAL_BACKGROUND_IMAGE}
@@ -17,7 +19,7 @@ export default function DevotionalBackground({ children, style }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   background: {
     flex: 1,
     width: '100%',

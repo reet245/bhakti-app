@@ -1,3 +1,5 @@
+import useDevotionalCopy from '../hooks/useDevotionalCopy';
+import useDevotionalStyles from '../hooks/useDevotionalStyles';
 import {
   Alert,
   Image,
@@ -13,7 +15,7 @@ import {
   View,
 } from 'react-native';
 
-import { festivals, getFestivalById } from '../data/festivalData';
+import { festivals, getFestivalById, FESTIVAL_DATE_NOTE } from '../data/festivalData';
 import { festivalImages } from '../data/festivalImages';
 import BhaktiBackButton from '../components/BhaktiBackButton';
 import { useBhaktiTopPadding } from '../components/BhaktiLayout';
@@ -40,6 +42,7 @@ function buildShareMessage(festival, storyText) {
   return [
     titleLine,
     dateLine,
+    FESTIVAL_DATE_NOTE,
     '',
     preview,
     '',
@@ -52,6 +55,8 @@ function showShareFallback() {
 }
 
 export default function FestivalDetailScreen({ navigation, route }) {
+  const styles = useDevotionalStyles(baseStyles);
+  const { ui, isHindi } = useDevotionalCopy();
   const { width, height } = useWindowDimensions();
   const iconTop = useBhaktiTopPadding(width, 'overlay');
   const festival = getFestivalById(route?.params?.festivalId) ?? route?.params?.festival ?? festivals[0];
@@ -119,7 +124,7 @@ export default function FestivalDetailScreen({ navigation, route }) {
               activeOpacity={0.82}
               onPress={handleShare}
             >
-              <Text style={styles.shareIcon}>Share</Text>
+              <Text style={styles.shareIcon}>{ui('Share')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -143,6 +148,7 @@ export default function FestivalDetailScreen({ navigation, route }) {
             >
               {festival?.name}
             </Text>
+            <Text style={[styles.subtitle, { fontSize: 12, lineHeight: 18, marginTop: 8 }]}>{isHindi ? '2026 की संदर्भ तिथि। क्षेत्र और परंपरा के अनुसार स्थानीय पुष्टि करें।' : FESTIVAL_DATE_NOTE}</Text>
             {!!festival?.subtitle && (
               <Text style={[styles.subtitle, { fontSize: subtitleSize, lineHeight: subtitleSize * 1.38 }]} numberOfLines={2}>
                 {festival.subtitle}
@@ -154,7 +160,7 @@ export default function FestivalDetailScreen({ navigation, route }) {
               </Text>
             )}
             <Text style={[styles.storyText, { fontSize: storySize, lineHeight: storySize * 1.66 }]}>
-              {storyText}
+              {isHindi && 'कथा का स्रोत अभी अंग्रेज़ी में उपलब्ध है।\n\n'}{storyText}
             </Text>
           </View>
         </ScrollView>
@@ -163,7 +169,7 @@ export default function FestivalDetailScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   background: {
     flex: 1,
   },

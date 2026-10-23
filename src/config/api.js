@@ -1,11 +1,12 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import apiPolicy from '../utils/apiPolicy.cjs';
 
 const BACKEND_PORT = 8080;
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
 
 function isDev() {
-  return typeof __DEV__ !== 'undefined' ? __DEV__ : true;
+  return typeof __DEV__ !== 'undefined' && __DEV__ === true;
 }
 
 function trimTrailingSlash(value) {
@@ -14,7 +15,7 @@ function trimTrailingSlash(value) {
 
 function getEnvApiBaseUrl() {
   return typeof process !== 'undefined'
-    ? trimTrailingSlash(process.env?.EXPO_PUBLIC_API_BASE_URL)
+    ? trimTrailingSlash(process.env.EXPO_PUBLIC_API_BASE_URL)
     : '';
 }
 
@@ -70,12 +71,14 @@ function getWebHostName() {
 function resolveApiBaseUrl() {
   const envApiBaseUrl = getEnvApiBaseUrl();
   if (envApiBaseUrl) {
-    return {
-      url: envApiBaseUrl,
-      source: 'EXPO_PUBLIC_API_BASE_URL',
-    };
+    try {
+      return { url: apiPolicy.validateApiUrl(envApiBaseUrl, { production: !isDev() }), source: 'EXPO_PUBLIC_API_BASE_URL', error: null };
+    } catch (error) {
+      return { url: '', source: 'Invalid configuration', error: error.message };
+    }
   }
 
+  if (!isDev()) return { url: '', source: 'Missing configuration', error: 'The Bhakti backend has not been configured. Please contact the app owner.' };
   return inferApiBaseUrl();
 }
 
@@ -113,6 +116,7 @@ const resolvedApiBaseUrl = resolveApiBaseUrl();
 
 export const API_BASE_URL = resolvedApiBaseUrl.url;
 export const API_BASE_URL_SOURCE = resolvedApiBaseUrl.source;
+export const API_CONFIGURATION_ERROR = resolvedApiBaseUrl.error || null;
 
 if (isDev()) {
   console.log('[Bhakti API] API_BASE_URL', API_BASE_URL);

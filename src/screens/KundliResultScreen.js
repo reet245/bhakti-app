@@ -140,7 +140,7 @@ function getKundliDetails(dob, tob) {
 // COMPONENT
 // ============================================================
 export default function KundliResultScreen({ navigation, route }) {
-  const { t } = useLanguage();
+  const { t, currentLanguage } = useLanguage();
   const {
     name = "Unknown",
     dob = "Unknown",
@@ -155,7 +155,6 @@ export default function KundliResultScreen({ navigation, route }) {
 
   // Tab state — controls which section is visible
   const [activeTab, setActiveTab] = useState('Chart');
-  console.log(activeTab);
 
   // Compute zodiac sign for each house based on Lagna
   // House 1 gets the Lagna sign, House 2 gets next sign, etc.
@@ -197,6 +196,9 @@ export default function KundliResultScreen({ navigation, route }) {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text accessibilityRole="alert" style={{ color: '#8A3900', backgroundColor: '#FFF1D6', padding: 16, marginBottom: 16, fontWeight: '700' }}>
+          {currentLanguage === 'hi' ? 'केवल नमूना: यह पुराना दृश्य गणित से बनाए गए काल्पनिक परिणाम दिखाता है। वास्तविक गणना के लिए कुंडली बनाएँ स्क्रीन का उपयोग करें।' : 'Demo only: this legacy screen shows simulated positions and generic text. Use Create Your Kundli for provider calculations.'}
+        </Text>
         <BhaktiBackButton navigation={navigation} style={styles.backButton} />
         <Text style={styles.emoji}>📜</Text>
         <Text style={styles.heading}>{t('kundli')}</Text>

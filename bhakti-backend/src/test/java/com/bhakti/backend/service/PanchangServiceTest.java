@@ -12,10 +12,47 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PanchangServiceTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void usesDateSpecificDstOffsetCachesResultsAndReportsPartialFields() throws Exception {
+        VedAstroClient client = mock(VedAstroClient.class);
+        when(client.fetchPanchangaTable(anyMap())).thenReturn(objectMapper.readTree("""
+                {"Status":"Pass","Payload":{"PanchangaTable":{"Tithi":{"Name":"Ekadashi","Paksha":"Shukla"}}}}
+                """));
+        PanchangService service = new PanchangService(client);
+        var winter = service.getDailyPanchang("2026-01-15", 40.7, -74, "New York", "America/New_York", "LAHIRI");
+        service.getDailyPanchang("2026-07-15", 40.7, -74, "New York", "America/New_York", "LAHIRI");
+        service.getDailyPanchang("2026-01-15", 40.7, -74, "New York", "America/New_York", "LAHIRI");
+        var captor = org.mockito.ArgumentCaptor.forClass(Map.class);
+        verify(client, times(2)).fetchPanchangaTable(captor.capture());
+        assertThat(((Map<?, ?>) captor.getAllValues().get(0).get("InputTime")).get("StdTime"))
+                .isEqualTo("06:00 15/01/2026 -05:00");
+        assertThat(((Map<?, ?>) captor.getAllValues().get(1).get("InputTime")).get("StdTime"))
+                .isEqualTo("06:00 15/07/2026 -04:00");
+        assertThat(winter.partial()).isTrue();
+        assertThat(winter.missingFields()).contains("nakshatra", "sunrise").doesNotContain("tithiName", "paksha");
+    }
+
+    @Test
+    void invalidInputsNeverReachProvider() {
+        VedAstroClient client = mock(VedAstroClient.class);
+        PanchangService service = new PanchangService(client);
+        assertThatThrownBy(() -> service.getDailyPanchang("2026-01-01", Double.NaN, 0, "Test", "UTC", "LAHIRI"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.getDailyPanchang("2026-01-01", 0, 0, "Test", "Invalid/Zone", "LAHIRI"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.getDailyPanchang("2026-01-01", 0, 0, "Test", "UTC", "INVALID"))
+                .isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(client);
+    }
 
     @Test
     @SuppressWarnings("unchecked")

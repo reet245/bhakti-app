@@ -3,18 +3,23 @@ package com.bhakti.backend.service;
 import com.bhakti.backend.client.VedAstroClient;
 import com.bhakti.backend.dto.panchang.PanchangDailyResponse;
 import com.bhakti.backend.exception.ExternalApiException;
+import com.bhakti.backend.util.BoundedCache;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.DateTimeException;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 
 @Service
 public class PanchangService {
@@ -22,11 +27,11 @@ public class PanchangService {
     private static final String DEFAULT_LOCATION_NAME = "Kolkata, West Bengal, India";
     private static final String DEFAULT_TIMEZONE = "Asia/Kolkata";
     private static final String DEFAULT_AYANAMSA = "LAHIRI";
-    private static final String IST_OFFSET = "+05:30";
     private static final String SOURCE = "VEDASTRO";
     private static final DateTimeFormatter VEDASTRO_DATE = DateTimeFormatter.ofPattern("dd/MM/uuuu");
 
     private final VedAstroClient vedAstroClient;
+    private final BoundedCache<CacheKey, PanchangDailyResponse> cache = new BoundedCache<>(512, 15 * 60_000L);
 
     public PanchangService(VedAstroClient vedAstroClient) {
         this.vedAstroClient = vedAstroClient;
@@ -46,7 +51,28 @@ public class PanchangService {
         String cleanLocationName = optionalText(locationName, DEFAULT_LOCATION_NAME);
         String cleanTimezone = optionalText(timezone, DEFAULT_TIMEZONE);
         String cleanAyanamsa = optionalText(ayanamsa, DEFAULT_AYANAMSA).toUpperCase(Locale.ENGLISH);
-        String stdTime = "06:00 " + localDate.format(VEDASTRO_DATE) + " " + IST_OFFSET;
+        if (cleanLocationName.length() > 200 || cleanLocationName.chars().anyMatch(Character::isISOControl)) {
+            throw new IllegalArgumentException("Location name must be 200 characters or fewer without control characters.");
+        }
+        if (!DEFAULT_AYANAMSA.equals(cleanAyanamsa)) {
+            throw new IllegalArgumentException("Only the LAHIRI ayanamsa is currently supported.");
+        }
+        ZoneId zone;
+        try {
+            zone = ZoneId.of(cleanTimezone);
+        } catch (DateTimeException ex) {
+            throw new IllegalArgumentException("Timezone must be a valid IANA timezone ID or UTC offset.");
+        }
+        ZoneOffset offset = localDate.atTime(6, 0).atZone(zone).getOffset();
+        String offsetId = offset.equals(ZoneOffset.UTC) ? "+00:00" : offset.getId();
+        String stdTime = "06:00 " + localDate.format(VEDASTRO_DATE) + " " + offsetId;
+        CacheKey key = new CacheKey(localDate, latitude, longitude, cleanLocationName, cleanTimezone, cleanAyanamsa);
+        return cache.get(key, () -> fetchDaily(localDate, latitude, longitude, cleanLocationName,
+                cleanTimezone, cleanAyanamsa, stdTime));
+    }
+
+    private PanchangDailyResponse fetchDaily(LocalDate localDate, double latitude, double longitude,
+            String cleanLocationName, String cleanTimezone, String cleanAyanamsa, String stdTime) {
 
         JsonNode vedAstroResponse = vedAstroClient.fetchPanchangaTable(Map.of(
                 "InputTime", Map.of(
@@ -151,6 +177,17 @@ public class PanchangService {
             throw new ExternalApiException("VedAstro Panchang service returned an unrecognized response.");
         }
 
+        List<String> missingFields = new ArrayList<>();
+        Map<String, String> required = new LinkedHashMap<>();
+        required.put("tithiName", tithiName);
+        required.put("paksha", paksha);
+        required.put("lunarMonth", lunarMonth);
+        required.put("nakshatra", nakshatra);
+        required.put("yogaName", yogaName);
+        required.put("karana", karana);
+        required.put("sunrise", sunrise);
+        required.put("sunset", sunset);
+        required.forEach((field, value) -> { if (!StringUtils.hasText(value)) missingFields.add(field); });
         return new PanchangDailyResponse(
                 date.toString(),
                 locationName,
@@ -172,7 +209,9 @@ public class PanchangService {
                 responseAyanamsa,
                 ishtaKaala,
                 SOURCE,
-                true
+                true,
+                !missingFields.isEmpty(),
+                List.copyOf(missingFields)
         );
     }
 
@@ -182,18 +221,22 @@ public class PanchangService {
         }
 
         try {
-            return LocalDate.parse(value.trim(), DateTimeFormatter.ISO_LOCAL_DATE);
+            LocalDate parsed = LocalDate.parse(value.trim(), DateTimeFormatter.ISO_LOCAL_DATE);
+            if (parsed.getYear() < 1900 || parsed.getYear() > 2100) {
+                throw new IllegalArgumentException("Panchang date must be between 1900 and 2100.");
+            }
+            return parsed;
         } catch (DateTimeException ex) {
             throw new IllegalArgumentException("Date must use yyyy-MM-dd format.");
         }
     }
 
     private void validateCoordinates(double latitude, double longitude) {
-        if (latitude < -90 || latitude > 90) {
+        if (!Double.isFinite(latitude) || latitude < -90 || latitude > 90) {
             throw new IllegalArgumentException("Latitude must be between -90 and 90.");
         }
 
-        if (longitude < -180 || longitude > 180) {
+        if (!Double.isFinite(longitude) || longitude < -180 || longitude > 180) {
             throw new IllegalArgumentException("Longitude must be between -180 and 180.");
         }
     }
@@ -404,4 +447,6 @@ public class PanchangService {
 
         return false;
     }
+
+    private record CacheKey(LocalDate date, double latitude, double longitude, String name, String timezone, String ayanamsa) {}
 }

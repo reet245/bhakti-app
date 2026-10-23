@@ -27,10 +27,7 @@ public class KundliController {
     public KundliGenerateResponse generateKundli(
             @Valid @RequestBody KundliGenerateRequest request
     ) {
-        log.info("Kundli generation request received. birthPlace={} unknownTime={}",
-                request.birthPlace(),
-                request.unknownTime()
-        );
+        log.debug("Kundli generation request received");
         return kundliService.generateKundli(request);
     }
 }

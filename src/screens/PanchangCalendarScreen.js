@@ -1,4 +1,6 @@
+import useDevotionalStyles from '../hooks/useDevotionalStyles';
 import { useEffect, useMemo, useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import {
   ActivityIndicator,
   ImageBackground,
@@ -14,13 +16,15 @@ import {
 
 import {
   getPanchangFromAPI,
+  getFestivalItems,
   normalizePanchangData,
 } from '../services/panchangService';
 import BhaktiBackButton from '../components/BhaktiBackButton';
 import { useBhaktiTopPadding } from '../components/BhaktiLayout';
+import { dateISO, parseLocalDate, shiftMonth } from '../features/panchang/date';
+import { usePanchangLocation, usePanchangToday } from '../features/panchang/locationStore';
 
 const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
-const FALLBACK_LOCATION = { latitude: 28.6139, longitude: 77.2090 };
 const DEVOTIONAL_FONT = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
 
 const VIEW_TABS = ['Month', 'Week', 'Day'];
@@ -43,17 +47,18 @@ function formatDate(date) {
   });
 }
 
-function markerForDay(day) {
-  return [];
+function markerForDay(date) {
+  return getFestivalItems(dateISO(date)).length ? ['festival'] : [];
 }
 
 export default function PanchangCalendarScreen({ navigation, route }) {
+  const styles = useDevotionalStyles(baseStyles);
+  const isFocused = useIsFocused();
   const { width, height } = useWindowDimensions();
   const topPadding = useBhaktiTopPadding(width, 'title');
-  const today = useMemo(() => new Date(), []);
-  const initialDate = route?.params?.selectedDateISO
-    ? new Date(route.params.selectedDateISO)
-    : today;
+  const [location] = usePanchangLocation();
+  const today = usePanchangToday(location.timezone, navigation);
+  const initialDate = parseLocalDate(route?.params?.selectedDateISO, today);
   const [currentDate, setCurrentDate] = useState(new Date(initialDate.getFullYear(), initialDate.getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [calendarView, setCalendarView] = useState('Month');
@@ -61,6 +66,13 @@ export default function PanchangCalendarScreen({ navigation, route }) {
   const [selectedPanchang, setSelectedPanchang] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [refresh, setRefresh] = useState(0);
+  useEffect(() => {
+    if (!route?.params?.selectedDateISO) return;
+    const date = parseLocalDate(route.params.selectedDateISO, today);
+    setSelectedDate(date);
+    setCurrentDate(new Date(date.getFullYear(), date.getMonth(), 1));
+  }, [route?.params?.selectedDateISO]);
 
   const responsiveStyles = useMemo(() => {
     const compactWidth = Math.min(width, 540);
@@ -107,38 +119,41 @@ export default function PanchangCalendarScreen({ navigation, route }) {
   }, [calendarView, currentMonth, daysInMonth, firstWeekday, selectedDate]);
 
   useEffect(() => {
+    if (!isFocused) return;
+    let active = true;
+    const controller = new AbortController();
     async function loadSelectedPanchang() {
       setLoading(true);
       setErrorMessage(null);
+      setSelectedPanchang(null);
 
       try {
         const dateParts = getDateParts(selectedDate);
         const data = await getPanchangFromAPI({
           ...dateParts,
-          latitude: FALLBACK_LOCATION.latitude,
-          longitude: FALLBACK_LOCATION.longitude,
-          locationName: 'New Delhi, India',
-          timezone: 'Asia/Kolkata',
-          ayanamsa: 'LAHIRI',
+          ...location,
+          signal: controller.signal,
         });
-        setSelectedPanchang(normalizePanchangData(data, dateParts));
+        if (active) setSelectedPanchang(normalizePanchangData(data, dateParts));
       } catch (error) {
-        console.warn('Panchang Calendar: selected date fetch failed.', error?.message);
-        setErrorMessage('Real Panchang data unavailable. Please try again.');
-        setSelectedPanchang(normalizePanchangData(null, getDateParts(selectedDate)));
+        if (active && !controller.signal.aborted) {
+          setErrorMessage(error?.message || 'Panchang data unavailable. Please try again.');
+          setSelectedPanchang(normalizePanchangData(null, getDateParts(selectedDate)));
+        }
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
 
     loadSelectedPanchang();
-  }, [selectedDate]);
+    return () => { active = false; controller.abort(); };
+  }, [selectedDate, location, today, refresh, isFocused]);
 
   const quickRows = selectedPanchang ? {
     Tithi: [{ name: selectedPanchang.tithi, time: `Ends ${selectedPanchang.tithiEnd}` }],
     Nakshatra: [{ name: selectedPanchang.nakshatra, time: `Ends ${selectedPanchang.nakshatraEnd}` }],
-    Yoga: [{ name: selectedPanchang.yoga, time: 'Active through the day' }],
-    Karana: [{ name: selectedPanchang.karana, time: 'Changes with tithi phase' }],
+    Yoga: [{ name: selectedPanchang.yoga, time: 'Transition time unavailable' }],
+    Karana: [{ name: selectedPanchang.karana, time: 'Transition time unavailable' }],
     More: [
       { name: 'Sunrise', time: selectedPanchang.sunrise },
       { name: 'Sunset', time: selectedPanchang.sunset },
@@ -147,7 +162,9 @@ export default function PanchangCalendarScreen({ navigation, route }) {
   } : {};
 
   const goMonth = (offset) => {
-    setCurrentDate(new Date(currentYear, currentMonth + offset, 1));
+    const date = shiftMonth(selectedDate, offset);
+    setCurrentDate(new Date(date.getFullYear(), date.getMonth(), 1));
+    setSelectedDate(date);
   };
 
   const selectDay = (day) => {
@@ -163,8 +180,8 @@ export default function PanchangCalendarScreen({ navigation, route }) {
           <View style={[styles.header, { width: responsiveStyles.contentWidth }]}>
             <BhaktiBackButton navigation={navigation} />
             <Text style={styles.headerTitle}>Panchang Calendar</Text>
-            <TouchableOpacity style={styles.iconButton} activeOpacity={0.78}>
-              <Text style={styles.filterIcon}>{'\u2699'}</Text>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Show today" style={styles.iconButton} activeOpacity={0.78} onPress={() => { setSelectedDate(today); setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1)); }}>
+              <Text style={[styles.filterIcon, { fontSize: 11 }]}>Today</Text>
             </TouchableOpacity>
           </View>
 
@@ -209,7 +226,7 @@ export default function PanchangCalendarScreen({ navigation, route }) {
                   && day === selectedParts.day
                   && currentMonth === selectedParts.month
                   && currentYear === selectedParts.year;
-                const markers = day ? markerForDay(day) : [];
+                const markers = date ? markerForDay(date) : [];
 
                 return (
                   <TouchableOpacity
@@ -238,6 +255,7 @@ export default function PanchangCalendarScreen({ navigation, route }) {
             <View style={styles.detailHeader}>
               <View>
                 <Text style={styles.detailDate}>{formatDate(selectedDate)}</Text>
+                <Text style={styles.detailSubtitle}>{location.locationName} · {location.timezone}</Text>
                 <Text style={styles.detailSubtitle}>
                   {selectedPanchang ? `${selectedPanchang.paksha} | ${selectedPanchang.tithi} | ${selectedPanchang.masa}` : 'Loading Panchang'}
                 </Text>
@@ -246,6 +264,8 @@ export default function PanchangCalendarScreen({ navigation, route }) {
             </View>
 
             {!loading && errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+            {!loading && selectedPanchang?.partial ? <Text style={styles.errorText}>Some Panchang fields are unavailable from the data source.</Text> : null}
+            {!loading && errorMessage ? <TouchableOpacity accessibilityRole="button" onPress={() => setRefresh((value) => value + 1)}><Text style={styles.detailRowName}>Retry</Text></TouchableOpacity> : null}
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickTabs}>
               {QUICK_TABS.map((tab) => (
@@ -286,7 +306,7 @@ export default function PanchangCalendarScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   background: { flex: 1 },
   overlay: {
     ...StyleSheet.absoluteFillObject,

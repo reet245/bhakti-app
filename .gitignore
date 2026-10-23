@@ -32,6 +32,24 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Local source/media backup archives
+/.codex.zip
+/assets.zip
+/bhakti-backend.zip
+/docs.zip
+/public.zip
+/src.zip
+
+# Generated review exports and verification output
+.expo-check/
+coverage/
+test-results/
+/work/
 
 # typescript
 *.tsbuildinfo

@@ -1,3 +1,4 @@
+import useDevotionalStyles from '../hooks/useDevotionalStyles';
 import { Share, ImageBackground, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 
 import { normalizePanchangData } from '../services/panchangService';
@@ -13,6 +14,7 @@ function getTodayParts() {
 }
 
 export default function TithiDetailScreen({ navigation, route }) {
+  const styles = useDevotionalStyles(baseStyles);
   const { width } = useWindowDimensions();
   const topPadding = useBhaktiTopPadding(width, 'title');
   const panchang = normalizePanchangData(route?.params?.panchang, getTodayParts());
@@ -72,7 +74,8 @@ export default function TithiDetailScreen({ navigation, route }) {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Auspicious For</Text>
+            <Text style={styles.sectionTitle}>General Devotional Activities</Text>
+            <Text style={styles.bodyText}>These are general suggestions; specific tithi suitability and muhurta times have not been calculated.</Text>
             {auspiciousFor.map((item) => (
               <View key={item} style={styles.listRow}>
                 <Text style={styles.listIcon}>{'\u273A'}</Text>
@@ -82,7 +85,7 @@ export default function TithiDetailScreen({ navigation, route }) {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>To Avoid</Text>
+            <Text style={styles.sectionTitle}>General Guidance</Text>
             {avoidList.map((item) => (
               <View key={item} style={styles.listRow}>
                 <Text style={[styles.listIcon, styles.avoidIcon]}>{'\u25D2'}</Text>
@@ -100,7 +103,7 @@ export default function TithiDetailScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   background: { flex: 1 },
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255, 247, 228, 0.76)' },
   safeArea: { flex: 1 },

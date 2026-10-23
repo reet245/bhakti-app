@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react';
+import useDevotionalStyles from '../hooks/useDevotionalStyles';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  BackHandler,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -16,11 +18,15 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import { StatusBar } from 'expo-status-bar';
+import { ThemeContext } from '../../App';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BhaktiBackButton, { navigateBackSafely } from '../components/BhaktiBackButton';
 import BhaktiBottomNav, { getBhaktiBottomNavContentPadding } from '../components/BhaktiBottomNav';
 import DevotionalBackground from '../components/DevotionalBackground';
 import { generateKundli as requestKundli } from '../services/kundliService';
+import { INITIAL_FORM, SAFE_VALUE, safeValue, birthFormError, buildKundliRequest, normalizeKundliData } from '../features/kundli/model';
+import LocationPicker, { searchLocations } from '../features/panchang/LocationPicker';
+import { deviceTimezone } from '../features/panchang/date';
 
 const BELL_IMAGE = require('../../assets/horoscope/decorations/hanging-bell.png');
 const KUNDLI_ZODIAC_WHEEL = require('../../assets/kundli/kundli-zodiac-wheel.png');
@@ -74,6 +80,7 @@ const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'planets', label: 'Planets' },
   { id: 'houses', label: 'Houses' },
+  { id: 'predictions', label: 'Predictions' },
   { id: 'dosha', label: 'Dosha' },
   { id: 'dasha', label: 'Dasha' },
   { id: 'remedies', label: 'Remedies' },
@@ -94,329 +101,9 @@ const CHART_HOUSE_POSITIONS = [
   { number: 12, left: '63%', top: '7%', width: '22%', height: '18%' },
 ];
 
-const PLANETS = [
-  {
-    symbol: '\u2609',
-    name: 'Sun',
-    meaning: 'Sun represents soul, confidence, father, authority and life purpose.',
-  },
-  {
-    symbol: '\u263D',
-    name: 'Moon',
-    meaning: 'Moon represents emotions, intuition, mother, comfort and the inner mind.',
-  },
-  {
-    symbol: '\u2642',
-    name: 'Mars',
-    meaning: 'Mars represents courage, energy, initiative, discipline and decisive action.',
-  },
-  {
-    symbol: '\u263F',
-    name: 'Mercury',
-    meaning: 'Mercury represents intellect, speech, learning, analysis and communication.',
-  },
-  {
-    symbol: '\u2643',
-    name: 'Jupiter',
-    meaning: 'Jupiter represents wisdom, faith, teachers, growth and good fortune.',
-  },
-  {
-    symbol: '\u2640',
-    name: 'Venus',
-    meaning: 'Venus represents love, harmony, beauty, relationships and refined pleasures.',
-  },
-  {
-    symbol: '\u2644',
-    name: 'Saturn',
-    meaning: 'Saturn represents responsibility, patience, discipline, karma and endurance.',
-  },
-  {
-    symbol: '\u260A',
-    name: 'Rahu',
-    meaning: 'Rahu represents ambition, worldly desire, innovation and unfamiliar experiences.',
-  },
-  {
-    symbol: '\u260B',
-    name: 'Ketu',
-    meaning: 'Ketu represents detachment, intuition, past-life insight and spiritual liberation.',
-  },
-];
-
-const INITIAL_FORM = {
-  name: '',
-  gender: 'Female',
-  date: '23 July 2000',
-  time: '07:30 AM',
-  place: '',
-  latitude: null,
-  longitude: null,
-  timezone: null,
-};
-
-const SAFE_VALUE = '--';
-const MONTHS = {
-  january: '01',
-  february: '02',
-  march: '03',
-  april: '04',
-  may: '05',
-  june: '06',
-  july: '07',
-  august: '08',
-  september: '09',
-  october: '10',
-  november: '11',
-  december: '12',
-};
-
-const PLANET_SYMBOLS = PLANETS.reduce((map, planet) => ({
-  ...map,
-  [planet.name.toLowerCase()]: planet.symbol,
-}), {});
-
-const PLANET_MEANINGS = PLANETS.reduce((map, planet) => ({
-  ...map,
-  [planet.name.toLowerCase()]: planet.meaning,
-}), {});
-
-const PLANET_ABBREVIATIONS = {
-  sun: 'Su',
-  moon: 'Mo',
-  mars: 'Ma',
-  mercury: 'Me',
-  jupiter: 'Ju',
-  venus: 'Ve',
-  saturn: 'Sa',
-  rahu: 'Ra',
-  ketu: 'Ke',
-};
-
-function safeValue(value, fallback = SAFE_VALUE) {
-  if (value === null || value === undefined) return fallback;
-  const stringValue = String(value).trim();
-  return stringValue || fallback;
-}
-
-function planetAbbreviation(name) {
-  return PLANET_ABBREVIATIONS[safeValue(name, '').toLowerCase()] || safeValue(name).slice(0, 2);
-}
-
-function parseBirthDate(value) {
-  const trimmed = safeValue(value, '');
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return isValidBirthDate(trimmed) ? trimmed : null;
-  }
-
-  const readableDate = trimmed.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
-  if (readableDate) {
-    const [, day, monthName, year] = readableDate;
-    const month = MONTHS[monthName.toLowerCase()];
-    if (month) {
-      const isoDate = `${year}-${month}-${String(day).padStart(2, '0')}`;
-      return isValidBirthDate(isoDate) ? isoDate : null;
-    }
-  }
-
-  const slashDate = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (slashDate) {
-    const [, day, month, year] = slashDate;
-    const isoDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return isValidBirthDate(isoDate) ? isoDate : null;
-  }
-
-  return null;
-}
-
-function isValidBirthDate(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-
-  const [year, month, day] = value.split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-
-  return date.getUTCFullYear() === year
-    && date.getUTCMonth() === month - 1
-    && date.getUTCDate() === day;
-}
-
-function parseBirthTime(value, unknownTime) {
-  if (unknownTime) return null;
-
-  const trimmed = safeValue(value, '');
-  const twentyFourHour = trimmed.match(/^(\d{1,2}):(\d{2})$/);
-  if (twentyFourHour) {
-    const [, hour, minute] = twentyFourHour;
-    if (Number(hour) <= 23 && Number(minute) <= 59) {
-      return `${String(hour).padStart(2, '0')}:${minute}`;
-    }
-    return null;
-  }
-
-  const twelveHour = trimmed.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
-  if (twelveHour) {
-    const [, hour, minute, period] = twelveHour;
-    if (Number(hour) < 1 || Number(hour) > 12 || Number(minute) > 59) {
-      return null;
-    }
-    const normalizedHour = Number(hour) % 12 + (period.toUpperCase() === 'PM' ? 12 : 0);
-    return `${String(normalizedHour).padStart(2, '0')}:${minute}`;
-  }
-
-  return null;
-}
-
-function getLocalTimezoneOffset() {
-  const totalMinutes = -new Date().getTimezoneOffset();
-  const sign = totalMinutes >= 0 ? '+' : '-';
-  const absoluteMinutes = Math.abs(totalMinutes);
-  const hours = Math.floor(absoluteMinutes / 60);
-  const minutes = absoluteMinutes % 60;
-
-  return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-}
-
-function normalizeKundliData(data) {
-  const profile = data?.profile || {};
-  const summary = data?.birthSummary || data?.summary || {};
-  const calculationMeta = data?.calculationMeta || {};
-  const rawHouses = Array.isArray(data?.houses)
-    ? data.houses
-    : Array.isArray(data?.charts?.d1?.houses)
-      ? data.charts.d1.houses
-      : [];
-  const rawPlanets = Array.isArray(data?.planets) ? data.planets : [];
-  const rawDoshas = Array.isArray(data?.doshas) ? data.doshas : [];
-  const rawDashas = Array.isArray(data?.dashas)
-    ? data.dashas
-    : Array.isArray(data?.dasha?.timeline)
-      ? data.dasha.timeline
-      : [];
-  const rawRemedies = Array.isArray(data?.remedies) ? data.remedies : [];
-  const housesByNumber = rawHouses.reduce((map, house) => ({
-    ...map,
-    [house?.houseNumber ?? house?.number ?? house?.house]: house,
-  }), {});
-  const houses = Array.from({ length: 12 }, (_, index) => {
-    const number = index + 1;
-    const house = housesByNumber[number] || {};
-    const planetNames = Array.isArray(house.planets) ? house.planets.map((planet) => safeValue(planet)) : [];
-    const title = safeValue(house.name || house.title, `${number}${number === 1 ? 'st' : number === 2 ? 'nd' : number === 3 ? 'rd' : 'th'} House`);
-
-    return {
-      number,
-      name: title,
-      title,
-      sign: safeValue(house.sign),
-      planets: planetNames.map(planetAbbreviation),
-      planetNames,
-      meaning: safeValue(house.meaning),
-      detail: safeValue(house.detail || house.meaning),
-    };
-  });
-  const normalizedPlanets = rawPlanets.length > 0
-    ? rawPlanets.map((planet) => {
-      const name = safeValue(planet?.planet || planet?.name);
-      return {
-        symbol: PLANET_SYMBOLS[name.toLowerCase()] || '\u2609',
-        name,
-        sign: safeValue(planet?.sign),
-        degree: safeValue(planet?.degree),
-        house: safeValue(planet?.house),
-        meaning: PLANET_MEANINGS[name.toLowerCase()] || SAFE_VALUE,
-      };
-    })
-    : [{
-      symbol: '\u2609',
-      name: SAFE_VALUE,
-      sign: SAFE_VALUE,
-      degree: SAFE_VALUE,
-      house: SAFE_VALUE,
-      meaning: SAFE_VALUE,
-    }];
-  const doshas = rawDoshas.length > 0
-    ? rawDoshas.map((dosha) => {
-      const status = safeValue(dosha?.status);
-      const clear = /clear|not detected|none|normal/i.test(status);
-      return {
-        icon: clear ? '\u2713' : '\u2726',
-        title: safeValue(dosha?.name),
-        status,
-        description: safeValue(dosha?.description),
-        tone: clear ? 'clear' : 'mild',
-      };
-    })
-    : [{
-      icon: '\u2726',
-      title: SAFE_VALUE,
-      status: SAFE_VALUE,
-      description: SAFE_VALUE,
-      tone: 'mild',
-    }];
-  const dashas = rawDashas.length > 0
-    ? rawDashas.map((dasha) => ({
-      icon: PLANET_SYMBOLS[safeValue(dasha?.mahaDasha || dasha?.name, '').split(' ')[0].toLowerCase()] || '\u263D',
-      label: safeValue(dasha?.type || (dasha?.antarDasha ? 'Antardasha' : 'Mahadasha')),
-      name: safeValue(dasha?.name || [dasha?.mahaDasha, dasha?.antarDasha].filter(Boolean).join(' / ')),
-      range: `${safeValue(dasha?.startDate)} - ${safeValue(dasha?.endDate)}`,
-    }))
-    : [{
-      icon: '\u263D',
-      label: SAFE_VALUE,
-      name: SAFE_VALUE,
-      range: `${SAFE_VALUE} - ${SAFE_VALUE}`,
-    }];
-  const remedies = rawRemedies.length > 0
-    ? rawRemedies.map((remedy, index) => ({
-      icon: ['\u{1FA94}', '\u273F', '\u0950', '\u2726'][index % 4],
-      title: safeValue(remedy?.title),
-      subtitle: safeValue(remedy?.description || remedy?.subtitle),
-    }))
-    : [{
-      icon: '\u2726',
-      title: SAFE_VALUE,
-      subtitle: SAFE_VALUE,
-    }];
-
-  return {
-    profile: {
-      name: safeValue(profile.name),
-      gender: safeValue(profile.gender),
-      birthDate: safeValue(profile.birthDate),
-      birthTime: safeValue(profile.birthTime),
-      placeName: safeValue(profile.birthPlace || profile.placeName || calculationMeta?.birthLocation?.name),
-      latitude: calculationMeta?.birthLocation?.latitude ?? profile.latitude,
-      longitude: calculationMeta?.birthLocation?.longitude ?? profile.longitude,
-      timezone: safeValue(calculationMeta?.birthLocation?.timezone || profile.timezone),
-    },
-    summary: {
-      lagna: safeValue(summary.lagna),
-      rashi: safeValue(summary.rashi),
-      nakshatra: safeValue(summary.nakshatra),
-      tithi: safeValue(summary.tithi),
-      sunSign: safeValue(summary.sunSign),
-      moonSign: safeValue(summary.moonSign || summary.rashi),
-      ayanamsa: safeValue(summary.ayanamsa || calculationMeta?.ayanamsa),
-    },
-    overviewItems: [
-      { label: 'Lagna', value: safeValue(summary.lagna) },
-      { label: 'Rashi', value: safeValue(summary.rashi) },
-      { label: 'Nakshatra', value: safeValue(summary.nakshatra) },
-      { label: 'Tithi', value: safeValue(summary.tithi) },
-      { label: 'Karana', value: safeValue(summary.karana) },
-      { label: 'Yoga', value: safeValue(summary.yoga) },
-      { label: 'Ayanamsa', value: safeValue(summary.ayanamsa || calculationMeta?.ayanamsa) },
-    ],
-    planets: normalizedPlanets,
-    houses,
-    doshas,
-    dashas,
-    dashaTimeline: dashas.map((dasha) => dasha.name).filter((name) => name !== SAFE_VALUE),
-    remedies,
-    calculationMeta,
-  };
-}
-
 export default function KundliScreen({ navigation }) {
+  const styles = useDevotionalStyles(baseStyles);
+  const { isDark } = useContext(ThemeContext);
   const { width, height } = useWindowDimensions();
   const [screen, setScreen] = useState('home');
   const [formStep, setFormStep] = useState(1);
@@ -428,6 +115,18 @@ export default function KundliScreen({ navigation }) {
   const [kundliData, setKundliData] = useState(null);
   const [kundliError, setKundliError] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const generationRequest = useRef(null);
+  const placeRequest = useRef(0);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; generationRequest.current?.abort(); placeRequest.current += 1; };
+  }, []);
+  useEffect(() => navigation.addListener('blur', () => {
+    generationRequest.current?.abort();
+    placeRequest.current += 1;
+    setLocationStatus('idle');
+  }), [navigation]);
 
   const layout = useMemo(() => {
     const horizontalPadding = Math.max(14, Math.min(28, width * 0.045));
@@ -463,6 +162,7 @@ export default function KundliScreen({ navigation }) {
   }, [height, width]);
 
   const updateField = (key, value) => {
+    if (key === 'place') placeRequest.current += 1;
     setForm((current) => {
       if (key === 'place') {
         return {
@@ -479,6 +179,7 @@ export default function KundliScreen({ navigation }) {
   };
 
   const goBack = () => {
+    generationRequest.current?.abort();
     if (screen === 'result') {
       setScreen('review');
       return;
@@ -499,58 +200,39 @@ export default function KundliScreen({ navigation }) {
     navigateBackSafely(navigation);
   };
 
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!navigation.isFocused() || screen === 'home') return false;
+      goBack();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [navigation, screen, formStep]);
+
+  const validateStep = (step) => {
+    const message = birthFormError(form, unknownTime, step);
+    setKundliError(message);
+    return !message;
+  };
+
   const generateKundli = async () => {
     if (isGenerating) return;
-
-    const name = form.name.trim();
-    const placeName = form.place.trim();
-    const birthDate = parseBirthDate(form.date);
-    const birthTime = parseBirthTime(form.time, unknownTime);
-    const showValidationError = (message) => {
-      setKundliError(message);
-      Alert.alert('Kundli Details', message);
-    };
-
-    if (!name) {
-      showValidationError('Please enter your name before generating the Kundli.');
-      return;
-    }
-    if (!form.date.trim() || !birthDate) {
-      showValidationError('Please enter a valid birth date and try again.');
-      return;
-    }
-    if (!unknownTime && (!form.time.trim() || !birthTime)) {
-      showValidationError('Please enter a valid birth time or select the unknown time option.');
-      return;
-    }
-    if (!placeName) {
-      showValidationError('Please enter a valid birth place and try again.');
-      return;
+    for (const step of [1, 2, 3]) {
+      if (!validateStep(step)) { setFormStep(step); setScreen('form'); return; }
     }
 
     setIsGenerating(true);
     setKundliError('');
     setActiveTab('overview');
     setSelectedHouse(null);
+    const controller = new AbortController();
+    generationRequest.current = controller;
 
     try {
-      const request = {
-        name,
-        gender: form.gender,
-        birthDate,
-        birthTime,
-        birthPlace: placeName,
-        unknownTime,
-        ayanamsa: 'LAHIRI',
-      };
+      const request = buildKundliRequest(form, unknownTime);
 
-      if (form.latitude !== null && form.longitude !== null && form.timezone) {
-        request.latitude = form.latitude;
-        request.longitude = form.longitude;
-        request.timezone = form.timezone;
-      }
-
-      const responseData = await requestKundli(request);
+      const responseData = await requestKundli(request, { signal: controller.signal });
+      if (!mounted.current || controller.signal.aborted) return;
       const normalizedData = normalizeKundliData(responseData);
       const warnings = Array.isArray(normalizedData.calculationMeta?.warnings)
         ? normalizedData.calculationMeta.warnings.filter(Boolean)
@@ -560,6 +242,7 @@ export default function KundliScreen({ navigation }) {
       setKundliError(warnings.join(' '));
       setScreen('result');
     } catch (error) {
+      if (!mounted.current || controller.signal.aborted) return;
       const message = safeValue(
         error?.message,
         'Unable to generate your Kundli right now. Please try again.'
@@ -568,7 +251,7 @@ export default function KundliScreen({ navigation }) {
       setKundliError(message);
       Alert.alert('Kundli Service', message);
     } finally {
-      setIsGenerating(false);
+      if (mounted.current) setIsGenerating(false);
     }
   };
 
@@ -587,8 +270,10 @@ export default function KundliScreen({ navigation }) {
     if (locationStatus === 'loading') return;
 
     setLocationStatus('loading');
+    const requestId = ++placeRequest.current;
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
+      if (!mounted.current || requestId !== placeRequest.current) return;
       if (status !== 'granted') {
         setLocationStatus('denied');
         return;
@@ -611,23 +296,32 @@ export default function KundliScreen({ navigation }) {
         place?.region,
         place?.country,
       ].filter((part, index, parts) => part && parts.indexOf(part) === index);
+      if (!mounted.current || requestId !== placeRequest.current) return;
 
       if (placeParts.length === 0) {
         setLocationStatus('unavailable');
         return;
       }
 
+      let timezone = deviceTimezone();
+      try {
+        const candidates = await searchLocations(place?.city || place?.district || place?.region || '');
+        const nearest = candidates.sort((a, b) =>
+          Math.hypot(a.latitude - coordinates.latitude, a.longitude - coordinates.longitude)
+          - Math.hypot(b.latitude - coordinates.latitude, b.longitude - coordinates.longitude))[0];
+        if (nearest && Math.hypot(nearest.latitude - coordinates.latitude, nearest.longitude - coordinates.longitude) < 1) timezone = nearest.timezone;
+      } catch { /* The editable manual timezone remains available. */ }
+      if (!mounted.current || requestId !== placeRequest.current) return;
       setForm((current) => ({
         ...current,
         place: placeParts.join(', '),
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
-        timezone: getLocalTimezoneOffset(),
+        timezone,
       }));
       setLocationStatus('success');
     } catch (error) {
-      console.warn('Kundli: current location could not be detected.', error?.message);
-      setLocationStatus('unavailable');
+      if (mounted.current && requestId === placeRequest.current) setLocationStatus('unavailable');
     }
   };
 
@@ -643,7 +337,7 @@ export default function KundliScreen({ navigation }) {
 
   return (
     <DevotionalBackground style={styles.background}>
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
           style={styles.flex}
@@ -708,19 +402,22 @@ export default function KundliScreen({ navigation }) {
                   unknownTime={unknownTime}
                   onChange={updateField}
                   onGenderChange={(gender) => updateField('gender', gender)}
-                  onNext={() => setFormStep((current) => Math.min(current + 1, 3))}
+                  onNext={() => { if (validateStep(formStep)) setFormStep((current) => Math.min(current + 1, 3)); }}
                   onToggleUnknown={() => setUnknownTime((value) => !value)}
                   locationStatus={locationStatus}
                   onDetectLocation={detectBirthPlace}
-                  onReview={() => setScreen('review')}
+                  onReview={() => { if (validateStep(3)) setScreen('review'); }}
+                  onLocationChange={(location) => { placeRequest.current += 1; setLocationStatus(location.latitude != null ? 'success' : 'idle'); setForm((current) => ({ ...current, ...location, place: location.locationName })); }}
                 />
               )}
+              {screen === 'form' && kundliError ? <Text accessibilityLiveRegion="polite" style={styles.kundliErrorText}>{kundliError}</Text> : null}
 
               {screen === 'review' && (
                 <ReviewFlow
                   displayDate={displayDate}
                   displayName={displayName}
                   displayPlace={displayPlace}
+                  displayTimezone={form.timezone}
                   displayTime={displayTime}
                   layout={layout}
                   onEdit={() => {
@@ -760,6 +457,7 @@ export default function KundliScreen({ navigation }) {
 }
 
 function KundliHomePage({ layout, onBack, onCreate }) {
+  const styles = useDevotionalStyles(baseStyles);
   return (
     <View style={styles.homePage}>
       <View style={styles.homeTopBar}>
@@ -843,6 +541,7 @@ function KundliHomePage({ layout, onBack, onCreate }) {
 }
 
 function KundliFormHeader({ layout, onBack, title }) {
+  const styles = useDevotionalStyles(baseStyles);
   return (
     <View style={[styles.formHeader, { paddingTop: layout.headerTop }]}>
       <Image
@@ -873,6 +572,7 @@ function KundliFormHeader({ layout, onBack, title }) {
 }
 
 function KundliResultHeader({ layout, onBack, onShare, title }) {
+  const styles = useDevotionalStyles(baseStyles);
   return (
     <View style={[styles.resultHeader, { paddingTop: layout.headerTop }]}>
       <Image
@@ -940,7 +640,9 @@ function FormFlow({
   onReview,
   onToggleUnknown,
   locationStatus,
+  onLocationChange,
 }) {
+  const styles = useDevotionalStyles(baseStyles);
   return (
     <>
       <StepIndicator activeStep={formStep} />
@@ -1033,17 +735,21 @@ function FormFlow({
             </View>
 
             <FieldLabel label="Date of Birth" />
-            <PressableValueRow
+            <EditableValueRow
               value={form.date}
               icon={'\u25A3'}
-              accessibilityLabel="Select date of birth"
+              accessibilityLabel="Date of birth, YYYY-MM-DD"
+              placeholder="YYYY-MM-DD, e.g. 2000-07-23"
+              onChangeText={(value) => onChange('date', value)}
             />
 
             <FieldLabel label="Time of Birth" />
-            <PressableValueRow
+            <EditableValueRow
               value={form.time}
               icon={'\u25F7'}
-              accessibilityLabel="Select time of birth"
+              accessibilityLabel="Time of birth, HH:MM"
+              placeholder="HH:MM, e.g. 07:30 or 7:30 AM"
+              onChangeText={(value) => onChange('time', value)}
               softened={unknownTime}
               disabled={unknownTime}
             />
@@ -1097,21 +803,7 @@ function FormFlow({
             </View>
 
             <FieldLabel label="City / Place" />
-            <View style={styles.placeSearchWrap}>
-              <TextInput
-                value={form.place}
-                onChangeText={(value) => onChange('place', value)}
-                placeholder="Search city or place"
-                placeholderTextColor={COLORS.muted}
-                selectionColor={COLORS.gold}
-                autoCapitalize="words"
-                returnKeyType="done"
-                style={styles.placeSearchInput}
-              />
-              <Text pointerEvents="none" style={styles.placeSearchIcon}>
-                {'\uD83D\uDD0D'}
-              </Text>
-            </View>
+            <LocationPicker value={form} onChange={onLocationChange} />
 
             <Pressable
               accessibilityRole="button"
@@ -1163,7 +855,7 @@ function FormFlow({
 }
 
 function getLocationStatusText(status) {
-  if (status === 'success') return 'Current location added';
+  if (status === 'success') return 'Location added; verify its timezone above';
   if (status === 'denied') return 'Location permission was not granted';
   if (status === 'unavailable') return 'Could not detect location. Enter it above.';
   if (status === 'loading') return 'Using your device location';
@@ -1171,6 +863,7 @@ function getLocationStatusText(status) {
 }
 
 function StepIndicator({ activeStep }) {
+  const styles = useDevotionalStyles(baseStyles);
   const steps = ['Details', 'Time', 'Place'];
 
   return (
@@ -1202,6 +895,7 @@ function StepIndicator({ activeStep }) {
 }
 
 function SectionHeading({ icon, title, subtitle }) {
+  const styles = useDevotionalStyles(baseStyles);
   return (
     <View style={styles.sectionHeading}>
       <View style={styles.sectionIcon}>
@@ -1216,40 +910,39 @@ function SectionHeading({ icon, title, subtitle }) {
 }
 
 function FieldLabel({ label }) {
+  const styles = useDevotionalStyles(baseStyles);
   return <Text style={styles.fieldLabel}>{label}</Text>;
 }
 
-function PressableValueRow({
+function EditableValueRow({
   accessibilityLabel,
   disabled = false,
   icon,
   softened = false,
   value,
+  placeholder,
+  onChangeText,
 }) {
+  const styles = useDevotionalStyles(baseStyles);
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={() => {}}
-      style={({ pressed }) => [
+    <View
+      style={[
         styles.valueRow,
         softened && styles.valueRowSoftened,
-        pressed && !disabled && styles.valueRowPressed,
       ]}
     >
-      <Text style={[styles.valueRowText, softened && styles.valueRowTextSoftened]}>
-        {value}
-      </Text>
+      <TextInput accessibilityLabel={accessibilityLabel} accessibilityState={{ disabled }} editable={!disabled}
+        autoCapitalize="none" autoCorrect={false} value={value} onChangeText={onChangeText} placeholder={placeholder}
+        placeholderTextColor={COLORS.muted} style={[styles.valueRowText, { flex: 1 }, softened && styles.valueRowTextSoftened]} />
       <View style={[styles.valueRowIconWrap, softened && styles.valueRowIconWrapSoftened]}>
         <Text style={[styles.valueRowIcon, softened && styles.valueRowIconSoftened]}>{icon}</Text>
       </View>
-    </Pressable>
+    </View>
   );
 }
 
 function PrimaryButton({ disabled = false, height, icon, label, onPress, style }) {
+  const styles = useDevotionalStyles(baseStyles);
   return (
     <Pressable
       accessibilityRole="button"
@@ -1277,6 +970,7 @@ function PrimaryButton({ disabled = false, height, icon, label, onPress, style }
 }
 
 function SecondaryButton({ height, label, onPress }) {
+  const styles = useDevotionalStyles(baseStyles);
   return (
     <Pressable
       accessibilityRole="button"
@@ -1297,13 +991,16 @@ function ReviewFlow({
   displayName,
   displayPlace,
   displayTime,
+  displayTimezone,
   isGenerating,
   kundliError,
   layout,
   onEdit,
   onGenerate,
 }) {
+  const styles = useDevotionalStyles(baseStyles);
   const details = [
+    { label: 'Timezone', value: displayTimezone },
     { label: 'Name', value: displayName },
     { label: 'Date of Birth', value: displayDate },
     { label: 'Time of Birth', value: displayTime },
@@ -1367,7 +1064,7 @@ function ReviewFlow({
       ) : null}
 
       <Text style={styles.reviewAssurance}>
-        {'\u2727'} Your birth details are used only to prepare this Kundli preview.
+        {'\u2727'} Generating sends these birth details to the Bhakti backend and its astrology provider for calculation.
       </Text>
     </>
   );
@@ -1386,7 +1083,9 @@ function ResultFlow({
   onHousePress,
   onTabChange,
 }) {
+  const styles = useDevotionalStyles(baseStyles);
   const kundliTitle = `${displayName}\u2019s Kundli`;
+  const [chartType, setChartType] = useState('D1');
   const summary = kundliData?.summary || {};
   const resultSummaryItems = [
     { label: 'Lagna', value: safeValue(summary.lagna) },
@@ -1434,10 +1133,15 @@ function ResultFlow({
 
       <NorthIndianChartCard
         calculationMeta={kundliData?.calculationMeta}
-        houses={kundliData?.houses}
+        houses={chartType === 'D9' ? kundliData?.d9Houses : kundliData?.houses}
+        chartName={chartType === 'D9' ? 'Navamsa (D9)' : 'Lagna (D1)'}
         layout={layout}
         onHousePress={onHousePress}
       />
+      <View style={styles.genderRow}>
+        {['D1', 'D9'].map((type) => <Pressable accessibilityRole="button" key={type} onPress={() => setChartType(type)} style={[styles.genderButton, type === chartType && styles.genderButtonSelected]}><Text style={styles.genderText}>{type}</Text></Pressable>)}
+      </View>
+      {chartType === 'D9' && !kundliData?.d9Houses?.length ? <Text style={styles.kundliErrorText}>Navamsa data is unavailable for this calculation.</Text> : null}
 
       <ScrollView
         horizontal
@@ -1464,6 +1168,10 @@ function ResultFlow({
       </ScrollView>
 
       {activeTab === 'overview' && <OverviewTab items={kundliData?.overviewItems} layout={layout} />}
+      {activeTab === 'predictions' && <View style={[styles.card, { padding: layout.cardPadding }]}>
+        <SectionHeading icon={'\u2726'} title="Predictions" subtitle="Interpretations supplied by the calculation service." />
+        {kundliData?.predictions?.length ? kundliData.predictions.map((item, index) => <View key={`${item.category}-${index}`} style={styles.remedyCardCopy}><Text style={styles.remedyCardTitle}>{item.title || item.category}</Text><Text style={styles.modalDescription}>{item.text}</Text></View>) : <Text style={styles.modalDescription}>Predictions are unavailable for this calculation. An exact birth time may be required.</Text>}
+      </View>}
       {activeTab === 'planets' && <PlanetsTab layout={layout} planets={kundliData?.planets} />}
       {activeTab === 'houses' && (
         <HousesTab houses={kundliData?.houses} layout={layout} onHousePress={onHousePress} />
@@ -1484,6 +1192,7 @@ function ResultFlow({
 }
 
 function OverviewTab({ items, layout }) {
+  const styles = useDevotionalStyles(baseStyles);
   const overviewItems = items?.length ? items : [{ label: 'Overview', value: SAFE_VALUE }];
 
   return (
@@ -1511,7 +1220,8 @@ function OverviewTab({ items, layout }) {
   );
 }
 
-function NorthIndianChartCard({ calculationMeta, houses, layout, onHousePress }) {
+function NorthIndianChartCard({ calculationMeta, houses, layout, onHousePress, chartName = 'Lagna (D1)' }) {
+  const styles = useDevotionalStyles(baseStyles);
   const chartHouses = houses?.length ? houses : normalizeKundliData({}).houses;
   const metaProvider = safeValue(calculationMeta?.provider, '');
   const chartSubtitle = metaProvider
@@ -1524,7 +1234,7 @@ function NorthIndianChartCard({ calculationMeta, houses, layout, onHousePress })
         <View>
           <Text style={styles.resultChartTitle} numberOfLines={1}>North Indian Chart</Text>
           <Text style={styles.resultChartSubtitle} numberOfLines={1}>
-            Lagna chart {'\u2022'} {chartSubtitle}
+            {chartName} {'\u2022'} {chartSubtitle}
           </Text>
         </View>
         <View style={styles.resultChartBadge}>
@@ -1557,6 +1267,7 @@ function NorthIndianChartCard({ calculationMeta, houses, layout, onHousePress })
               ]}
             >
               <Text style={styles.northChartHouseNumber}>{safeValue(house.number)}</Text>
+              <Text style={styles.northChartHouseNumber} numberOfLines={1}>{safeValue(house.sign)}</Text>
               <Text style={styles.northChartHousePlanets} numberOfLines={1}>
                 {house.planets?.join(' ') || '\u00B7'}
               </Text>
@@ -1574,6 +1285,7 @@ function NorthIndianChartCard({ calculationMeta, houses, layout, onHousePress })
 }
 
 function PlanetsTab({ layout, planets }) {
+  const styles = useDevotionalStyles(baseStyles);
   const [selectedPlanet, setSelectedPlanet] = useState(null);
   const planetItems = planets?.length ? planets : normalizeKundliData({}).planets;
 
@@ -1617,6 +1329,7 @@ function PlanetsTab({ layout, planets }) {
 }
 
 function HousesTab({ houses, layout, onHousePress }) {
+  const styles = useDevotionalStyles(baseStyles);
   const houseItems = houses?.length ? houses : normalizeKundliData({}).houses;
 
   return (
@@ -1666,6 +1379,7 @@ function HousesTab({ houses, layout, onHousePress }) {
 }
 
 function DoshasTab({ doshas, layout }) {
+  const styles = useDevotionalStyles(baseStyles);
   const doshaItems = doshas?.length ? doshas : normalizeKundliData({}).doshas;
 
   return (
@@ -1718,6 +1432,7 @@ function DoshasTab({ doshas, layout }) {
 }
 
 function DashaTab({ dashas, dashaTimeline, layout }) {
+  const styles = useDevotionalStyles(baseStyles);
   const [timelineVisible, setTimelineVisible] = useState(false);
   const dashaItems = dashas?.length ? dashas : normalizeKundliData({}).dashas;
 
@@ -1730,8 +1445,8 @@ function DashaTab({ dashas, dashaTimeline, layout }) {
           subtitle="Current planetary periods and upcoming transitions."
         />
         <View style={styles.dashaList}>
-          {dashaItems.map((item) => (
-            <View key={item.label} style={styles.dashaCard}>
+          {dashaItems.map((item, index) => (
+            <View key={`${item.label}-${item.name}-${item.range}-${index}`} style={styles.dashaCard}>
               <View style={styles.dashaIconBadge}>
                 <Text style={styles.dashaIconText}>{item.icon}</Text>
               </View>
@@ -1774,6 +1489,7 @@ function DashaTab({ dashas, dashaTimeline, layout }) {
 }
 
 function RemediesTab({ layout, navigation, remedies }) {
+  const styles = useDevotionalStyles(baseStyles);
   const remedyItems = remedies?.length ? remedies : normalizeKundliData({}).remedies;
   const navigateSafely = (routeName) => {
     if (!navigation?.navigate || !routeName) return;
@@ -1841,7 +1557,8 @@ function RemediesTab({ layout, navigation, remedies }) {
 }
 
 function DashaTimelineModal({ timeline, visible, onClose }) {
-  const timelineItems = timeline?.length ? timeline : [SAFE_VALUE];
+  const styles = useDevotionalStyles(baseStyles);
+  const timelineItems = timeline?.length ? timeline : ['Dasha timeline is unavailable for this calculation.'];
 
   return (
     <Modal
@@ -1873,7 +1590,7 @@ function DashaTimelineModal({ timeline, visible, onClose }) {
 
           <View style={styles.dashaTimelineList}>
             {timelineItems.map((item, index) => (
-              <View key={item} style={styles.dashaTimelineItem}>
+              <View key={`${item}-${index}`} style={styles.dashaTimelineItem}>
                 <View style={styles.dashaTimelineDotWrap}>
                   <View style={styles.dashaTimelineDot} />
                   {index < timelineItems.length - 1 && <View style={styles.dashaTimelineLine} />}
@@ -1904,6 +1621,7 @@ function DashaTimelineModal({ timeline, visible, onClose }) {
 }
 
 function HouseModal({ house, onClose }) {
+  const styles = useDevotionalStyles(baseStyles);
   return (
     <Modal
       visible={Boolean(house)}
@@ -1971,6 +1689,7 @@ function HouseModal({ house, onClose }) {
 }
 
 function PlanetModal({ planet, onClose }) {
+  const styles = useDevotionalStyles(baseStyles);
   return (
     <Modal
       visible={Boolean(planet)}
@@ -2036,7 +1755,7 @@ function PlanetModal({ planet, onClose }) {
 
 const serifFont = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   flex: {
     flex: 1,
   },

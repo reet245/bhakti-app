@@ -1,3 +1,4 @@
+import useDevotionalStyles from '../hooks/useDevotionalStyles';
 import { useMemo, useState } from 'react';
 import {
   ImageBackground,
@@ -33,6 +34,7 @@ function iconForMuhurtam(item) {
 }
 
 export default function PanchangMuhurtasScreen({ navigation, route }) {
+  const styles = useDevotionalStyles(baseStyles);
   const { width } = useWindowDimensions();
   const topPadding = useBhaktiTopPadding(width, 'title');
   const [activeFilter, setActiveFilter] = useState('All');
@@ -54,9 +56,10 @@ export default function PanchangMuhurtasScreen({ navigation, route }) {
         >
           <View style={styles.header}>
             <BhaktiBackButton navigation={navigation} />
-            <Text style={styles.headerTitle}>Today's Muhurta</Text>
+            <Text style={styles.headerTitle}>Muhurta</Text>
             <BhaktiBackSpacer />
           </View>
+          <Text style={styles.emptyText}>{panchang.dateLabel}{panchang.locationName ? ` · ${panchang.locationName}` : ''}</Text>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
             {FILTERS.map((filter) => (
@@ -89,7 +92,7 @@ export default function PanchangMuhurtasScreen({ navigation, route }) {
             </View>
           )) : (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyText}>Muhurta data is not included in Phase 1.</Text>
+              <Text style={styles.emptyText}>Muhurta times are unavailable from the current data source. No auspicious or inauspicious periods have been calculated for this date.</Text>
             </View>
           )}
         </ScrollView>
@@ -98,7 +101,7 @@ export default function PanchangMuhurtasScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   background: { flex: 1 },
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255, 247, 228, 0.76)' },
   safeArea: { flex: 1 },
