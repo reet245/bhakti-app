@@ -1,196 +1,88 @@
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import useDevotionalStyles from '../hooks/useDevotionalStyles';
-import { useMemo, useState } from 'react';
-import {
-  ImageBackground,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { getPanchangFromAPI } from '../services/panchangService';
+import { CalendarPage, Action, DataNotes, calendarStyles, useCalendarCopy } from '../features/panchang/CalendarUI';
+import { dateISO, parseLocalDate } from '../features/panchang/date';
+import { usePanchangLocation, usePanchangToday } from '../features/panchang/locationStore';
 
-import { normalizePanchangData } from '../services/panchangService';
-import BhaktiBackButton, { BhaktiBackSpacer } from '../components/BhaktiBackButton';
-import { useBhaktiTopPadding } from '../components/BhaktiLayout';
-
-const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
-const DEVOTIONAL_FONT = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
-const FILTERS = ['All', 'Auspicious', 'Inauspicious'];
-
-function getTodayParts() {
-  const today = new Date();
-  return { year: today.getFullYear(), month: today.getMonth(), day: today.getDate() };
-}
-
-function iconForMuhurtam(item) {
-  if (item.type === 'inauspicious') return '\u25D2';
-  if (item.id === 'brahma') return '\u2609';
-  if (item.id === 'amrit') return '\u273A';
-  if (item.id === 'vijay') return '\u2726';
-  return '\u0950';
-}
+const HINDI_DESCRIPTIONS = {
+  brahma: 'सूर्योदय से पहले रात्रि के पंद्रह मुहूर्तों में चौदहवाँ मुहूर्त।',
+  abhijit: 'दिन का आठवाँ मुहूर्त। बुधवार को नहीं दर्शाया जाता।',
+  vijaya: 'दिन का ग्यारहवाँ मुहूर्त।',
+  godhuli: 'सूर्यास्त के आसपास का पारंपरिक समय।',
+  amrit: 'नक्षत्र आधारित अवधि, चार समानुपाती घटी लंबी।',
+  rahu: 'स्थानीय दिन के आठ भागों में से वार के अनुसार निर्धारित भाग।',
+  gulika: 'स्थानीय दिन के आठ भागों में से वार के अनुसार निर्धारित भाग।',
+  yamaganda: 'स्थानीय दिन के आठ भागों में से वार के अनुसार निर्धारित भाग।',
+  durmuhurta: 'वार पर आधारित मुहूर्त। मंगलवार की अवधि रात्रि में भी हो सकती है।',
+  varjyam: 'नक्षत्र आधारित अवधि, जिस दिन शुरू होती है उस दिन दिखाई जाती है।',
+};
 
 export default function PanchangMuhurtasScreen({ navigation, route }) {
-  const styles = useDevotionalStyles(baseStyles);
-  const { width } = useWindowDimensions();
-  const topPadding = useBhaktiTopPadding(width, 'title');
-  const [activeFilter, setActiveFilter] = useState('All');
-  const panchang = normalizePanchangData(route?.params?.panchang, getTodayParts());
-  const contentWidth = Math.max(282, Math.min(width - Math.max(28, width * 0.09), 660));
+  const s = useDevotionalStyles(calendarStyles);
+  const { c, value, hi, locale } = useCalendarCopy();
+  const isFocused = useIsFocused();
+  const [savedLocation] = usePanchangLocation();
+  const location = useMemo(() => ({ ...savedLocation, ...route?.params?.location }), [savedLocation, route?.params?.location]);
+  const today = usePanchangToday(location.timezone, navigation);
+  const selectedDateISO = dateISO(parseLocalDate(route?.params?.selectedDateISO || route?.params?.dateISO || route?.params?.panchang?.dateISO, today));
+  const requestKey = `${selectedDateISO}:${location.latitude}:${location.longitude}:${location.timezone}:${location.locationName}`;
+  const [result, setResult] = useState(null);
+  const [retry, setRetry] = useState(0);
+  const [filter, setFilter] = useState('all');
+  const [choghadiyaPeriod, setChoghadiyaPeriod] = useState('day');
+  const current = result?.key === requestKey ? result : null;
+  const panchang = current?.data;
 
-  const visibleMuhurtas = useMemo(() => {
-    if (activeFilter === 'All') return panchang.muhurtas;
-    return panchang.muhurtas.filter((item) => item.type === activeFilter.toLowerCase());
-  }, [activeFilter, panchang.muhurtas]);
+  useEffect(() => {
+    if (!isFocused) return;
+    let active = true;
+    const controller = new AbortController();
+    const selected = parseLocalDate(selectedDateISO);
+    getPanchangFromAPI({ ...location, year: selected.getFullYear(), month: selected.getMonth(), day: selected.getDate(), signal: controller.signal })
+      .then((data) => { if (active) setResult({ key: requestKey, data }); })
+      .catch((error) => { if (active && !controller.signal.aborted) setResult({ key: requestKey, error: error.message }); });
+    return () => { active = false; controller.abort(); };
+  }, [requestKey, location, isFocused, retry]);
 
-  return (
-    <ImageBackground source={BG_IMAGE} style={styles.background} resizeMode="cover">
-      <View style={styles.overlay} />
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView
-          contentContainerStyle={[styles.content, { width: contentWidth, paddingTop: topPadding }]}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.header}>
-            <BhaktiBackButton navigation={navigation} />
-            <Text style={styles.headerTitle}>Muhurta</Text>
-            <BhaktiBackSpacer />
-          </View>
-          <Text style={styles.emptyText}>{panchang.dateLabel}{panchang.locationName ? ` · ${panchang.locationName}` : ''}</Text>
+  const dateLabel = parseLocalDate(selectedDateISO).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
+  const muhurtas = (panchang?.muhurtas || []).filter((item) => filter === 'all' || item.type === filter);
+  const qualityLabel = (quality) => quality === 'auspicious' ? c('Auspicious', 'शुभ') : quality === 'inauspicious' ? c('Inauspicious', 'अशुभ') : c('Neutral', 'सामान्य');
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-            {FILTERS.map((filter) => (
-              <TouchableOpacity
-                key={filter}
-                style={[styles.filterChip, activeFilter === filter && styles.filterChipActive]}
-                activeOpacity={0.78}
-                onPress={() => setActiveFilter(filter)}
-              >
-                <Text style={[styles.filterText, activeFilter === filter && styles.filterTextActive]}>{filter}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+  return <CalendarPage navigation={navigation} title={c('Muhurta', 'मुहूर्त')}>
+    <View style={s.hero}>
+      <Text style={s.sectionTitle}>{dateLabel}</Text>
+      <Text style={s.hint}>{location.locationName} · {location.timezone}</Text>
+      <Text style={s.body}>{c('Daily periods calculated from the Sun and Moon for your selected place.', 'चुने स्थान के सूर्य और चंद्रमा के आधार पर दैनिक समय की गणना।')}</Text>
+    </View>
 
-          {visibleMuhurtas.length > 0 ? visibleMuhurtas.map((item) => (
-            <View key={item.id} style={styles.muhurtaRow}>
-              <View style={[styles.muhurtaIconWrap, item.type === 'inauspicious' && styles.warningIconWrap]}>
-                <Text style={[styles.muhurtaIcon, item.type === 'inauspicious' && styles.warningIcon]}>{iconForMuhurtam(item)}</Text>
-              </View>
-              <View style={styles.muhurtaCopy}>
-                <Text style={styles.muhurtaName}>{item.name}</Text>
-                <Text style={styles.muhurtaDescription} numberOfLines={2}>{item.description}</Text>
-                <Text style={styles.muhurtaTime}>{item.time}</Text>
-              </View>
-              <View style={[styles.badge, item.type === 'inauspicious' && styles.warningBadge]}>
-                <Text style={[styles.badgeText, item.type === 'inauspicious' && styles.warningBadgeText]}>
-                  {item.type === 'auspicious' ? 'Shubh' : 'Avoid'}
-                </Text>
-              </View>
-            </View>
-          )) : (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyText}>Muhurta times are unavailable from the current data source. No auspicious or inauspicious periods have been calculated for this date.</Text>
-            </View>
-          )}
-        </ScrollView>
-      </SafeAreaView>
-    </ImageBackground>
-  );
+    {!current ? <View style={s.card}><ActivityIndicator color="#C99416" /><Text style={s.hint}>{c('Calculating local times…', 'स्थानीय समय की गणना हो रही है…')}</Text></View> : null}
+    {current?.error ? <View style={s.card}><Text accessibilityRole="alert" style={s.body}>{c(`Unable to calculate this date. ${current.error}`, 'इस तारीख की गणना नहीं हो सकी। स्थान और तारीख जाँचें।')}</Text><Action onPress={() => { setResult(null); setRetry((n) => n + 1); }}>{c('Try again', 'फिर प्रयास करें')}</Action></View> : null}
+    {panchang?.noSunrise ? <View style={s.card}><Text style={s.body}>{c('This place has no complete sunrise and sunset cycle on the selected date. Sunrise-based muhurta periods cannot be calculated.', 'इस स्थान पर चुनी तारीख में सूर्योदय और सूर्यास्त का पूरा चक्र नहीं है। सूर्योदय आधारित मुहूर्त की गणना नहीं की जा सकती।')}</Text></View> : null}
+
+    {panchang && !panchang.noSunrise ? <>
+      <View style={s.row}>{[['all', c('All', 'सभी')], ['auspicious', c('Auspicious', 'शुभ')], ['inauspicious', c('Inauspicious', 'अशुभ')]].map(([id, label]) => <Action key={id} selected={filter === id} style={{ flex: 1 }} onPress={() => setFilter(id)}>{label}</Action>)}</View>
+      {muhurtas.map((item) => <View key={item.id} style={s.card}>
+        <View style={s.between}><Text style={[s.sectionTitle, { flex: 1 }]}>{value(item, 'name')}</Text><Text style={s.hint}>{qualityLabel(item.type)}</Text></View>
+        <Text style={s.bodyBold}>{value(item, 'time')}</Text>
+        <Text style={s.hint}>{hi ? item.descriptionHi || HINDI_DESCRIPTIONS[item.key] || '' : item.description}</Text>
+      </View>)}
+      {!muhurtas.length ? <View style={s.card}><Text style={s.body}>{c('No periods in this category for the selected day.', 'चुने दिन इस श्रेणी की कोई अवधि नहीं है।')}</Text></View> : null}
+      {!panchang.muhurtas.some((item) => item.key === 'abhijit') ? <Text style={s.hint}>{c('Abhijit Muhurta is not listed on Wednesdays in this calculation.', 'इस गणना में बुधवार को अभिजीत मुहूर्त नहीं दिखाया जाता।')}</Text> : null}
+      <Text style={s.hint}>{c('Times use this location’s timezone. “Next day” and “previous day” refer to the selected civil date. These are general daily periods; a ceremony-specific muhurta requires its own rules.', 'समय इसी स्थान के समय क्षेत्र में है। “अगले दिन” और “पिछले दिन” का संबंध चुनी तारीख से है। ये सामान्य दैनिक समय हैं; किसी विशेष अनुष्ठान के मुहूर्त के नियम अलग होते हैं।')}</Text>
+
+      {panchang.choghadiya ? <View style={s.card}>
+        <Text style={s.sectionTitle}>{c('Choghadiya', 'चौघड़िया')}</Text>
+        <View style={s.row}>{[['day', c('Day', 'दिन')], ['night', c('Night', 'रात')]].map(([id, label]) => <Action key={id} style={{ flex: 1 }} selected={choghadiyaPeriod === id} onPress={() => setChoghadiyaPeriod(id)}>{label}</Action>)}</View>
+        {(panchang.choghadiya[choghadiyaPeriod] || []).map((item, index) => <View key={`${item.start}-${index}`} style={s.tableRow}>
+          <View style={{ width: '32%' }}><Text style={s.bodyBold}>{value(item, 'name')}</Text><Text style={s.hint}>{qualityLabel(item.quality)}</Text></View>
+          <Text style={s.rowValue}>{value(item, 'time')}</Text>
+        </View>)}
+      </View> : null}
+    </> : null}
+    <Action onPress={() => navigation.navigate('Calendar', { selectedDateISO })}>{c('Full daily Panchang', 'पूरा दैनिक पंचांग')}</Action>
+    <DataNotes />
+  </CalendarPage>;
 }
-
-const baseStyles = StyleSheet.create({
-  background: { flex: 1 },
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255, 247, 228, 0.76)' },
-  safeArea: { flex: 1 },
-  content: { alignSelf: 'center', paddingBottom: 28 },
-  header: { minHeight: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerTitle: {
-    flex: 1,
-    color: '#3F2713',
-    fontFamily: DEVOTIONAL_FONT,
-    fontSize: 22,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  filterRow: { paddingVertical: 12 },
-  filterChip: {
-    minHeight: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255, 250, 239, 0.96)',
-    borderWidth: 1,
-    borderColor: 'rgba(216, 177, 92, 0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 14,
-    marginRight: 8,
-  },
-  filterChipActive: { backgroundColor: '#F3D27D', borderColor: '#D0A23A' },
-  filterText: { color: '#8A6425', fontSize: 12, fontWeight: '900' },
-  filterTextActive: { color: '#3F2713' },
-  muhurtaRow: {
-    minHeight: 88,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 19,
-    backgroundColor: 'rgba(255, 250, 239, 0.97)',
-    borderWidth: 1,
-    borderColor: 'rgba(216, 177, 92, 0.46)',
-    padding: 11,
-    marginBottom: 10,
-    shadowColor: '#7A552A',
-    shadowOpacity: 0.1,
-    shadowRadius: 9,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  muhurtaIconWrap: {
-    width: 45,
-    height: 45,
-    borderRadius: 16,
-    backgroundColor: '#F3D27D',
-    borderWidth: 1,
-    borderColor: '#D0A23A',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  warningIconWrap: { backgroundColor: '#F7DFD4', borderColor: '#D9A28A' },
-  muhurtaIcon: { color: '#7B4D0D', fontSize: 20, fontWeight: '900' },
-  warningIcon: { color: '#A94D3A' },
-  muhurtaCopy: { flex: 1, minWidth: 0 },
-  muhurtaName: { color: '#3F2713', fontSize: 15, fontWeight: '900' },
-  muhurtaDescription: { color: '#8A6425', fontSize: 11, lineHeight: 16, fontWeight: '800', marginTop: 2 },
-  muhurtaTime: { color: '#5C3A0E', fontSize: 12, fontWeight: '900', marginTop: 4 },
-  badge: {
-    borderRadius: 13,
-    backgroundColor: '#FFF1C5',
-    borderWidth: 1,
-    borderColor: 'rgba(216, 168, 63, 0.55)',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    marginLeft: 8,
-  },
-  warningBadge: { backgroundColor: '#F7DFD4', borderColor: '#D9A28A' },
-  badgeText: { color: '#8A520B', fontSize: 10, fontWeight: '900' },
-  warningBadgeText: { color: '#A94D3A' },
-  emptyCard: {
-    minHeight: 92,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255, 250, 239, 0.97)',
-    borderWidth: 1,
-    borderColor: 'rgba(216, 177, 92, 0.46)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 14,
-  },
-  emptyText: {
-    color: '#8A6425',
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-});

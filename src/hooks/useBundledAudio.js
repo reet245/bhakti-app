@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Audio } from 'expo-av';
+import { configureForegroundAudio, createBundledPlayback } from '../utils/bundledAudio';
 
 export default function useBundledAudio() {
-  const soundRef = useRef(null);
+  const playbackRef = useRef(null);
+  const requestedIdRef = useRef(null);
   const sessionRef = useRef(0);
   const activeRef = useRef(true);
   const appActiveRef = useRef(!['background', 'inactive'].includes(AppState.currentState));
@@ -12,15 +13,13 @@ export default function useBundledAudio() {
   const [loadingId, setLoadingId] = useState(null);
   const [error, setError] = useState('');
 
-  const stop = useCallback(async () => {
+  const stop = useCallback(() => {
     sessionRef.current += 1;
-    const sound = soundRef.current;
-    soundRef.current = null;
+    const playback = playbackRef.current;
+    playbackRef.current = null;
+    requestedIdRef.current = null;
     if (activeRef.current) { setPlayingId(null); setLoadingId(null); }
-    if (sound) {
-      sound.setOnPlaybackStatusUpdate(null);
-      await sound.unloadAsync().catch(() => {});
-    }
+    playback?.dispose();
   }, []);
 
   useFocusEffect(useCallback(() => {
@@ -37,33 +36,30 @@ export default function useBundledAudio() {
   }, [stop]);
 
   const toggle = useCallback(async (id, asset) => {
-    const shouldStop = playingId === id || loadingId === id;
-    const stopping = stop();
+    const shouldStop = requestedIdRef.current === id;
+    stop();
     const session = sessionRef.current;
-    await stopping;
     if (shouldStop || session !== sessionRef.current || !activeRef.current || !appActiveRef.current) return;
     if (!asset) { setError('A matching recording is not available for this chant. You can still read it and use the Jaap counter.'); return; }
+    requestedIdRef.current = id;
     setError(''); setLoadingId(id);
-    let createdSound;
     try {
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
+      await configureForegroundAudio();
       if (session !== sessionRef.current || !activeRef.current || !appActiveRef.current) return;
-      const result = await Audio.Sound.createAsync(asset, { shouldPlay: false, isLooping: false });
-      createdSound = result.sound;
-      if (session !== sessionRef.current || !activeRef.current) { await createdSound.unloadAsync(); return; }
-      soundRef.current = createdSound;
-      createdSound.setOnPlaybackStatusUpdate((status) => {
-        if (session !== sessionRef.current || !activeRef.current) return;
-        if (!status.isLoaded && status.error) { setError('This recording could not be played. Please try again.'); stop(); }
-        else if (status.isLoaded && status.didJustFinish) stop();
+      const playback = createBundledPlayback(asset, {
+        onStatus: (status) => {
+          if (session !== sessionRef.current || !activeRef.current || !appActiveRef.current) return;
+          if (status.error) { setError('This recording could not be played. Please try again.'); stop(); }
+          else if (status.didJustFinish) stop();
+          else if (status.isLoaded && status.playing) { setPlayingId(id); setLoadingId(null); }
+        },
       });
-      await createdSound.playAsync();
-      if (session === sessionRef.current && activeRef.current) { setPlayingId(id); setLoadingId(null); }
+      playbackRef.current = playback;
+      playback.play();
     } catch {
-      if (createdSound && soundRef.current !== createdSound) await createdSound.unloadAsync().catch(() => {});
       if (session === sessionRef.current && activeRef.current) { setError('This recording could not be played. Please try again.'); stop(); }
     }
-  }, [loadingId, playingId, stop]);
+  }, [stop]);
 
   return { playingId, loadingId, error, toggle, stop };
 }

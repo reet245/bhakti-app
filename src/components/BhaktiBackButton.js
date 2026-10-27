@@ -21,6 +21,7 @@ export function BhaktiBackSpacer({ style }) {
 
 export default function BhaktiBackButton({
   accessibilityLabel = 'Go back',
+  color,
   fallbackParams,
   fallbackRoute = 'Home',
   navigation,
@@ -45,7 +46,7 @@ export default function BhaktiBackButton({
       onPress={handlePress}
       style={[styles.button, style]}
     >
-      <Text style={styles.arrow}>{'\u2039'}</Text>
+      <Text style={[styles.arrow, color != null && { color }]}>{'\u2039'}</Text>
     </TouchableOpacity>
   );
 }

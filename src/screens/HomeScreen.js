@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ImageBackground,
   SafeAreaView,
+  ScrollView,
   StatusBar,
   useWindowDimensions,
 } from 'react-native';
@@ -14,6 +15,7 @@ import {
 // Pull in the global theme context created in App.js
 import { ThemeContext } from '../../App';
 import { useLanguage } from '../context/LanguageContext';
+import HomePanchangCard from '../components/HomePanchangCard';
 
 // -------------------------------------------------------
 // Background image — resolved at bundle time by Metro
@@ -48,7 +50,7 @@ const FEATURES = [
 
 const LOTUS_MARK = '\u2741';
 
-function HomeModuleCard({ item, title, cardWidth, cardHeight, medallionSize, iconSize, onPress }) {
+function HomeModuleCard({ item, title, subtitle, cardWidth, cardHeight, medallionSize, iconSize, onPress }) {
   const { theme, isDark } = useContext(ThemeContext);
   return (
     <TouchableOpacity
@@ -98,7 +100,7 @@ function HomeModuleCard({ item, title, cardWidth, cardHeight, medallionSize, ico
           {title}
         </Text>
         <Text style={[styles.moduleSubtitle, { color: theme.textSecondary }]} numberOfLines={2}>
-          {item.subtitle}
+          {subtitle || item.subtitle}
         </Text>
       </View>
 
@@ -117,8 +119,9 @@ export default function HomeScreen({ navigation }) {
 
   // ThemeContext kept wired — toggle still works when screens are themed later
   useContext(ThemeContext);
-  const { t } = useLanguage();
-  const { width } = useWindowDimensions();
+  const { t, currentLanguage } = useLanguage();
+  const { width, height } = useWindowDimensions();
+  const isHindi = currentLanguage === 'hi';
 
   const isCompact = width < 380;
   const horizontalPadding = isCompact ? 16 : 22;
@@ -156,36 +159,31 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* -------------------------------------------------------
-            SPACER — lets the artwork breathe above the buttons.
-            Flex:1 pushes the button section toward the bottom.
-            ------------------------------------------------------- */}
-        <View style={styles.spacer} />
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* Keep the first content below the deity portraits; shorter screens scroll. */}
+          <View style={[styles.spacer, { minHeight: Math.max(200, Math.min(420, height * 0.42)) }]} />
 
-        {/* -------------------------------------------------------
-            BOTTOM CONTENT — app name + feature buttons
-            Positioned in the lower-middle third of the screen so
-            deity faces and the Om symbol remain fully visible.
-            ------------------------------------------------------- */}
-        <View style={[styles.bottomContent, { paddingHorizontal: horizontalPadding }]}>
+          <View style={[styles.bottomContent, { paddingHorizontal: horizontalPadding }]}>
+            <HomePanchangCard navigation={navigation} width={gridWidth} />
 
-          {/* Feature buttons — 3-column grid */}
-          <View style={[styles.buttonGrid, { width: gridWidth, columnGap: gridGap, rowGap: gridGap + 2 }]}>
-            {FEATURES.map((item) => (
-              <HomeModuleCard
-                key={item.labelKey}
-                item={item}
-                title={t(item.labelKey)}
-                cardWidth={cardWidth}
-                cardHeight={cardHeight}
-                medallionSize={medallionSize}
-                iconSize={iconSize}
-                onPress={() => navigation.navigate(item.screen)}
-              />
-            ))}
+            {/* Feature buttons — 3-column grid */}
+            <View style={[styles.buttonGrid, { width: gridWidth, columnGap: gridGap, rowGap: gridGap + 2 }]}>
+              {FEATURES.map((item) => (
+                <HomeModuleCard
+                  key={item.labelKey}
+                  item={item}
+                  title={item.labelKey === 'panchang' ? (isHindi ? 'कैलेंडर व पंचांग' : 'Calendar & Panchang') : t(item.labelKey)}
+                  subtitle={item.labelKey === 'panchang' ? (isHindi ? 'माह, दैनिक पंचांग\nऔर पत्रिका' : 'Month, daily details\n& almanac') : undefined}
+                  cardWidth={cardWidth}
+                  cardHeight={cardHeight}
+                  medallionSize={medallionSize}
+                  iconSize={iconSize}
+                  onPress={() => navigation.navigate(item.screen)}
+                />
+              ))}
+            </View>
           </View>
-
-        </View>
+        </ScrollView>
 
       </SafeAreaView>
     </ImageBackground>
@@ -240,6 +238,8 @@ const styles = StyleSheet.create({
   spacer: {
     flex: 1,
   },
+  scroll: { flex: 1 },
+  scrollContent: { flexGrow: 1 },
 
   // --- Bottom section — buttons float in the lower quarter ---
   bottomContent: {

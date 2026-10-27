@@ -322,7 +322,7 @@ function normalizePanchangData(data, dateParts) {
     samvat: data.samvat || data.vikramSamvat || fallback.samvat,
     vaar: data.vaar || data.weekday || fallback.vaar,
     muhurtas: Array.isArray(data.muhurtas) ? data.muhurtas : fallback.muhurtas,
-    festivals: Array.isArray(data.festivals) && data.festivals.length ? data.festivals : fallback.festivals,
+    festivals: Array.isArray(data.festivals) ? data.festivals : fallback.festivals,
     calendarMarkers: Array.isArray(data.calendarMarkers) ? data.calendarMarkers : fallback.calendarMarkers,
     isRealData: data.isRealData === true,
     errorMessage: data.errorMessage || null,

@@ -5,7 +5,7 @@ const DEVOTIONAL_BACKGROUND_IMAGE = require('../../assets/horoscope/background/h
 const DEVOTIONAL_BACKGROUND_FALLBACK = '#FFF7E6';
 const DEVOTIONAL_BACKGROUND_OVERLAY = 'rgba(255, 247, 228, 0.68)';
 
-export default function DevotionalBackground({ children, style }) {
+export default function DevotionalBackground({ children, overlayStyle, style }) {
   const styles = useDevotionalStyles(baseStyles);
   return (
     <ImageBackground
@@ -13,7 +13,7 @@ export default function DevotionalBackground({ children, style }) {
       style={[styles.background, style]}
       resizeMode="cover"
     >
-      <View pointerEvents="none" style={styles.overlay} />
+      <View pointerEvents="none" style={[styles.overlay, overlayStyle]} />
       {children}
     </ImageBackground>
   );

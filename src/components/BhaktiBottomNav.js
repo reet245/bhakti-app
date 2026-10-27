@@ -40,7 +40,7 @@ export function getBhaktiBottomNavContentPadding(height, extraPadding = 24) {
   return getBhaktiBottomNavHeight(height) + getBhaktiBottomNavBottomPadding(height) + extraPadding;
 }
 
-export default function BhaktiBottomNav({ activeTab, horizontalPadding, navigation, style }) {
+export default function BhaktiBottomNav({ activeTab, horizontalPadding, iconStyle, labelStyle, navigation, selectedItemStyle, style, surfaceStyle }) {
   const styles = useDevotionalStyles(baseStyles);
   const { currentLanguage } = useLanguage();
   const insets = useSafeAreaInsets();
@@ -64,7 +64,7 @@ export default function BhaktiBottomNav({ activeTab, horizontalPadding, navigati
         style,
       ]}
     >
-      <View style={styles.bottomNavInner}>
+      <View style={[styles.bottomNavInner, surfaceStyle]}>
         {BOTTOM_NAV_ITEMS.map((item) => {
           const isSelected = item.id === activeTab;
 
@@ -75,18 +75,18 @@ export default function BhaktiBottomNav({ activeTab, horizontalPadding, navigati
               accessibilityLabel={labels[item.id] || item.label}
               activeOpacity={0.82}
               onPress={() => navigation?.navigate?.(item.screen)}
-              style={[styles.bottomNavItem, { height: itemHeight }, isSelected && styles.bottomNavItemSelected]}
+              style={[styles.bottomNavItem, { height: itemHeight }, isSelected && styles.bottomNavItemSelected, isSelected && selectedItemStyle]}
             >
               <Image
                 source={item.image}
-                style={[styles.bottomNavIcon, { width: iconSize, height: iconSize }]}
+                style={[styles.bottomNavIcon, { width: iconSize, height: iconSize }, iconStyle]}
                 resizeMode="contain"
               />
               <Text
                 adjustsFontSizeToFit
                 minimumFontScale={0.72}
                 numberOfLines={1}
-                style={[styles.bottomNavLabel, { fontSize: labelSize }, isSelected && styles.bottomNavLabelSelected]}
+                style={[styles.bottomNavLabel, { fontSize: labelSize }, isSelected && styles.bottomNavLabelSelected, labelStyle]}
               >
                 {labels[item.id] || item.label}
               </Text>

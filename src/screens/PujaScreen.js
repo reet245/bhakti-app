@@ -19,7 +19,7 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Audio, ResizeMode, Video } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 
 import BhaktiBackButton, { BhaktiBackSpacer } from '../components/BhaktiBackButton';
 import BhaktiBottomNav, { getBhaktiBottomNavContentPadding } from '../components/BhaktiBottomNav';
@@ -27,6 +27,7 @@ import { useBhaktiTopPadding } from '../components/BhaktiLayout';
 import DevotionalBackground from '../components/DevotionalBackground';
 import { deities, pujaItems } from '../data/pujaData';
 import { useLanguage } from '../context/LanguageContext';
+import { configureForegroundAudio, createBundledPlayback } from '../utils/bundledAudio';
 
 const categories = [
   { id: 'All', labelKey: 'all' },
@@ -58,11 +59,12 @@ export default function PujaScreen({ navigation }) {
   const smoke5 = useRef(new Animated.Value(0)).current;
   const bellSwingValue = useRef(new Animated.Value(0)).current;
   const aartiMotionValue = useRef(new Animated.Value(0)).current;
-  const aartiSoundRef = useRef(null);
-  const bellSoundRef = useRef(null);
+  const aartiPlaybackRef = useRef(null);
+  const bellPlaybackRef = useRef(null);
   const aartiSessionRef = useRef(0);
   const bellSessionRef = useRef(0);
   const screenActiveRef = useRef(true);
+  const appActiveRef = useRef(!['background', 'inactive'].includes(AppState.currentState));
 
   const visibleDeities =
     activeCategory === 'All'
@@ -303,7 +305,8 @@ export default function PujaScreen({ navigation }) {
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state !== 'active') {
+      appActiveRef.current = state === 'active';
+      if (!appActiveRef.current) {
         stopBellAudio(); stopAartiAudio();
         setBellActive(false); setAartiActive(false);
       }
@@ -410,70 +413,68 @@ export default function PujaScreen({ navigation }) {
     }
   }
 
-  async function stopBellAudio(invalidateSession = true) {
+  function stopBellAudio(invalidateSession = true) {
     if (invalidateSession) bellSessionRef.current += 1;
-    const sound = bellSoundRef.current;
-    bellSoundRef.current = null;
-    if (sound) await sound.unloadAsync().catch(() => {});
+    const playback = bellPlaybackRef.current;
+    bellPlaybackRef.current = null;
+    playback?.dispose();
   }
 
   async function playBellAudio() {
     const sessionId = ++bellSessionRef.current;
     try {
-      await stopBellAudio(false);
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
-      if (!screenActiveRef.current || bellSessionRef.current !== sessionId) return;
-      const { sound } = await Audio.Sound.createAsync(pujaItems.bell.audio, {
-        shouldPlay: false, isLooping: true, volume: 0.55,
+      stopBellAudio(false);
+      await configureForegroundAudio();
+      if (!screenActiveRef.current || !appActiveRef.current || bellSessionRef.current !== sessionId) return;
+      const playback = createBundledPlayback(pujaItems.bell.audio, {
+        loop: true,
+        volume: 0.55,
+        onStatus: (status) => {
+          if (!screenActiveRef.current || !appActiveRef.current || bellSessionRef.current !== sessionId || !status.error) return;
+          stopBellAudio(); setBellActive(false);
+          Alert.alert('Audio unavailable', 'The bell could not be played. Please try again.');
+        },
       });
-      if (!screenActiveRef.current || bellSessionRef.current !== sessionId) {
-        await sound.unloadAsync(); return;
-      }
-      bellSoundRef.current = sound;
-      await sound.playAsync();
+      bellPlaybackRef.current = playback;
+      playback.play();
     } catch {
       if (screenActiveRef.current && bellSessionRef.current === sessionId) {
-        await stopBellAudio(); setBellActive(false);
+        stopBellAudio(); setBellActive(false);
         Alert.alert('Audio unavailable', 'The bell could not be played. Please try again.');
       }
     }
   }
 
-  async function stopAartiAudio(invalidateSession = true) {
+  function stopAartiAudio(invalidateSession = true) {
     if (invalidateSession) aartiSessionRef.current += 1;
-    const sound = aartiSoundRef.current;
-    aartiSoundRef.current = null;
-    if (sound) {
-      sound.setOnPlaybackStatusUpdate(null);
-      await sound.unloadAsync().catch(() => {});
-    }
+    const playback = aartiPlaybackRef.current;
+    aartiPlaybackRef.current = null;
+    playback?.dispose();
   }
 
   async function playAartiAudio() {
     const deity = selectedDeity || deities[0];
     const sessionId = ++aartiSessionRef.current;
     try {
-      await stopAartiAudio(false);
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
-      if (!deity?.aartiAudio || !screenActiveRef.current || aartiSessionRef.current !== sessionId) return;
-      const { sound } = await Audio.Sound.createAsync(deity.aartiAudio, {
-        shouldPlay: false, isLooping: false, volume: 0.75,
+      stopAartiAudio(false);
+      await configureForegroundAudio();
+      if (!screenActiveRef.current || !appActiveRef.current || aartiSessionRef.current !== sessionId) return;
+      if (!deity?.aartiAudio) throw new Error('Missing aarti recording');
+      const playback = createBundledPlayback(deity.aartiAudio, {
+        volume: 0.75,
+        onStatus: (status) => {
+          if (!screenActiveRef.current || !appActiveRef.current || aartiSessionRef.current !== sessionId) return;
+          if (status.didJustFinish || status.error) {
+            stopAartiAudio(); setAartiActive(false);
+            if (status.error) Alert.alert('Audio unavailable', 'The aarti could not be played. Please try again.');
+          }
+        },
       });
-      if (!screenActiveRef.current || aartiSessionRef.current !== sessionId) {
-        await sound.unloadAsync(); return;
-      }
-      aartiSoundRef.current = sound;
-      sound.setOnPlaybackStatusUpdate(status => {
-        if (!screenActiveRef.current || aartiSessionRef.current !== sessionId) return;
-        if ((status.isLoaded && status.didJustFinish) || (!status.isLoaded && status.error)) {
-          stopAartiAudio(); setAartiActive(false);
-          if (status.error) Alert.alert('Audio unavailable', 'The aarti could not be played. Please try again.');
-        }
-      });
-      await sound.playAsync();
+      aartiPlaybackRef.current = playback;
+      playback.play();
     } catch {
       if (screenActiveRef.current && aartiSessionRef.current === sessionId) {
-        await stopAartiAudio(); setAartiActive(false);
+        stopAartiAudio(); setAartiActive(false);
         Alert.alert('Audio unavailable', 'The aarti could not be played. Please try again.');
       }
     }
@@ -583,13 +584,9 @@ export default function PujaScreen({ navigation }) {
         )}
 
         {showAartiVideo && (
-          <Video
+          <AartiVideo
             source={deity.aartiVideo}
             style={styles.aartiVideo}
-            resizeMode={ResizeMode.COVER}
-            shouldPlay
-            isLooping
-            isMuted
           />
         )}
 
@@ -934,6 +931,38 @@ export default function PujaScreen({ navigation }) {
   if (viewMode === 'chooseDeity') return renderChooseDeity();
   if (viewMode === 'temple') return renderTemple();
   return renderChooseDeity();
+}
+
+function AartiVideo({ source, style }) {
+  const player = useVideoPlayer(source, (videoPlayer) => {
+    videoPlayer.loop = true;
+    videoPlayer.muted = true;
+    videoPlayer.audioMixingMode = 'mixWithOthers';
+    videoPlayer.staysActiveInBackground = false;
+  });
+
+  useFocusEffect(useCallback(() => {
+    if (!['background', 'inactive'].includes(AppState.currentState)) player.play();
+    const pause = () => {
+      // useVideoPlayer also releases its player automatically when this view unmounts.
+      try { player.pause(); } catch {}
+    };
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') pause();
+    });
+    return () => { subscription.remove(); pause(); };
+  }, [player]));
+
+  return (
+    <VideoView
+      player={player}
+      style={style}
+      contentFit="cover"
+      nativeControls={false}
+      allowsPictureInPicture={false}
+      playsInline
+    />
+  );
 }
 
 function isActionActive(actionId, state) {

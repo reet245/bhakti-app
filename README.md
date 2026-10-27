@@ -6,7 +6,7 @@ See [fix status and blockers](docs/FIX_STATUS.md) before treating this branch as
 
 ## Local development
 
-Use Node.js 22, npm, Java 17 and Maven 3.9 or later.
+Use Node.js 22.13 or later on the Node 22 LTS line, npm, Java 17 and Maven 3.9 or later.
 
 ```sh
 npm ci --ignore-scripts
@@ -31,6 +31,28 @@ npm run web
 ```
 
 The app requests device location only when you choose to detect it. Manual birthplace/Panchang selection is also available. No account/database is required for the present flows.
+
+### Opening on an Android phone with Expo Go
+
+This project uses Expo SDK 58. Use Expo Go for SDK 58 on Android; the [official Android download page](https://expo.dev/go?device=true&platform=android&sdkVersion=58) provides the matching build if the installed app reports a version mismatch.
+
+For `npm start`, connect the phone and computer to the same Wi-Fi network and scan the terminal's QR code in Expo Go.
+
+If the phone can open `http://<computer-wifi-address>:8081/status` but Expo Go times out with "Something went wrong", Expo's online development-certificate lookup may be stalled. Start Expo in its supported offline mode and scan the new QR code:
+
+```sh
+npm run start:offline
+```
+
+Offline mode still serves the app over Wi-Fi; it skips Expo CLI's online service requests and uses a cached development certificate when available. It does not disable the app's own network requests. Keep the terminal running. Do not combine `--offline` with `--lan`, because offline mode already selects LAN.
+
+If the phone cannot reach the computer at all, the tunnel command avoids the direct LAN connection:
+
+```sh
+npm run start:tunnel
+```
+
+Keep that terminal running and scan its new QR code. SDK 58's tunnel requires internet access on both devices and an Expo CLI sign-in (`npx expo login`), and can load more slowly. It tunnels Expo's development server only; backend features still need a separately reachable `EXPO_PUBLIC_API_BASE_URL`.
 
 ## Checks
 
@@ -62,13 +84,14 @@ EAS development, preview and production profiles use the corresponding EAS envir
 ## Feature data and limits
 
 - The backend proxies and caches horoscope RSS; the app no longer requests the feed directly from a browser. Hindi/provider-specific lucky values require a real source and show explicit unavailable states.
-- Location lookup returns candidates with coordinates and IANA timezones. Select the intended place; ambiguous names are not silently chosen. Public Open-Meteo geocoding is for noncommercial use: commercial deployment needs an appropriate customer endpoint/key or another licensed service. Include the displayed Open-Meteo/GeoNames attribution.
-- Dosha/remedy/muhurta features remain present with explicit availability messages where no real provider calculation exists.
-- The existing festival dataset covers 2026. No future religious dates are guessed or rolled forward by Gregorian day/month.
+- Kundli location lookup returns candidates with coordinates and IANA timezones. Select the intended place; ambiguous names are not silently chosen. Public Open-Meteo geocoding is for noncommercial use: commercial deployment needs an appropriate customer endpoint/key or another licensed service. Include the displayed Open-Meteo/GeoNames attribution. The calendar instead uses bundled city presets or manual coordinates and timezone, with no geocoding request.
+- The calendar has Month, Daily Panchang and illustrated Almanac views, home access, Hindi/English labels, saved location, date navigation and sharing. Panchang and North Indian Hindu festivals calculate offline with MIT-licensed `panchang-ts@5.4.0`; no API subscription, key or backend is needed for these calculations.
+- Calendar dates support 1900–2100, both lunar month systems, transition times, Sun/Moon events and traditional daily periods. Non-Hindu moving festivals retain explicitly labelled 2026 reference coverage. See [data sources, correction policy and limits](docs/CALENDAR_DATA.md); computational coverage does not certify every ritual date. Existing artwork is reused.
+- Dosha/remedy features remain present with explicit availability messages where no real provider calculation exists.
 - Longer devotional texts remain available as labeled partial texts until a verified complete edition is supplied. Only matching existing recordings are played.
 - Legacy simulated Kundli/matching screens are retained as demos, not connected as real calculations.
 - User preferences/favorites, Jaap progress, reminder ID and selected Panchang location are stored locally. Clear the saved location in Settings or clear app/browser storage to remove local data.
 
-Assets remain in `assets/`. Generated `.expo-check/` exports are no longer tracked; no source media was deleted. Broader media transcoding and migration from deprecated `expo-av` are documented as pending device/fidelity validation.
+Assets remain in `assets/`. Generated `.expo-check/` exports are no longer tracked; no source media was deleted. Playback uses `expo-audio` and `expo-video`; device playback and media fidelity still require physical-device validation. Broader media transcoding remains deferred.
 
 For optional **lossless** PNG recompression of an already exported web build, run `node scripts/optimize-web-png.cjs dist`. This checks the export root, preserves metadata and exact inflated pixel data, writes only smaller results, and stops after a bounded time. Measured savings were modest, so it is not part of the default build.

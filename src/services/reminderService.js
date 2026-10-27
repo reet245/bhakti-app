@@ -1,10 +1,12 @@
 import { Platform } from 'react-native';
-import Constants from 'expo-constants';
+import { isRunningInExpoGo } from 'expo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY = 'bhakti-daily-reminder';
 export function supportsReminders() {
-  return Platform.OS !== 'web' && Constants.executionEnvironment !== 'storeClient';
+  // SDK 58 Expo Go can report the same executionEnvironment as an installed app.
+  // Detect Expo Go directly before importing notification modules it does not include.
+  return Platform.OS !== 'web' && !isRunningInExpoGo();
 }
 export async function initializeReminderHandler() {
   if (!supportsReminders()) return;

@@ -1,203 +1,90 @@
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Share, Text, View } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import useDevotionalStyles from '../hooks/useDevotionalStyles';
-import { Share, ImageBackground, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
-
-import { normalizePanchangData } from '../services/panchangService';
-import BhaktiBackButton from '../components/BhaktiBackButton';
-import { useBhaktiTopPadding } from '../components/BhaktiLayout';
-
-const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
-const DEVOTIONAL_FONT = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
-
-function getTodayParts() {
-  const today = new Date();
-  return { year: today.getFullYear(), month: today.getMonth(), day: today.getDate() };
-}
+import { getPanchangFromAPI } from '../services/panchangService';
+import { CalendarPage, Action, DataNotes, calendarStyles, useCalendarCopy } from '../features/panchang/CalendarUI';
+import { dateISO, parseLocalDate } from '../features/panchang/date';
+import { usePanchangLocation, usePanchangToday } from '../features/panchang/locationStore';
+import engine from '../features/panchang/engine.cjs';
 
 export default function TithiDetailScreen({ navigation, route }) {
-  const styles = useDevotionalStyles(baseStyles);
-  const { width } = useWindowDimensions();
-  const topPadding = useBhaktiTopPadding(width, 'title');
-  const panchang = normalizePanchangData(route?.params?.panchang, getTodayParts());
-  const contentWidth = Math.max(282, Math.min(width - Math.max(28, width * 0.09), 660));
+  const s = useDevotionalStyles(calendarStyles);
+  const { c, value, hi, locale } = useCalendarCopy();
+  const isFocused = useIsFocused();
+  const [savedLocation] = usePanchangLocation();
+  const location = useMemo(() => ({ ...savedLocation, ...route?.params?.location }), [savedLocation, route?.params?.location]);
+  const today = usePanchangToday(location.timezone, navigation);
+  const selectedDateISO = dateISO(parseLocalDate(route?.params?.selectedDateISO || route?.params?.dateISO || route?.params?.panchang?.dateISO, today));
+  const requestKey = `${selectedDateISO}:${location.latitude}:${location.longitude}:${location.timezone}:${location.locationName}`;
+  const [result, setResult] = useState(null);
+  const [retry, setRetry] = useState(0);
+  const [shareError, setShareError] = useState(false);
+  const current = result?.key === requestKey ? result : null;
+  const panchang = current?.data;
 
-  const auspiciousFor = [
-    'Mantra japa and quiet prayer',
-    'Lighting a diya at home',
-    'Charity, gratitude, and sankalp',
-    panchang.recommendedPuja,
-  ].filter(Boolean);
-  const avoidList = [
-    'Rushed decisions during Rahu Kaal',
-    'Harsh speech or conflict',
-    'Starting important work without checking muhurta',
-  ];
+  useEffect(() => {
+    if (!isFocused) return;
+    let active = true;
+    const controller = new AbortController();
+    const selected = parseLocalDate(selectedDateISO);
+    setShareError(false);
+    getPanchangFromAPI({ ...location, year: selected.getFullYear(), month: selected.getMonth(), day: selected.getDate(), signal: controller.signal })
+      .then((data) => { if (active) setResult({ key: requestKey, data }); })
+      .catch((error) => { if (active && !controller.signal.aborted) setResult({ key: requestKey, error: error.message }); });
+    return () => { active = false; controller.abort(); };
+  }, [requestKey, location, isFocused, retry]);
 
+  const dateLabel = parseLocalDate(selectedDateISO).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
+  const transitions = panchang?.transitions?.tithi || [];
+  const formatTime = (instant) => engine.formatEvent(instant, location.timezone, selectedDateISO, hi ? 'hi' : 'en');
   const shareTithi = async () => {
+    if (!panchang || panchang.noSunrise) return;
+    setShareError(false);
+    const timeline = transitions.map((item) => `${value(item, 'name')}: ${formatTime(item.start)} – ${value(item, 'endTime')}`).join('\n');
     try {
       await Share.share({
-        title: `${panchang.tithi} Tithi`,
-        message: `${panchang.tithi} | ${panchang.paksha}\nEnds: ${panchang.tithiEnd}\n${panchang.importance}`,
+        title: c('Bhakti · Tithi', 'भक्ति · तिथि'),
+        message: `${dateLabel}\n${location.locationName} · ${location.timezone}\n${timeline || value(panchang, 'tithiFull')}\n${c('Calculated with Lahiri ayanamsa. Confirm fasting observance with your local tradition.', 'लाहिड़ी अयनांश से गणना। व्रत की तिथि अपनी स्थानीय परंपरा से मिलाएँ।')}`,
       });
-    } catch (error) {
-      console.warn('Tithi share failed:', error?.message);
-    }
+    } catch (error) { if (error?.name !== 'AbortError') setShareError(true); }
   };
 
-  return (
-    <ImageBackground source={BG_IMAGE} style={styles.background} resizeMode="cover">
-      <View style={styles.overlay} />
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView
-          contentContainerStyle={[styles.content, { paddingTop: topPadding, width: contentWidth }]}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.header}>
-            <BhaktiBackButton navigation={navigation} />
-            <Text style={styles.headerTitle}>Tithi Detail</Text>
-            <TouchableOpacity style={styles.iconButton} activeOpacity={0.78} onPress={shareTithi}>
-              <Text style={styles.shareIcon}>{'\u2197'}</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.heroCard}>
-            <View style={styles.moonHero}>
-              <View style={styles.moonShadow} />
-              <Text style={styles.moonText}>{panchang.isPurnima ? '\u25CB' : panchang.isAmavasya ? '\u25CF' : '\u25D0'}</Text>
-            </View>
-            <Text style={styles.tithiName}>{panchang.tithi}</Text>
-            <Text style={styles.tithiMeta}>{panchang.paksha} | Ends {panchang.tithiEnd}</Text>
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>About This Tithi</Text>
-            <Text style={styles.bodyText}>{panchang.importance}</Text>
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>General Devotional Activities</Text>
-            <Text style={styles.bodyText}>These are general suggestions; specific tithi suitability and muhurta times have not been calculated.</Text>
-            {auspiciousFor.map((item) => (
-              <View key={item} style={styles.listRow}>
-                <Text style={styles.listIcon}>{'\u273A'}</Text>
-                <Text style={styles.listText}>{item}</Text>
-              </View>
-            ))}
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>General Guidance</Text>
-            {avoidList.map((item) => (
-              <View key={item} style={styles.listRow}>
-                <Text style={[styles.listIcon, styles.avoidIcon]}>{'\u25D2'}</Text>
-                <Text style={styles.listText}>{item}</Text>
-              </View>
-            ))}
-          </View>
-
-          <TouchableOpacity style={styles.primaryButton} activeOpacity={0.84} onPress={shareTithi}>
-            <Text style={styles.primaryButtonText}>Share</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </ImageBackground>
-  );
+  return <CalendarPage navigation={navigation} title={c('Tithi details', 'तिथि विवरण')} action={<Action disabled={!panchang || panchang.noSunrise} onPress={shareTithi}>{c('Share', 'साझा')}</Action>}>
+    <Text selectable style={s.bodyBold}>{dateLabel}</Text>
+    <Text selectable style={s.hint}>{location.locationName} · {location.timezone}</Text>
+    {!current ? <View style={s.card}><ActivityIndicator color="#C99416" /><Text style={s.hint}>{c('Calculating tithi…', 'तिथि की गणना हो रही है…')}</Text></View> : null}
+    {current?.error ? <View style={s.card}><Text accessibilityRole="alert" style={s.body}>{c(`Unable to calculate this date. ${current.error}`, 'इस तारीख की गणना नहीं हो सकी। स्थान और तारीख जाँचें।')}</Text><Action onPress={() => { setResult(null); setRetry((n) => n + 1); }}>{c('Try again', 'फिर प्रयास करें')}</Action></View> : null}
+    {panchang?.noSunrise ? <View style={s.card}><Text style={s.body}>{c('A sunrise-based Panchang cannot be shown because this location has no complete sunrise and sunset cycle on the selected date.', 'इस स्थान पर चुनी तारीख में सूर्योदय और सूर्यास्त का पूरा चक्र नहीं है, इसलिए सूर्योदय आधारित पंचांग नहीं दिखाया जा सकता।')}</Text></View> : null}
+    {panchang && !panchang.noSunrise ? <>
+      <View style={s.hero}>
+        <View style={s.row}>
+          <Text accessible={false} style={[s.symbol, { fontSize: 50, width: 64 }]}>{panchang.isPurnima ? '○' : panchang.isAmavasya ? '●' : '◐'}</Text>
+          <View style={{ flex: 1 }}><Text style={s.heroTitle}>{value(panchang, 'tithi')}</Text><Text style={s.bodyBold}>{value(panchang, 'paksha')}</Text></View>
+        </View>
+        <Text style={s.body}>{value(panchang, 'purnimantaMonth')} · {c('Vikram Samvat', 'विक्रम संवत')} {panchang.vikramSamvat}</Text>
+        <Text style={s.hint}>{c('Present at local sunrise', 'स्थानीय सूर्योदय पर तिथि')}: {panchang.sunrise}</Text>
+      </View>
+      <View style={s.card}>
+        <Text style={s.sectionTitle}>{c('Tithi transitions', 'तिथि परिवर्तन')}</Text>
+        <Text style={s.hint}>{c('Tithis intersecting this sunrise-to-sunrise day. Each row shows its actual start and end; a tithi can continue beyond the next sunrise.', 'इस सूर्योदय से अगले सूर्योदय के बीच आने वाली तिथियाँ। हर पंक्ति में वास्तविक आरंभ और समाप्ति दिखाई गई है; तिथि अगले सूर्योदय के बाद भी चल सकती है।')}</Text>
+        {transitions.map((item) => <View key={`${item.index}-${item.start}`} style={[s.tableRow, { flexDirection: 'column', gap: 4 }]}>
+          <Text selectable style={s.bodyBold}>{value(item, 'name')}{item.isActiveAtSunrise ? c(' · at sunrise', ' · सूर्योदय पर') : ''}</Text>
+          <Text selectable style={s.body}>{c('Starts', 'आरंभ')}: {formatTime(item.start)}</Text>
+          <Text selectable style={s.body}>{c('Ends', 'समाप्ति')}: {value(item, 'endTime')}</Text>
+          {item.continuesAfterNextSunrise ? <Text style={s.hint}>{c('Continues beyond the next sunrise.', 'अगले सूर्योदय के बाद भी जारी रहती है।')}</Text> : null}
+        </View>)}
+        {!transitions.length ? <Text style={s.body}>{c('No tithi transition records for this date.', 'इस तारीख के तिथि परिवर्तन उपलब्ध नहीं हैं।')}</Text> : null}
+      </View>
+      <View style={s.card}>
+        <Text style={s.sectionTitle}>{c('Understanding a tithi', 'तिथि को समझें')}</Text>
+        <Text style={s.body}>{c('A tithi is a lunar day, defined by each 12° increase in the Moon–Sun angular separation. Its duration is not fixed at 24 hours, so it can start or end at any time of the civil day.', 'तिथि चंद्र दिवस है, जो सूर्य और चंद्रमा के बीच कोणीय अंतर में प्रत्येक 12° वृद्धि से बनती है। इसकी अवधि हमेशा 24 घंटे नहीं होती, इसलिए यह दिन के किसी भी समय शुरू या समाप्त हो सकती है।')}</Text>
+        <Text style={s.hint}>{c('The tithi present at sunrise identifies the day in this calendar. A festival or fast may use another time, such as moonrise or sunset, and its own observance rules.', 'इस पंचांग में सूर्योदय की तिथि से दिन की पहचान होती है। किसी पर्व या व्रत के लिए चंद्रोदय या सूर्यास्त जैसी दूसरी अवधि और परंपरा के नियम लागू हो सकते हैं।')}</Text>
+      </View>
+      <Action onPress={() => navigation.navigate('PanchangMuhurtas', { selectedDateISO, location })}>{c('View this day’s muhurtas', 'इस दिन के मुहूर्त देखें')}</Action>
+      {shareError ? <Text accessibilityRole="alert" style={s.hint}>{c('Sharing is unavailable here. You can read and copy the date and times above.', 'यहाँ साझा करने की सुविधा उपलब्ध नहीं है। ऊपर की तारीख और समय पढ़कर कॉपी कर सकते हैं।')}</Text> : null}
+    </> : null}
+    <Action onPress={() => navigation.navigate('Calendar', { selectedDateISO })}>{c('Full daily Panchang', 'पूरा दैनिक पंचांग')}</Action>
+    <DataNotes />
+  </CalendarPage>;
 }
-
-const baseStyles = StyleSheet.create({
-  background: { flex: 1 },
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255, 247, 228, 0.76)' },
-  safeArea: { flex: 1 },
-  content: { alignSelf: 'center', paddingBottom: 28 },
-  header: {
-    minHeight: 42,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 250, 239, 0.96)',
-    borderWidth: 1,
-    borderColor: 'rgba(216, 177, 92, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shareIcon: { color: '#8A520B', fontSize: 16, fontWeight: '900' },
-  headerTitle: {
-    flex: 1,
-    color: '#3F2713',
-    fontFamily: DEVOTIONAL_FONT,
-    fontSize: 22,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  heroCard: {
-    alignItems: 'center',
-    marginTop: 12,
-    borderRadius: 24,
-    backgroundColor: '#F4D991',
-    borderWidth: 1,
-    borderColor: 'rgba(156, 106, 24, 0.25)',
-    padding: 18,
-    shadowColor: '#9C6420',
-    shadowOpacity: 0.16,
-    shadowRadius: 13,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
-  },
-  moonHero: {
-    width: 122,
-    height: 122,
-    borderRadius: 61,
-    backgroundColor: '#FFF8E8',
-    borderWidth: 2,
-    borderColor: '#F1CA6B',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  moonShadow: {
-    position: 'absolute',
-    right: -18,
-    top: 0,
-    width: 78,
-    height: 122,
-    borderRadius: 60,
-    backgroundColor: 'rgba(184, 121, 24, 0.16)',
-  },
-  moonText: { color: '#8A520B', fontSize: 54, fontWeight: '900' },
-  tithiName: { color: '#3F2713', fontSize: 25, fontWeight: '900', marginTop: 12, textAlign: 'center' },
-  tithiMeta: { color: '#7A5520', fontSize: 12, fontWeight: '900', marginTop: 4, textAlign: 'center' },
-  card: {
-    marginTop: 12,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 250, 239, 0.97)',
-    borderWidth: 1,
-    borderColor: 'rgba(216, 177, 92, 0.46)',
-    padding: 14,
-    shadowColor: '#7A552A',
-    shadowOpacity: 0.1,
-    shadowRadius: 9,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  sectionTitle: { color: '#3F2713', fontSize: 16, fontWeight: '900', marginBottom: 8 },
-  bodyText: { color: '#6B461C', fontSize: 13, lineHeight: 20, fontWeight: '800' },
-  listRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 6 },
-  listIcon: { width: 22, color: '#A36A12', fontSize: 14, fontWeight: '900', marginTop: 1 },
-  avoidIcon: { color: '#A94D3A' },
-  listText: { flex: 1, color: '#5C3A0E', fontSize: 13, lineHeight: 18, fontWeight: '800' },
-  primaryButton: {
-    minHeight: 43,
-    borderRadius: 22,
-    backgroundColor: '#C58C1B',
-    borderWidth: 1,
-    borderColor: '#F1CA6B',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-  },
-  primaryButtonText: { color: '#FFF8E8', fontSize: 14, fontWeight: '900' },
-});

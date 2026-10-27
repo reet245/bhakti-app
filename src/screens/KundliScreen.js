@@ -32,6 +32,14 @@ const BELL_IMAGE = require('../../assets/horoscope/decorations/hanging-bell.png'
 const KUNDLI_ZODIAC_WHEEL = require('../../assets/kundli/kundli-zodiac-wheel.png');
 
 const COLORS = {
+  homeBackground: '#F1EBE2',
+  homeCard: '#F5F1EA',
+  homeText: '#342C25',
+  homeTextSoft: '#62564B',
+  homeAccent: '#765B34',
+  homeIconSurface: '#E7DDD0',
+  homeBorder: '#C9BDAE',
+  homeShadow: '#524331',
   parchment: 'rgba(255, 251, 239, 0.96)',
   parchmentStrong: '#FFF8E8',
   cream: '#F9EAC7',
@@ -336,8 +344,11 @@ export default function KundliScreen({ navigation }) {
   const resultDisplayPlace = safeValue(resultProfile?.placeName);
 
   return (
-    <DevotionalBackground style={styles.background}>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
+    <DevotionalBackground
+      style={styles.background}
+      overlayStyle={screen === 'home' ? homeStyles.homeBackgroundOverlay : undefined}
+    >
+      <StatusBar style={screen === 'home' ? 'dark' : isDark ? 'light' : 'dark'} />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
           style={styles.flex}
@@ -448,7 +459,14 @@ export default function KundliScreen({ navigation }) {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
-        <BhaktiBottomNav activeTab="Kundli" navigation={navigation} />
+        <BhaktiBottomNav
+          activeTab="Kundli"
+          navigation={navigation}
+          surfaceStyle={screen === 'home' ? homeStyles.homeNavSurface : undefined}
+          labelStyle={screen === 'home' ? homeStyles.homeNavLabel : undefined}
+          iconStyle={screen === 'home' ? homeStyles.homeNavIcon : undefined}
+          selectedItemStyle={screen === 'home' ? homeStyles.homeNavSelectedItem : undefined}
+        />
       </SafeAreaView>
 
       <HouseModal house={selectedHouse} onClose={() => setSelectedHouse(null)} />
@@ -457,11 +475,11 @@ export default function KundliScreen({ navigation }) {
 }
 
 function KundliHomePage({ layout, onBack, onCreate }) {
-  const styles = useDevotionalStyles(baseStyles);
+  const styles = homeStyles;
   return (
     <View style={styles.homePage}>
       <View style={styles.homeTopBar}>
-        <BhaktiBackButton onPress={onBack} />
+        <BhaktiBackButton onPress={onBack} color={COLORS.homeText} />
       </View>
 
       <View style={styles.homeHero}>
@@ -533,8 +551,8 @@ function KundliHomePage({ layout, onBack, onCreate }) {
           pressed && styles.homeCtaPressed,
         ]}
       >
-        <View pointerEvents="none" style={styles.homeCtaHighlight} />
-        <Text style={styles.homeCtaText}>Create Your Kundli {'\u2728'}</Text>
+        <Text style={styles.homeCtaText}>Create Your Kundli</Text>
+        <Text style={styles.homeCtaIcon}>{'\u203A'}</Text>
       </Pressable>
     </View>
   );
@@ -1755,28 +1773,28 @@ function PlanetModal({ planet, onClose }) {
 
 const serifFont = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
 
-const baseStyles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  background: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  },
-  safeArea: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingTop: 4,
-  },
-  contentShell: {
-    width: '100%',
-    alignSelf: 'center',
-  },
+// Keep the requested neutral home palette independent of the automatic dark
+// recoloring used by the form and result screens.
+const homeStyles = StyleSheet.create({
   homePage: {
     width: '100%',
+  },
+  homeBackgroundOverlay: {
+    backgroundColor: COLORS.homeBackground,
+  },
+  homeNavSurface: {
+    backgroundColor: COLORS.homeCard,
+    borderColor: COLORS.homeBorder,
+    shadowColor: COLORS.homeShadow,
+  },
+  homeNavLabel: {
+    color: COLORS.homeText,
+  },
+  homeNavIcon: {
+    tintColor: COLORS.homeAccent,
+  },
+  homeNavSelectedItem: {
+    backgroundColor: COLORS.homeIconSurface,
   },
   homeTopBar: {
     height: 54,
@@ -1797,13 +1815,13 @@ const baseStyles = StyleSheet.create({
     paddingRight: 6,
   },
   homeHeroTitle: {
-    color: COLORS.text,
+    color: COLORS.homeText,
     fontFamily: serifFont,
     fontWeight: '900',
     letterSpacing: -0.8,
   },
   homeHeroSubtitle: {
-    color: COLORS.textSoft,
+    color: COLORS.homeTextSoft,
     fontWeight: '500',
     marginTop: 15,
   },
@@ -1822,9 +1840,9 @@ const baseStyles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 17,
     borderWidth: 1,
-    borderColor: 'rgba(190, 137, 42, 0.34)',
-    backgroundColor: '#FFFAEF',
-    shadowColor: COLORS.shadow,
+    borderColor: COLORS.homeBorder,
+    backgroundColor: COLORS.homeCard,
+    shadowColor: COLORS.homeShadow,
     shadowOpacity: 0.06,
     shadowRadius: 7,
     shadowOffset: { width: 0, height: 3 },
@@ -1836,13 +1854,13 @@ const baseStyles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(245, 220, 159, 0.42)',
+    backgroundColor: COLORS.homeIconSurface,
     borderWidth: 1,
-    borderColor: 'rgba(190, 137, 42, 0.3)',
+    borderColor: COLORS.homeBorder,
     marginRight: 13,
   },
   featureIconText: {
-    color: COLORS.goldDark,
+    color: COLORS.homeAccent,
     fontSize: 18,
     fontWeight: '800',
   },
@@ -1851,19 +1869,19 @@ const baseStyles = StyleSheet.create({
     minWidth: 0,
   },
   featureTitle: {
-    color: COLORS.text,
+    color: COLORS.homeText,
     fontFamily: serifFont,
     fontSize: 15,
     fontWeight: '900',
   },
   featureDescription: {
-    color: COLORS.textSoft,
+    color: COLORS.homeTextSoft,
     fontSize: 11,
     lineHeight: 16,
     marginTop: 4,
   },
   featureChevron: {
-    color: COLORS.gold,
+    color: COLORS.homeAccent,
     fontSize: 23,
     fontWeight: '400',
     marginLeft: 7,
@@ -1872,41 +1890,58 @@ const baseStyles = StyleSheet.create({
     width: '100%',
     minHeight: 56,
     borderRadius: 14,
-    backgroundColor: '#B87918',
+    backgroundColor: COLORS.homeCard,
     borderWidth: 1,
-    borderColor: '#F0C96C',
+    borderColor: COLORS.homeAccent,
+    flexDirection: 'row',
+    columnGap: 10,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
     marginTop: 22,
     paddingHorizontal: 18,
-    shadowColor: COLORS.goldDark,
-    shadowOpacity: 0.28,
-    shadowRadius: 11,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
-  },
-  homeCtaHighlight: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '48%',
-    backgroundColor: 'rgba(238, 188, 78, 0.56)',
+    shadowColor: COLORS.homeShadow,
+    shadowOpacity: 0.08,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   homeCtaPressed: {
-    opacity: 0.86,
     transform: [{ scale: 0.99 }],
   },
   homeCtaText: {
-    color: '#FFF9EA',
+    color: COLORS.homeText,
     fontFamily: serifFont,
     fontSize: 16,
     fontWeight: '900',
     textAlign: 'center',
-    textShadowColor: 'rgba(91, 54, 7, 0.22)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+  },
+  homeCtaIcon: {
+    color: COLORS.homeAccent,
+    fontSize: 24,
+    fontWeight: '600',
+  },
+});
+
+const baseStyles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
+  background: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  safeArea: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingTop: 4,
+  },
+  contentShell: {
+    width: '100%',
+    alignSelf: 'center',
   },
   formHeader: {
     minHeight: 112,

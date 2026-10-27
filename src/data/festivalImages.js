@@ -1,4 +1,5 @@
 export const festivalImages = {
+  akshayaTritiya: require('../../assets/festivals/akshaya_tritiya.png'),
   bhaiDooj: require('../../assets/festivals/bhai_dooj.png'),
   chhath: require('../../assets/festivals/chhath.png'),
   christmas: require('../../assets/festivals/christmas.png'),
@@ -17,10 +18,12 @@ export const festivalImages = {
   karwaChauth: require('../../assets/festivals/karwa_chauth.png'),
   laxmiPuja: require('../../assets/festivals/laxmi_puja.png'),
   lohri: require('../../assets/festivals/lohri.png'),
+  mahaShivratri: require('../../assets/festivals/maha_shivratri.png'),
   makarSankranti: require('../../assets/festivals/makar_sankranti.png'),
   nagPanchami: require('../../assets/festivals/nag_panchami.png'),
   navratri: require('../../assets/festivals/navratri.png'),
   newYear: require('../../assets/festivals/new_year.png'),
+  pongal: require('../../assets/festivals/pongal.png'),
   rakshaBandhan: require('../../assets/festivals/raksha_bandhan.png'),
   ramNavami: require('../../assets/festivals/ram_navami.png'),
   republicDay: require('../../assets/festivals/republic_day.png'),

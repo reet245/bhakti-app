@@ -1,8 +1,9 @@
 import useDevotionalStyles from '../hooks/useDevotionalStyles';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   ImageBackground,
+  ActivityIndicator,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -13,8 +14,10 @@ import {
   View,
 } from 'react-native';
 
-import { festivals, FESTIVAL_COVERAGE, FESTIVAL_DATE_NOTE } from '../data/festivalData';
+import { getFeaturedYearFestivals } from '../features/panchang/featuredFestivals';
+import { getPendingRegionalFestivals } from '../features/panchang/regionalFestivalReferences';
 import { festivalImages } from '../data/festivalImages';
+import { deityArt } from '../features/panchang/CalendarUI';
 import { useLanguage } from '../context/LanguageContext';
 import { usePanchangLocation, usePanchangToday } from '../features/panchang/locationStore';
 import { dateISO } from '../features/panchang/date';
@@ -25,6 +28,7 @@ const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
 const DEVOTIONAL_FONT = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
 
 const tabs = [
+  { id: 'all', labelKey: 'all' },
   { id: 'upcoming', labelKey: 'upcoming' },
   { id: 'past', labelKey: 'pastFestivals' },
 ];
@@ -56,12 +60,13 @@ function getInitials(name = '') {
 
 function FestivalSticker({ festival, responsiveStyles }) {
   const styles = useDevotionalStyles(baseStyles);
-  const imageSource = festivalImages[festival?.imageKey];
+  const festivalImage = festivalImages[festival?.imageKey];
+  const imageSource = festivalImage || deityArt[festival?.deityId];
 
   return (
     <View style={[styles.festivalImageWrap, responsiveStyles.festivalImageWrap]}>
       {imageSource ? (
-        <Image source={imageSource} style={styles.festivalImage} resizeMode="cover" />
+        <Image source={imageSource} style={styles.festivalImage} resizeMode={festivalImage ? 'cover' : 'contain'} />
       ) : (
         <View style={styles.placeholderPanel}>
           <Text style={[styles.placeholderInitials, responsiveStyles.placeholderInitials]}>
@@ -73,7 +78,7 @@ function FestivalSticker({ festival, responsiveStyles }) {
   );
 }
 
-export default function UpcomingFestivalsScreen({ navigation }) {
+export default function UpcomingFestivalsScreen({ navigation, route }) {
   const styles = useDevotionalStyles(baseStyles);
   const { t, currentLanguage } = useLanguage();
   const [location] = usePanchangLocation();
@@ -81,7 +86,35 @@ export default function UpcomingFestivalsScreen({ navigation }) {
   const todayISO = dateISO(today);
   const { width, height } = useWindowDimensions();
   const topPadding = useBhaktiTopPadding(width, 'title');
-  const [activeTab, setActiveTab] = useState('upcoming');
+  const [activeTab, setActiveTab] = useState(route?.params?.year ? 'all' : 'upcoming');
+  const [year, setYear] = useState(() => route?.params?.year || today.getFullYear());
+  const [yearItems, setYearItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (route?.params?.year) { setYear(route.params.year); setActiveTab('all'); }
+  }, [route?.params?.year]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError('');
+    const timer = setTimeout(() => {
+      try {
+        const items = getFeaturedYearFestivals({ year, ...location, language: currentLanguage });
+        if (!cancelled) setYearItems(items);
+      } catch (failure) {
+        if (!cancelled) { setYearItems([]); setError(failure.message); }
+      } finally { if (!cancelled) setLoading(false); }
+    }, 0);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [year, location, currentLanguage]);
+
+  const changeYear = (offset) => {
+    setYear((value) => Math.max(1900, Math.min(2100, value + offset)));
+    setActiveTab('all');
+  };
 
   const responsiveStyles = useMemo(() => {
     const compactWidth = Math.min(width, 520);
@@ -191,20 +224,18 @@ export default function UpcomingFestivalsScreen({ navigation }) {
   }, [height, topPadding, width]);
 
   const festivalSections = useMemo(() => {
-    const sortedFestivals = [...festivals].sort((first, second) => first.dateISO.localeCompare(second.dateISO));
-    const visibleFestivals = sortedFestivals.filter((festival) => activeTab === 'upcoming' ? festival.dateISO >= todayISO : festival.dateISO < todayISO);
+    const visibleFestivals = yearItems.filter((festival) => activeTab === 'all' || (activeTab === 'upcoming' ? festival.dateISO >= todayISO : festival.dateISO < todayISO));
     return groupFestivalsByMonth(visibleFestivals, currentLanguage);
-  }, [activeTab, todayISO, currentLanguage]);
+  }, [activeTab, todayISO, currentLanguage, yearItems]);
 
-  const beyondCoverage = todayISO > FESTIVAL_COVERAGE.end;
-  const emptyMessage = activeTab === 'upcoming'
-    ? (beyondCoverage
-      ? (currentLanguage === 'hi' ? 'इस कैलेंडर में 2026 तक की तिथियाँ हैं। आगे की तिथियाँ अभी उपलब्ध नहीं हैं।' : 'This calendar contains dates through 2026. Later festival dates are not available yet.')
-      : (currentLanguage === 'hi' ? '2026 की शेष सूची में कोई उत्सव नहीं है।' : 'No more festivals in the bundled 2026 calendar.'))
-    : (currentLanguage === 'hi' ? 'इस सूची में पिछली तिथियाँ नहीं मिलीं।' : 'No past festivals in this calendar.');
+  const emptyMessage = currentLanguage === 'hi'
+    ? 'इस चयन में कोई उत्सव नहीं है। सभी उत्सव या दूसरा वर्ष चुनें।'
+    : 'No festivals in this selection. Choose All festivals or another year.';
+  const pendingFestivals = activeTab !== 'past' && year >= today.getFullYear()
+    ? getPendingRegionalFestivals(year, currentLanguage) : [];
 
   const openFestivalStory = (festival) => {
-    navigation?.navigate?.('FestivalDetail', { festivalId: festival.id });
+    navigation?.navigate?.('FestivalDetail', { festival, dateISO: festival.dateISO, festivalKey: festival.key });
   };
 
   return (
@@ -227,10 +258,15 @@ export default function UpcomingFestivalsScreen({ navigation }) {
               </View>
               <Text style={[styles.subtitle, responsiveStyles.subtitle]}>
                 {t('stayConnectedCelebrations')}
-                {'\n'}{currentLanguage === 'hi' ? '2026 की संदर्भ तिथियाँ। क्षेत्र और परंपरा के अनुसार तिथि की पुष्टि करें।' : FESTIVAL_DATE_NOTE}
+                {'\n'}{currentLanguage === 'hi' ? 'भारत के प्रमुख त्योहार · चुनिंदा एकादशियाँ' : 'Major festivals across India · Selected Ekadashis'}
                 {'\n'}{location.locationName}
-                {currentLanguage === 'hi' && '\nउत्सवों के नाम और कथाएँ अभी अंग्रेज़ी में उपलब्ध हैं।'}
               </Text>
+            </View>
+
+            <View style={[styles.tabRow, responsiveStyles.tabRow, { alignItems: 'center' }]}>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel={currentLanguage === 'hi' ? 'पिछला वर्ष' : 'Previous year'} disabled={year <= 1900} style={[styles.tabButton, responsiveStyles.tabButton]} onPress={() => changeYear(-1)}><Text style={styles.tabText}>‹</Text></TouchableOpacity>
+              <Text accessibilityRole="header" style={[styles.sectionTitle, { flex: 2, textAlign: 'center' }]}>{year}</Text>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel={currentLanguage === 'hi' ? 'अगला वर्ष' : 'Next year'} disabled={year >= 2100} style={[styles.tabButton, responsiveStyles.tabButton]} onPress={() => changeYear(1)}><Text style={styles.tabText}>›</Text></TouchableOpacity>
             </View>
 
             <View style={[styles.tabRow, responsiveStyles.tabRow]}>
@@ -240,19 +276,21 @@ export default function UpcomingFestivalsScreen({ navigation }) {
                 return (
                   <TouchableOpacity
                     key={tab.id}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: isActive }}
                     style={[styles.tabButton, responsiveStyles.tabButton, isActive && styles.tabButtonActive]}
                     onPress={() => setActiveTab(tab.id)}
                     activeOpacity={0.82}
                   >
                     <Text style={[styles.tabText, responsiveStyles.tabText, isActive && styles.tabTextActive]}>
-                      {t(tab.labelKey)}
+                      {tab.id === 'all' ? (currentLanguage === 'hi' ? 'सभी उत्सव' : 'All festivals') : t(tab.labelKey)}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
 
-            {festivalSections.length > 0 ? (
+            {loading ? <ActivityIndicator size="large" color="#A36A12" accessibilityLabel={currentLanguage === 'hi' ? 'उत्सव लोड हो रहे हैं' : 'Loading festivals'} /> : error ? <Text style={styles.emptyText}>{error}</Text> : festivalSections.length > 0 ? (
               <View style={[styles.sectionList, responsiveStyles.sectionList]}>
                 {festivalSections.map((section) => (
                   <View key={section.id} style={[styles.section, responsiveStyles.section]}>
@@ -262,6 +300,8 @@ export default function UpcomingFestivalsScreen({ navigation }) {
                       {section.festivals.map((festival) => (
                         <TouchableOpacity
                           key={festival.id}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${festival.name}, ${festival.dateText}`}
                           style={[styles.card, responsiveStyles.card]}
                           activeOpacity={0.86}
                           onPress={() => openFestivalStory(festival)}
@@ -285,7 +325,7 @@ export default function UpcomingFestivalsScreen({ navigation }) {
                                 style={[styles.cardAction, responsiveStyles.cardAction]}
                                 numberOfLines={1}
                               >
-                                {currentLanguage === 'hi' ? 'कथा देखें' : 'View Story'}
+                                {currentLanguage === 'hi' ? 'विवरण देखें' : 'View details'}
                               </Text>
                               <Text style={[styles.cardActionArrow, responsiveStyles.cardAction]}>{'>'}</Text>
                             </View>
@@ -301,6 +341,17 @@ export default function UpcomingFestivalsScreen({ navigation }) {
                 <Text style={[styles.emptyText, responsiveStyles.emptyText]}>{emptyMessage}</Text>
               </View>
             )}
+            {!loading && !error && pendingFestivals.length > 0 && (
+              <Text style={[styles.subtitle, { marginTop: 20 }]}>
+                {currentLanguage === 'hi' ? 'तिथि की पुष्टि बाकी है: ' : 'Dates to be confirmed: '}
+                {pendingFestivals.map((festival) => festival.name).join(', ')}
+              </Text>
+            )}
+            <Text style={[styles.subtitle, { fontSize: 11, lineHeight: 17, marginTop: 20 }]}>
+              {currentLanguage === 'hi'
+                ? 'क्षेत्रीय तिथियों का स्थान विवरण में देखें। विस्तृत क्षेत्रीय संदर्भ सूची 2026–2027 के लिए उपलब्ध है; अन्य वर्षों में सूची छोटी हो सकती है। नियमित मासिक व्रत पंचांग में देखें।'
+                : 'See festival details for the region used for each date. The expanded regional reference list covers 2026–2027; other years may have fewer entries. Regular monthly fasts remain in the Panchang.'}
+            </Text>
           </View>
         </ScrollView>
       </SafeAreaView>

@@ -1,5 +1,6 @@
 import useDevotionalCopy from '../hooks/useDevotionalCopy';
 import useDevotionalStyles from '../hooks/useDevotionalStyles';
+import { useMemo } from 'react';
 import {
   Alert,
   Image,
@@ -15,8 +16,13 @@ import {
   View,
 } from 'react-native';
 
-import { festivals, getFestivalById, FESTIVAL_DATE_NOTE } from '../data/festivalData';
+import { getFestivalById } from '../data/festivalData';
+import { enrichFestival, getFestivalDateNote, getYearFestivals } from '../features/panchang/festivals';
+import { getFeaturedYearFestivals } from '../features/panchang/featuredFestivals';
+import { usePanchangLocation, usePanchangToday } from '../features/panchang/locationStore';
+import { dateISO } from '../features/panchang/date';
 import { festivalImages } from '../data/festivalImages';
+import { deityArt } from '../features/panchang/CalendarUI';
 import BhaktiBackButton from '../components/BhaktiBackButton';
 import { useBhaktiTopPadding } from '../components/BhaktiLayout';
 
@@ -34,7 +40,7 @@ function getInitials(name = '') {
     .toUpperCase();
 }
 
-function buildShareMessage(festival, storyText) {
+function buildShareMessage(festival, storyText, language) {
   const titleLine = [festival?.name, festival?.subtitle].filter(Boolean).join(' - ');
   const dateLine = festival?.dateText || festival?.date;
   const preview = storyText.length > 520 ? `${storyText.slice(0, 517).trim()}...` : storyText;
@@ -42,7 +48,7 @@ function buildShareMessage(festival, storyText) {
   return [
     titleLine,
     dateLine,
-    FESTIVAL_DATE_NOTE,
+    getFestivalDateNote(festival, language),
     '',
     preview,
     '',
@@ -57,11 +63,46 @@ function showShareFallback() {
 export default function FestivalDetailScreen({ navigation, route }) {
   const styles = useDevotionalStyles(baseStyles);
   const { ui, isHindi } = useDevotionalCopy();
+  const [location] = usePanchangLocation();
+  const today = usePanchangToday(location.timezone, navigation);
+  const todayISO = dateISO(today);
   const { width, height } = useWindowDimensions();
   const iconTop = useBhaktiTopPadding(width, 'overlay');
-  const festival = getFestivalById(route?.params?.festivalId) ?? route?.params?.festival ?? festivals[0];
-  const imageSource = festivalImages[festival?.imageKey];
-  const storyText = festival?.story || STORY_FALLBACK;
+  const language = isHindi ? 'hi' : 'en';
+  const festival = useMemo(() => {
+    const params = route?.params || {};
+    const occurrence = /^(\d{4}-\d{2}-\d{2}):(.+)$/.exec(params.festivalId || '');
+    const selectedDate = params.dateISO || params.festival?.dateISO || occurrence?.[1];
+    const key = params.festivalKey || params.festival?.key || occurrence?.[2];
+    try {
+      const selectedYear = selectedDate ? Number(selectedDate.slice(0, 4)) : Number(todayISO.slice(0, 4));
+      const getFestivals = params.festival?.featured ? getFeaturedYearFestivals : getYearFestivals;
+      const items = getFestivals({ ...location, year: selectedYear, language });
+      if (key && selectedDate) {
+        const match = items.find((item) => item.key === key && item.dateISO === selectedDate);
+        if (match) return match;
+      }
+      // Older links carry only a narrative id. Resolve that story to this year's
+      // next calculated occurrence instead of resurrecting its 2026 date.
+      if (!selectedDate && params.festivalId) {
+        const alias = { 'saraswati-puja': 'vasant_panchami', 'lakshmi-puja': 'diwali' }[params.festivalId];
+        const matchesStory = (item) => item.storyId === params.festivalId || item.key === alias;
+        const upcoming = items.find((item) => matchesStory(item) && item.dateISO >= todayISO);
+        if (upcoming) return upcoming;
+        if (selectedYear < 2100) {
+          const next = getYearFestivals({ ...location, year: selectedYear + 1, language }).find(matchesStory);
+          if (next) return next;
+        }
+      }
+    } catch { /* A passed occurrence can still show its story when a location is unavailable. */ }
+    if (params.festival) return enrichFestival(params.festival, { ...location, language, dateISO: selectedDate });
+    const story = getFestivalById(params.festivalId);
+    if (story) return enrichFestival({ ...story, storyId: story.id, dateBasis: 'reference' }, { ...location, language, dateISO: story.dateISO });
+    return { name: isHindi ? 'उत्सव' : 'Festival', story: '', dateText: '' };
+  }, [route?.params, location, language, isHindi, todayISO]);
+  const festivalImage = festivalImages[festival?.imageKey];
+  const imageSource = festivalImage || deityArt[festival?.deityId];
+  const storyText = festival?.story || festival?.description || STORY_FALLBACK;
   const dateText = festival?.dateText || festival?.date;
   const contentWidth = Math.max(282, Math.min(width - Math.max(24, width * 0.07), 720));
   const compactWidth = Math.min(width, 520);
@@ -72,7 +113,7 @@ export default function FestivalDetailScreen({ navigation, route }) {
   const storySize = Math.max(15, Math.min(17, compactWidth * 0.039));
 
   const handleShare = async () => {
-    const message = buildShareMessage(festival, storyText);
+    const message = buildShareMessage(festival, storyText, language);
 
     try {
       if (Platform.OS === 'web' && typeof globalThis.navigator?.share === 'function') {
@@ -109,7 +150,7 @@ export default function FestivalDetailScreen({ navigation, route }) {
         >
           <View style={[styles.heroStage, { height: heroHeight }]}>
             {imageSource ? (
-              <Image source={imageSource} style={styles.heroImage} resizeMode="cover" />
+              <Image source={imageSource} style={styles.heroImage} resizeMode={festivalImage ? 'cover' : 'contain'} />
             ) : (
               <View style={styles.heroFallback}>
                 <Text style={styles.heroInitials}>{getInitials(festival?.name)}</Text>
@@ -148,7 +189,7 @@ export default function FestivalDetailScreen({ navigation, route }) {
             >
               {festival?.name}
             </Text>
-            <Text style={[styles.subtitle, { fontSize: 12, lineHeight: 18, marginTop: 8 }]}>{isHindi ? '2026 की संदर्भ तिथि। क्षेत्र और परंपरा के अनुसार स्थानीय पुष्टि करें।' : FESTIVAL_DATE_NOTE}</Text>
+            {!!festival.dateISO && <Text style={[styles.subtitle, { fontSize: 12, lineHeight: 18, marginTop: 8 }]}>{getFestivalDateNote(festival, language)}</Text>}
             {!!festival?.subtitle && (
               <Text style={[styles.subtitle, { fontSize: subtitleSize, lineHeight: subtitleSize * 1.38 }]} numberOfLines={2}>
                 {festival.subtitle}
@@ -159,9 +200,15 @@ export default function FestivalDetailScreen({ navigation, route }) {
                 {dateText}
               </Text>
             )}
+            {festival.observances?.length > 1 && (
+              <Text style={[styles.subtitle, { fontSize: 12, lineHeight: 18 }]}>
+                {isHindi ? 'इस तिथि पर स्मार्त और वैष्णव दोनों परंपराओं का व्रत।' : 'Smarta and Vaishnava traditions observe the fast on this date.'}
+              </Text>
+            )}
             <Text style={[styles.storyText, { fontSize: storySize, lineHeight: storySize * 1.66 }]}>
-              {isHindi && 'कथा का स्रोत अभी अंग्रेज़ी में उपलब्ध है।\n\n'}{storyText}
+              {festival.story ? <>{isHindi && 'कथा अभी अंग्रेज़ी में उपलब्ध है।\n\n'}{storyText}</> : (festival.description || (isHindi ? 'यह पंचांग में दर्शाया गया व्रत या उत्सव है। इसकी विस्तृत कथा अभी उपलब्ध नहीं है।' : 'This is an observance in the Panchang. A detailed story is not available yet.'))}
             </Text>
+            {!!festival.dateISO && <TouchableOpacity accessibilityRole="button" style={[styles.floatButton, { position: 'relative', marginTop: 22, alignSelf: 'center' }]} onPress={() => navigation?.navigate?.('Calendar', { selectedDateISO: festival.dateISO })}><Text style={styles.shareIcon}>{isHindi ? 'इस दिन का पंचांग' : 'Open this day’s Panchang'}</Text></TouchableOpacity>}
           </View>
         </ScrollView>
       </SafeAreaView>

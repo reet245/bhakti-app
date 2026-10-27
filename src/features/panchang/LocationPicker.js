@@ -3,6 +3,33 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { requestJson } from '../../services/http';
 import { validCoordinates, validTimezone } from './date';
+import { searchOfflineCities } from './cities';
+import { useLanguage } from '../../context/LanguageContext';
+
+const HINDI = {
+  'City or place': 'शहर या स्थान',
+  'Offline Indian city search. For any other place, enter its coordinates and IANA timezone below.': 'भारत के शहरों में ऑफलाइन खोजें। दूसरे स्थान के लिए नीचे उसके निर्देशांक और IANA समय क्षेत्र लिखें।',
+  'Place search sends your query to Open-Meteo through the Bhakti backend.': 'स्थान की खोज भक्ति सर्वर के माध्यम से Open-Meteo को भेजी जाती है।',
+  'Search places': 'स्थान खोजें',
+  'Selected': 'चयनित',
+  'Close manual location': 'मैनुअल स्थान बंद करें',
+  'Enter coordinates and timezone': 'निर्देशांक और समय क्षेत्र लिखें',
+  'Latitude': 'अक्षांश',
+  'Longitude': 'देशांतर',
+  'Latitude, e.g. 22.566': 'अक्षांश, जैसे 22.566',
+  'Longitude, e.g. 88.37': 'देशांतर, जैसे 88.37',
+  'IANA timezone': 'IANA समय क्षेत्र',
+  'Timezone, e.g. Asia/Kolkata': 'समय क्षेत्र, जैसे Asia/Kolkata',
+  'Use the timezone of this place. Historical daylight saving is calculated for the selected date.': 'इसी स्थान का समय क्षेत्र चुनें। चुनी तारीख के अनुसार ऐतिहासिक डेलाइट सेविंग का समायोजन होता है।',
+  'Use this location': 'यह स्थान चुनें',
+  'Enter at least two characters.': 'कम से कम दो अक्षर लिखें।',
+  'No matching place found. Refine the city name or enter coordinates and timezone.': 'मेल खाता स्थान नहीं मिला। शहर का नाम बदलकर खोजें या निर्देशांक और समय क्षेत्र लिखें।',
+  'Place search is unavailable. Enter coordinates and timezone below.': 'स्थान खोज अभी उपलब्ध नहीं है। नीचे निर्देशांक और समय क्षेत्र लिखें।',
+  'Enter a place, latitude (-90 to 90), longitude (-180 to 180), and an IANA timezone such as Asia/Kolkata.': 'स्थान, अक्षांश (-90 से 90), देशांतर (-180 से 180) और Asia/Kolkata जैसा IANA समय क्षेत्र लिखें।',
+  'Location selected.': 'स्थान चुन लिया गया है।',
+  'City coordinates: ': 'शहर के निर्देशांक: ',
+  'Place search: Open-Meteo; geographic data: ': 'स्थान खोज: Open-Meteo; भौगोलिक जानकारी: ',
+};
 
 export async function searchLocations(query, signal) {
   const response = await requestJson(`/api/v1/locations/search?query=${encodeURIComponent(query.trim())}`, { signal });
@@ -11,8 +38,11 @@ export async function searchLocations(query, signal) {
 }
 
 // Selection is explicit: typing a different place invalidates old coordinates.
-export default function LocationPicker({ value, onChange }) {
+export default function LocationPicker({ value, onChange, offlineOnly = false }) {
   const styles = useDevotionalStyles(baseStyles);
+  const { currentLanguage } = useLanguage();
+  const isHindi = currentLanguage === 'hi';
+  const ui = (text) => isHindi ? HINDI[text] || text : text;
   const [query, setQuery] = useState(value.locationName || value.place || '');
   const [candidates, setCandidates] = useState([]);
   const [message, setMessage] = useState('');
@@ -39,7 +69,7 @@ export default function LocationPicker({ value, onChange }) {
     pending.current = controller;
     setLoading(true); setMessage(''); setCandidates([]);
     try {
-      const items = await searchLocations(query, controller.signal);
+      const items = offlineOnly ? searchOfflineCities(query) : await searchLocations(query, controller.signal);
       if (id !== generation.current) return;
       setCandidates(items);
       if (!items.length) setMessage('No matching place found. Refine the city name or enter coordinates and timezone.');
@@ -58,34 +88,34 @@ export default function LocationPicker({ value, onChange }) {
   };
   return (
     <View style={styles.wrap}>
-      <TextInput accessibilityLabel="City or place" value={query} placeholder="City or place" style={styles.input}
+      <TextInput accessibilityLabel={ui('City or place')} value={query} placeholder={ui('City or place')} style={styles.input}
         onChangeText={(text) => {
           generation.current += 1; pending.current?.abort(); setLoading(false); setCandidates([]); setMessage(''); setQuery(text);
           onChange({ locationName: text, latitude: null, longitude: null, timezone: null });
         }} onSubmitEditing={search} />
-      <Text style={styles.hint}>Place search sends your query to Open-Meteo through the Bhakti backend.</Text>
+      <Text style={styles.hint}>{ui(offlineOnly ? 'Offline Indian city search. For any other place, enter its coordinates and IANA timezone below.' : 'Place search sends your query to Open-Meteo through the Bhakti backend.')}</Text>
       <Pressable accessibilityRole="button" onPress={search} style={styles.button} disabled={loading}>
-        <Text style={styles.buttonText}>Search places</Text>{loading && <ActivityIndicator color="#7B4D0D" />}
+        <Text style={styles.buttonText}>{ui('Search places')}</Text>{loading && <ActivityIndicator color="#7B4D0D" />}
       </Pressable>
       {candidates.map((item, index) => (
         <Pressable accessibilityRole="button" key={`${item.latitude}-${item.longitude}-${index}`} style={styles.candidate}
           onPress={() => { onChange({ ...item, locationName: item.resolvedPlaceName }); setCandidates([]); setMessage('Location selected.'); }}>
-          <Text style={styles.text}>{item.resolvedPlaceName}</Text><Text style={styles.hint}>{item.timezone} · {item.latitude}, {item.longitude}</Text>
+          <Text style={styles.text}>{isHindi && item.nameHi ? `${item.nameHi}, भारत` : item.resolvedPlaceName}</Text><Text style={styles.hint}>{item.timezone} · {item.latitude}, {item.longitude}</Text>
         </Pressable>
       ))}
-      {validCoordinates(value.latitude, value.longitude) && value.timezone ? <Text style={styles.hint}>Selected: {value.latitude}, {value.longitude} · {value.timezone}</Text> : null}
+      {validCoordinates(value.latitude, value.longitude) && value.timezone ? <Text style={styles.hint}>{ui('Selected')}: {value.latitude}, {value.longitude} · {value.timezone}</Text> : null}
       <Pressable accessibilityRole="button" onPress={() => setManual((current) => !current)} style={styles.button}>
-        <Text style={styles.buttonText}>{manual ? 'Close manual location' : 'Enter coordinates and timezone'}</Text>
+        <Text style={styles.buttonText}>{ui(manual ? 'Close manual location' : 'Enter coordinates and timezone')}</Text>
       </Pressable>
       {manual && <View>
-        <TextInput accessibilityLabel="Latitude" placeholder="Latitude, e.g. 22.566" value={latitude} onChangeText={setLatitude} style={styles.input} />
-        <TextInput accessibilityLabel="Longitude" placeholder="Longitude, e.g. 88.37" value={longitude} onChangeText={setLongitude} style={styles.input} />
-        <TextInput accessibilityLabel="IANA timezone" autoCapitalize="none" autoCorrect={false} placeholder="Timezone, e.g. Asia/Kolkata" value={timezone} onChangeText={setTimezone} style={styles.input} />
-        <Text style={styles.hint}>Use the timezone of this place. Historical daylight saving is calculated for the selected date.</Text>
-        <Pressable accessibilityRole="button" style={styles.button} onPress={applyManual}><Text style={styles.buttonText}>Use this location</Text></Pressable>
+        <TextInput accessibilityLabel={ui('Latitude')} placeholder={ui('Latitude, e.g. 22.566')} value={latitude} onChangeText={setLatitude} style={styles.input} />
+        <TextInput accessibilityLabel={ui('Longitude')} placeholder={ui('Longitude, e.g. 88.37')} value={longitude} onChangeText={setLongitude} style={styles.input} />
+        <TextInput accessibilityLabel={ui('IANA timezone')} autoCapitalize="none" autoCorrect={false} placeholder={ui('Timezone, e.g. Asia/Kolkata')} value={timezone} onChangeText={setTimezone} style={styles.input} />
+        <Text style={styles.hint}>{ui('Use the timezone of this place. Historical daylight saving is calculated for the selected date.')}</Text>
+        <Pressable accessibilityRole="button" style={styles.button} onPress={applyManual}><Text style={styles.buttonText}>{ui('Use this location')}</Text></Pressable>
       </View>}
-      {message ? <Text accessibilityLiveRegion="polite" style={styles.hint}>{message}</Text> : null}
-      <Text style={styles.hint}>Place search by <Text accessibilityRole="link" onPress={() => Linking.openURL('https://open-meteo.com/')} style={styles.buttonText}>Open-Meteo</Text>; geographic data by <Text accessibilityRole="link" onPress={() => Linking.openURL('https://www.geonames.org/')} style={styles.buttonText}>GeoNames</Text>.</Text>
+      {message ? <Text accessibilityLiveRegion="polite" style={styles.hint}>{isHindi ? HINDI[message] || HINDI['Place search is unavailable. Enter coordinates and timezone below.'] : message}</Text> : null}
+      <Text style={styles.hint}>{ui(offlineOnly ? 'City coordinates: ' : 'Place search: Open-Meteo; geographic data: ')}<Text accessibilityRole="link" onPress={() => Linking.openURL('https://www.geonames.org/')} style={styles.buttonText}>GeoNames (CC BY 4.0)</Text>.</Text>
     </View>
   );
 }

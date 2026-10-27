@@ -1,576 +1,122 @@
-import useDevotionalStyles from '../hooks/useDevotionalStyles';
 import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
-import {
-  ActivityIndicator,
-  ImageBackground,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-} from 'react-native';
-
-import {
-  getPanchangFromAPI,
-  getFestivalItems,
-  normalizePanchangData,
-} from '../services/panchangService';
-import BhaktiBackButton from '../components/BhaktiBackButton';
-import { useBhaktiTopPadding } from '../components/BhaktiLayout';
+import { getPanchangMonth } from '../services/panchangService';
+import useDevotionalStyles from '../hooks/useDevotionalStyles';
 import { dateISO, parseLocalDate, shiftMonth } from '../features/panchang/date';
 import { usePanchangLocation, usePanchangToday } from '../features/panchang/locationStore';
-
-const BG_IMAGE = require('../../assets/horoscope/background/horoscope-bg.png');
-const DEVOTIONAL_FONT = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
-
-const VIEW_TABS = ['Month', 'Week', 'Day'];
-const QUICK_TABS = ['Tithi', 'Nakshatra', 'Yoga', 'Karana', 'More'];
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-function getDateParts(date) {
-  return {
-    year: date.getFullYear(),
-    month: date.getMonth(),
-    day: date.getDate(),
-  };
-}
-
-function formatDate(date) {
-  return date.toLocaleDateString([], {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-}
-
-function markerForDay(date) {
-  return getFestivalItems(dateISO(date)).length ? ['festival'] : [];
-}
+import { formatPeriodBoundary, mergeMonthPeriods } from '../features/panchang/periods';
+import { Action, CalendarArt, CalendarPage, CalendarTabs, DataNotes, DateJump, FestivalRows, calendarStyles, useCalendarCopy, weekdayDeities } from '../features/panchang/CalendarUI';
 
 export default function PanchangCalendarScreen({ navigation, route }) {
-  const styles = useDevotionalStyles(baseStyles);
-  const isFocused = useIsFocused();
-  const { width, height } = useWindowDimensions();
-  const topPadding = useBhaktiTopPadding(width, 'title');
-  const [location] = usePanchangLocation();
-  const today = usePanchangToday(location.timezone, navigation);
-  const initialDate = parseLocalDate(route?.params?.selectedDateISO, today);
-  const [currentDate, setCurrentDate] = useState(new Date(initialDate.getFullYear(), initialDate.getMonth(), 1));
-  const [selectedDate, setSelectedDate] = useState(initialDate);
-  const [calendarView, setCalendarView] = useState('Month');
-  const [activeQuickTab, setActiveQuickTab] = useState('Tithi');
-  const [selectedPanchang, setSelectedPanchang] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(null);
-  const [refresh, setRefresh] = useState(0);
+  const s = useDevotionalStyles(calendarStyles); const g = useDevotionalStyles(gridStyles);
+  const { c, value, locale } = useCalendarCopy();
+  const [location] = usePanchangLocation(); const today = usePanchangToday(location.timezone, navigation);
+  const focused = useIsFocused();
+  const [selected, setSelected] = useState(() => parseLocalDate(route?.params?.selectedDateISO, today));
+  const [view, setView] = useState(route?.params?.view === 'Almanac' ? 'Almanac' : 'Month');
+  const [days, setDays] = useState([]); const [loading, setLoading] = useState(true); const [error, setError] = useState('');
+  const selectedISO = dateISO(selected); const year = selected.getFullYear(); const month = selected.getMonth();
+  useEffect(() => { if (route?.params?.selectedDateISO) setSelected(parseLocalDate(route.params.selectedDateISO, today)); }, [route?.params?.selectedDateISO]);
+  useEffect(() => { setView(route?.params?.view === 'Almanac' ? 'Almanac' : 'Month'); }, [route?.params?.view]);
   useEffect(() => {
-    if (!route?.params?.selectedDateISO) return;
-    const date = parseLocalDate(route.params.selectedDateISO, today);
-    setSelectedDate(date);
-    setCurrentDate(new Date(date.getFullYear(), date.getMonth(), 1));
-  }, [route?.params?.selectedDateISO]);
-
-  const responsiveStyles = useMemo(() => {
-    const compactWidth = Math.min(width, 540);
-    const horizontalPadding = Math.max(14, Math.min(22, compactWidth * 0.045));
-    const contentWidth = Math.max(282, Math.min(width - horizontalPadding * 2, 680));
-
-    return {
-      content: {
-        paddingHorizontal: horizontalPadding,
-        paddingTop: topPadding,
-        paddingBottom: Math.max(26, height * 0.035),
-      },
-      contentWidth,
-      dateBox: {
-        minHeight: Math.max(43, Math.min(52, height * 0.058)),
-      },
-    };
-  }, [height, topPadding, width]);
-
-  const currentMonth = currentDate.getMonth();
-  const currentYear = currentDate.getFullYear();
-  const monthLabel = currentDate.toLocaleDateString([], { month: 'long', year: 'numeric' });
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  const firstWeekday = new Date(currentYear, currentMonth, 1).getDay();
-  const selectedParts = getDateParts(selectedDate);
-
-  const visibleDays = useMemo(() => {
-    if (calendarView === 'Day') return [selectedDate.getDate()];
-
-    if (calendarView === 'Week') {
-      const weekStart = new Date(selectedDate);
-      weekStart.setDate(selectedDate.getDate() - selectedDate.getDay());
-      return Array.from({ length: 7 }, (_, index) => {
-        const date = new Date(weekStart);
-        date.setDate(weekStart.getDate() + index);
-        return date.getMonth() === currentMonth ? date.getDate() : null;
-      });
-    }
-
-    return [
-      ...Array(firstWeekday).fill(null),
-      ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
-    ];
-  }, [calendarView, currentMonth, daysInMonth, firstWeekday, selectedDate]);
-
-  useEffect(() => {
-    if (!isFocused) return;
-    let active = true;
-    const controller = new AbortController();
-    async function loadSelectedPanchang() {
-      setLoading(true);
-      setErrorMessage(null);
-      setSelectedPanchang(null);
-
-      try {
-        const dateParts = getDateParts(selectedDate);
-        const data = await getPanchangFromAPI({
-          ...dateParts,
-          ...location,
-          signal: controller.signal,
-        });
-        if (active) setSelectedPanchang(normalizePanchangData(data, dateParts));
-      } catch (error) {
-        if (active && !controller.signal.aborted) {
-          setErrorMessage(error?.message || 'Panchang data unavailable. Please try again.');
-          setSelectedPanchang(normalizePanchangData(null, getDateParts(selectedDate)));
-        }
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-
-    loadSelectedPanchang();
-    return () => { active = false; controller.abort(); };
-  }, [selectedDate, location, today, refresh, isFocused]);
-
-  const quickRows = selectedPanchang ? {
-    Tithi: [{ name: selectedPanchang.tithi, time: `Ends ${selectedPanchang.tithiEnd}` }],
-    Nakshatra: [{ name: selectedPanchang.nakshatra, time: `Ends ${selectedPanchang.nakshatraEnd}` }],
-    Yoga: [{ name: selectedPanchang.yoga, time: 'Transition time unavailable' }],
-    Karana: [{ name: selectedPanchang.karana, time: 'Transition time unavailable' }],
-    More: [
-      { name: 'Sunrise', time: selectedPanchang.sunrise },
-      { name: 'Sunset', time: selectedPanchang.sunset },
-      { name: 'Rahu Kaal', time: selectedPanchang.rahuKaal },
-    ],
-  } : {};
-
-  const goMonth = (offset) => {
-    const date = shiftMonth(selectedDate, offset);
-    setCurrentDate(new Date(date.getFullYear(), date.getMonth(), 1));
-    setSelectedDate(date);
-  };
-
-  const selectDay = (day) => {
-    if (!day) return;
-    setSelectedDate(new Date(currentYear, currentMonth, day));
-  };
-
-  return (
-    <ImageBackground source={BG_IMAGE} style={styles.background} resizeMode="cover">
-      <View style={styles.overlay} />
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={[styles.content, responsiveStyles.content]} showsVerticalScrollIndicator={false}>
-          <View style={[styles.header, { width: responsiveStyles.contentWidth }]}>
-            <BhaktiBackButton navigation={navigation} />
-            <Text style={styles.headerTitle}>Panchang Calendar</Text>
-            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Show today" style={styles.iconButton} activeOpacity={0.78} onPress={() => { setSelectedDate(today); setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1)); }}>
-              <Text style={[styles.filterIcon, { fontSize: 11 }]}>Today</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={[styles.tabs, { width: responsiveStyles.contentWidth }]}>
-            {VIEW_TABS.map((tab) => (
-              <TouchableOpacity
-                key={tab}
-                style={[styles.tabButton, calendarView === tab && styles.tabButtonActive]}
-                activeOpacity={0.8}
-                onPress={() => setCalendarView(tab)}
-              >
-                <Text style={[styles.tabText, calendarView === tab && styles.tabTextActive]}>{tab}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={[styles.calendarCard, { width: responsiveStyles.contentWidth }]}>
-            <View style={styles.monthRow}>
-              <TouchableOpacity style={styles.monthButton} activeOpacity={0.78} onPress={() => goMonth(-1)}>
-                <Text style={styles.monthButtonText}>{'<'}</Text>
-              </TouchableOpacity>
-              <Text style={styles.monthTitle}>{monthLabel}</Text>
-              <TouchableOpacity style={styles.monthButton} activeOpacity={0.78} onPress={() => goMonth(1)}>
-                <Text style={styles.monthButtonText}>{'>'}</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.weekRow}>
-              {WEEKDAYS.map((day) => (
-                <Text key={day} style={styles.weekText}>{day}</Text>
-              ))}
-            </View>
-
-            <View style={styles.daysGrid}>
-              {visibleDays.map((day, index) => {
-                const date = day ? new Date(currentYear, currentMonth, day) : null;
-                const isToday = date
-                  && date.getDate() === today.getDate()
-                  && date.getMonth() === today.getMonth()
-                  && date.getFullYear() === today.getFullYear();
-                const isSelected = day
-                  && day === selectedParts.day
-                  && currentMonth === selectedParts.month
-                  && currentYear === selectedParts.year;
-                const markers = date ? markerForDay(date) : [];
-
-                return (
-                  <TouchableOpacity
-                    key={`${day || 'empty'}-${index}`}
-                    style={[styles.dateBox, responsiveStyles.dateBox]}
-                    activeOpacity={day ? 0.78 : 1}
-                    onPress={() => selectDay(day)}
-                  >
-                    {day ? (
-                      <>
-                        <View style={[styles.dateCircle, isToday && styles.todayCircle, isSelected && styles.selectedCircle]}>
-                          <Text style={[styles.dateText, isSelected && styles.selectedDateText]}>{day}</Text>
-                        </View>
-                        <View style={styles.markerRow}>
-                          {markers.map((marker) => <View key={marker} style={[styles.markerDot, styles[`${marker}Dot`]]} />)}
-                        </View>
-                      </>
-                    ) : null}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={[styles.detailCard, { width: responsiveStyles.contentWidth }]}>
-            <View style={styles.detailHeader}>
-              <View>
-                <Text style={styles.detailDate}>{formatDate(selectedDate)}</Text>
-                <Text style={styles.detailSubtitle}>{location.locationName} · {location.timezone}</Text>
-                <Text style={styles.detailSubtitle}>
-                  {selectedPanchang ? `${selectedPanchang.paksha} | ${selectedPanchang.tithi} | ${selectedPanchang.masa}` : 'Loading Panchang'}
-                </Text>
-              </View>
-              {loading ? <ActivityIndicator size="small" color="#B87918" /> : null}
-            </View>
-
-            {!loading && errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-            {!loading && selectedPanchang?.partial ? <Text style={styles.errorText}>Some Panchang fields are unavailable from the data source.</Text> : null}
-            {!loading && errorMessage ? <TouchableOpacity accessibilityRole="button" onPress={() => setRefresh((value) => value + 1)}><Text style={styles.detailRowName}>Retry</Text></TouchableOpacity> : null}
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickTabs}>
-              {QUICK_TABS.map((tab) => (
-                <TouchableOpacity
-                  key={tab}
-                  style={[styles.quickTab, activeQuickTab === tab && styles.quickTabActive]}
-                  activeOpacity={0.78}
-                  onPress={() => setActiveQuickTab(tab)}
-                >
-                  <Text style={[styles.quickTabText, activeQuickTab === tab && styles.quickTabTextActive]}>{tab}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            {(quickRows[activeQuickTab] || []).map((row) => (
-              <TouchableOpacity
-                key={`${row.name}-${row.time}`}
-                style={styles.detailRow}
-                activeOpacity={0.8}
-                onPress={() => activeQuickTab === 'Tithi' && navigation.navigate('TithiDetail', { panchang: selectedPanchang })}
-              >
-                <Text style={styles.detailRowName}>{row.name}</Text>
-                <Text style={styles.detailRowTime}>{row.time}</Text>
-              </TouchableOpacity>
-            ))}
-
-            <TouchableOpacity
-              style={styles.primaryButton}
-              activeOpacity={0.84}
-              onPress={() => navigation.navigate('TithiDetail', { panchang: selectedPanchang })}
-            >
-              <Text style={styles.primaryButtonText}>View Full Panchang</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </ImageBackground>
-  );
+    if (!focused) return;
+    const controller = new AbortController(); setLoading(true); setError(''); setDays([]);
+    getPanchangMonth({ year, month, ...location, signal: controller.signal }).then((result) => { if (!controller.signal.aborted) setDays(result); }).catch((err) => { if (!controller.signal.aborted) setError(err.message); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [year, month, location, focused]);
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const count = new Date(year, month + 1, 0).getDate();
+  const cells = Array.from({ length: Math.ceil((firstWeekday + count) / 7) * 7 }, (_, i) => {
+    const day = i - firstWeekday + 1;
+    return day > 0 && day <= count ? day : null;
+  });
+  const weekdays = Array.from({ length: 7 }, (_, i) => new Date(2026, 9, 4 + i).toLocaleDateString(locale, { weekday: 'short' }));
+  const selectedData = days.find((day) => day.dateISO === selectedISO);
+  const monthEvents = useMemo(() => days.flatMap((day) => day.festivals || []), [days]);
+  const monthlyPeriods = useMemo(() => ({
+    panchaka: mergeMonthPeriods(days, 'panchakaPeriods'),
+    gandaMula: mergeMonthPeriods(days, 'gandaMulaPeriods'),
+  }), [days]);
+  const incompletePeriodCoverage = days.some((day) => day.noSunrise || !Array.isArray(day.panchakaPeriods) || !Array.isArray(day.gandaMulaPeriods));
+  const monthNames = [...new Set(days.map((day) => value(day, 'purnimantaMonth')).filter(Boolean))].join(' – ');
+  const pick = (day) => setSelected(new Date(year, month, day, 12));
+  const openDaily = (date = selectedISO) => navigation.navigate('Calendar', { selectedDateISO: date });
+  const moon = (day) => day?.isPurnima ? '○' : day?.isAmavasya ? '●' : day?.isFast ? '✧' : '';
+  return <CalendarPage navigation={navigation} title={view === 'Almanac' ? c('Illustrated Almanac', 'सचित्र पंचांग') : c('Monthly Calendar', 'मासिक कैलेंडर')} wide>
+    <CalendarTabs active={view} navigation={navigation} selectedDateISO={selectedISO} />
+    <Action onPress={() => navigation.navigate('Calendar', { selectedDateISO: selectedISO })}>⌖ {location.locationName} · {c('Location settings in Daily Panchang', 'दैनिक पंचांग में स्थान बदलें')}</Action>
+    <View style={s.between}><Action label={c('Previous month', 'पिछला महीना')} onPress={() => setSelected(shiftMonth(selected, -1))} disabled={year <= 1900 && month === 0}>‹</Action><View style={{ flex: 1 }}><Text style={[s.sectionTitle, { textAlign: 'center' }]}>{selected.toLocaleDateString(locale, { month: 'long', year: 'numeric' })}</Text><Text style={[s.hint, { textAlign: 'center' }]}>{monthNames || c('North Indian · Purnimanta', 'उत्तर भारतीय · पूर्णिमांत')}{days[0]?.samvat ? ` · ${c('Vikram', 'विक्रम')} ${days[0].samvat}` : ''}</Text></View><Action label={c('Next month', 'अगला महीना')} onPress={() => setSelected(shiftMonth(selected, 1))} disabled={year >= 2100 && month === 11}>›</Action></View>
+    <View style={s.between}><DateJump date={selected} onChange={setSelected} /><Action onPress={() => setSelected(today)}>{c('Today', 'आज')}</Action></View>
+    {loading && <View style={s.row}><ActivityIndicator color="#B48222" /><Text style={s.hint}>{c('Calculating this month…', 'इस महीने की गणना…')}</Text></View>}
+    {!!error && <Text accessibilityRole="alert" style={s.body}>{error}</Text>}
+    {view === 'Month' ? <View style={g.calendar}>
+      <View style={g.weekRow}>{weekdays.map((day, i) => <Text key={day} style={[g.weekLabel, i === 0 && g.sunday]}>{day}</Text>)}</View>
+      <View style={g.grid}>{cells.map((day, i) => {
+        const data = day ? days[day - 1] : null;
+        const isSelected = day === selected.getDate(); const isToday = day && dateISO(new Date(year, month, day)) === dateISO(today);
+        return day ? <TouchableOpacity key={i} accessibilityRole="button" accessibilityLabel={`${day} ${selected.toLocaleDateString(locale, { month: 'long' })}${data ? `, ${value(data, 'paksha')} ${value(data, 'tithi')}, ${data.festivals.map((item) => value(item, 'name')).join(', ')}` : ''}`} accessibilityState={{ selected: isSelected }} onPress={() => pick(day)} style={[g.cell, isToday && g.todayCell, isSelected && g.selectedCell]}>
+          <View style={g.cellHead}><Text style={[g.dayNumber, i % 7 === 0 && g.sunday]}>{day}</Text><Text style={g.tithiNumber}>{data?.tithiNumber || ''}</Text></View>
+          <Text numberOfLines={1} style={g.tithi}>{data ? value(data, 'tithi') : ' '}</Text>
+          <View style={g.cellArt}>{data?.festivals?.length ? <CalendarArt festival={data.festivals[0]} size={25} /> : <Text style={g.moon}>{moon(data)}</Text>}{data?.festivals?.length > 1 ? <Text style={g.eventCount}>+{data.festivals.length - 1}</Text> : null}</View>
+        </TouchableOpacity> : <View key={i} style={[g.cell, g.emptyCell]} />;
+      })}</View>
+    </View> : <View style={s.card}>
+      <View style={s.between}><CalendarArt deity="ganesh" size={60} /><View style={{ flex: 1 }}><Text style={s.heroTitle}>{c('Bhakti Almanac', 'भक्ति पंचांग')}</Text><Text style={s.hint}>{c('Tithi · Nakshatra · Sunrise · Sunset', 'तिथि · नक्षत्र · सूर्योदय · सूर्यास्त')}</Text></View></View>
+      <Text style={s.hint}>{c('Swipe horizontally for the whole month. Tap any date for its daily Panchang.', 'पूरा महीना देखने के लिए दाएँ-बाएँ खिसकाएँ। दैनिक पंचांग के लिए तारीख दबाएँ।')}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ paddingBottom: 10 }}><View style={{ width: Math.max(760, cells.length / 7 * 132 + 70) }}>
+        {weekdays.map((weekday, weekdayIndex) => <View key={weekday} style={g.almanacRow}>
+          <View style={g.weekdayArt}><CalendarArt deity={weekdayDeities[weekdayIndex]} size={44} /><Text style={g.almanacWeekday}>{weekday}</Text></View>
+          {Array.from({ length: cells.length / 7 }, (_, week) => {
+            const day = cells[week * 7 + weekdayIndex]; const data = day ? days[day - 1] : null;
+            return <TouchableOpacity key={week} disabled={!day} accessibilityRole="button" accessibilityLabel={day ? `${c('Open daily Panchang', 'दैनिक पंचांग खोलें')} ${day}` : undefined} onPress={() => openDaily(dateISO(new Date(year, month, day)))} style={[g.almanacCell, day === selected.getDate() && g.selectedCell, !day && g.emptyCell]}>
+              {day && <><View style={s.between}><Text style={[g.almanacDate, weekdayIndex === 0 && g.sunday]}>{day}</Text>{data?.festivals?.length ? <CalendarArt festival={data.festivals[0]} size={30} /> : <Text style={g.moon}>{moon(data)}</Text>}</View>
+                <Text style={g.almanacTithi}>{data && !data.noSunrise ? `${value(data, 'paksha').split(' ')[0]} ${data.tithiNumber}` : data?.noSunrise ? c('No sunrise', 'सूर्योदय नहीं') : ''}</Text>
+                <Text style={g.almanacText}>{data ? value(data, 'tithi') : '…'}</Text><Text style={g.almanacText}>{data ? value(data, 'nakshatra') : ''}</Text>
+                <Text style={g.almanacTime}>☀ {data?.sunrise || '—'} · ☼ {data?.sunset || '—'}</Text>
+                {!!data?.festivals?.length && <Text style={g.almanacFestival}>{data.festivals.map((item) => value(item, 'name')).join(' · ')}</Text>}
+              </>}
+            </TouchableOpacity>;
+          })}
+        </View>)}
+      </View></ScrollView>
+    </View>}
+    <Text style={s.hint}>{c('Small number: lunar tithi at sunrise · ○ Purnima · ● Amavasya · ✧ Vrat · Art: listed festival. Sundays are coloured, not marked as public holidays.', 'छोटी संख्या: सूर्योदय की तिथि · ○ पूर्णिमा · ● अमावस्या · ✧ व्रत · चित्र: सूचीबद्ध पर्व। रविवार का रंग सरकारी अवकाश नहीं दर्शाता।')}</Text>
+    <View style={s.hero}><Text style={s.sectionTitle}>{selected.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
+      <Text style={s.bodyBold}>{selectedData ? `${value(selectedData, 'paksha')} · ${value(selectedData, 'tithi')}` : c('Select a date to explore', 'तारीख चुनें')}</Text>
+      {!!selectedData && <Text style={s.hint}>{c('Sunrise', 'सूर्योदय')} {selectedData.sunrise} · {c('Sunset', 'सूर्यास्त')} {selectedData.sunset}</Text>}
+      <FestivalRows items={selectedData?.festivals} navigation={navigation} empty={!loading} /><Action onPress={() => openDaily()}>{c('Open full daily Panchang', 'पूरा दैनिक पंचांग देखें')} ›</Action>
+    </View>
+    {!loading && !error && days.length > 0 ? <View style={s.card}>
+      <Text style={s.sectionTitle}>{c('Panchak & Gand Mool', 'पंचक व गंडमूल')}</Text>
+      <Text style={s.hint}>{location.locationName} · {location.timezone}</Text>
+      <Text style={s.hint}>{c('Continuous periods across this month’s sunrise-to-sunrise days.', 'इस महीने के सूर्योदय से अगले सूर्योदय तक के दिनों में लगातार चलने वाली अवधियाँ।')}</Text>
+      {incompletePeriodCoverage ? <Text style={s.hint}>{c('Some days have no complete solar cycle. The periods below cover only the days that could be calculated.', 'कुछ दिनों में सूर्य का पूरा चक्र नहीं है। नीचे केवल उन दिनों की अवधियाँ हैं जिनकी गणना हो सकी।')}</Text> : null}
+      {[[c('Panchak', 'पंचक'), monthlyPeriods.panchaka], [c('Gand Mool', 'गंडमूल'), monthlyPeriods.gandaMula]].map(([title, periods]) => <View key={title} style={{ gap: 7, marginTop: 7 }}>
+        <Text style={s.bodyBold}>{title}</Text>
+        {periods.map((period) => <View key={period.id} style={[s.tableRow, { flexDirection: 'column', gap: 5 }]}>
+          <Text selectable style={s.body}>{period.clippedStart ? c('Already active at range start', 'इस अवधि की शुरुआत में पहले से जारी') : c('Begins', 'आरंभ')}: {formatPeriodBoundary(period.start, location.timezone, locale)}</Text>
+          <Text selectable style={s.body}>{period.clippedEnd ? c('Continues after range end', 'इस अवधि के अंत के बाद भी जारी') : c('Ends', 'समाप्ति')}: {formatPeriodBoundary(period.end, location.timezone, locale)}</Text>
+          {period.clippedStart || period.clippedEnd ? <Text style={s.hint}>{c('This boundary is the first or last sunrise covered here, not the actual beginning or end of the period.', 'यह सीमा यहाँ दिखाए गए पहले या अंतिम सूर्योदय की है, अवधि के वास्तविक आरंभ या अंत की नहीं।')}</Text> : null}
+        </View>)}
+        {!periods.length ? <Text style={s.hint}>{incompletePeriodCoverage ? c('No interval calculated within the available days.', 'उपलब्ध दिनों में कोई अवधि नहीं मिली।') : c('No period in this month’s calculated days.', 'इस महीने के गणना किए गए दिनों में यह अवधि नहीं है।')}</Text> : null}
+      </View>)}
+    </View> : null}
+    <View style={s.card}><Text style={s.sectionTitle}>{c('This month’s festivals & vrats', 'इस महीने के त्योहार व व्रत')}</Text><FestivalRows items={monthEvents} navigation={navigation} empty={!loading} /><Action onPress={() => navigation.navigate('UpcomingFestivals', { year })}>{c('Browse festival year', 'साल के त्योहार देखें')} ›</Action></View>
+    <DataNotes />
+  </CalendarPage>;
 }
-
-const baseStyles = StyleSheet.create({
-  background: { flex: 1 },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 247, 228, 0.76)',
-  },
-  safeArea: { flex: 1 },
-  content: { alignItems: 'center' },
-  header: {
-    minHeight: 42,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 250, 239, 0.96)',
-    borderWidth: 1,
-    borderColor: 'rgba(216, 177, 92, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterIcon: {
-    color: '#8A520B',
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  headerTitle: {
-    flex: 1,
-    color: '#3F2713',
-    fontFamily: DEVOTIONAL_FONT,
-    fontSize: 22,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  tabs: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 250, 239, 0.86)',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(216, 177, 92, 0.45)',
-    padding: 4,
-    marginTop: 11,
-  },
-  tabButton: {
-    flex: 1,
-    minHeight: 34,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabButtonActive: {
-    backgroundColor: '#F3D27D',
-  },
-  tabText: {
-    color: '#8A6425',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  tabTextActive: {
-    color: '#3F2713',
-  },
-  calendarCard: {
-    marginTop: 12,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 250, 239, 0.97)',
-    borderWidth: 1,
-    borderColor: 'rgba(216, 177, 92, 0.46)',
-    padding: 12,
-    shadowColor: '#7A552A',
-    shadowOpacity: 0.11,
-    shadowRadius: 11,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 3,
-  },
-  monthRow: {
-    minHeight: 38,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  monthButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#FFF1C5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  monthButtonText: {
-    color: '#8A520B',
-    fontSize: 19,
-    fontWeight: '900',
-  },
-  monthTitle: {
-    color: '#3F2713',
-    fontSize: 17,
-    fontWeight: '900',
-  },
-  weekRow: {
-    flexDirection: 'row',
-    paddingBottom: 7,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(216, 177, 92, 0.35)',
-  },
-  weekText: {
-    width: '14.28%',
-    color: '#8A6425',
-    fontSize: 10,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  daysGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingTop: 5,
-  },
-  dateBox: {
-    width: '14.28%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dateCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  todayCircle: {
-    borderWidth: 1.3,
-    borderColor: '#B87918',
-    backgroundColor: '#FFF8E8',
-  },
-  selectedCircle: {
-    backgroundColor: '#C58C1B',
-  },
-  dateText: {
-    color: '#3F2713',
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  selectedDateText: {
-    color: '#FFF8E8',
-  },
-  markerRow: {
-    minHeight: 5,
-    flexDirection: 'row',
-    columnGap: 2,
-    marginTop: 2,
-  },
-  markerDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-  },
-  festivalDot: { backgroundColor: '#B87918' },
-  vratDot: { backgroundColor: '#B85B4B' },
-  muhurtaDot: { backgroundColor: '#6F8F45' },
-  detailCard: {
-    marginTop: 12,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 250, 239, 0.97)',
-    borderWidth: 1,
-    borderColor: 'rgba(216, 177, 92, 0.46)',
-    padding: 13,
-    shadowColor: '#7A552A',
-    shadowOpacity: 0.11,
-    shadowRadius: 11,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 3,
-  },
-  detailHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    columnGap: 10,
-  },
-  detailDate: {
-    color: '#3F2713',
-    fontSize: 17,
-    fontWeight: '900',
-  },
-  detailSubtitle: {
-    color: '#8A6425',
-    fontSize: 11,
-    fontWeight: '800',
-    marginTop: 3,
-  },
-  errorText: {
-    color: '#A94D3A',
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: '800',
-    marginTop: 8,
-  },
-  quickTabs: {
-    paddingVertical: 10,
-    columnGap: 6,
-  },
-  quickTab: {
-    minHeight: 30,
-    borderRadius: 15,
-    backgroundColor: '#FFF1C5',
-    borderWidth: 1,
-    borderColor: 'rgba(216, 168, 63, 0.42)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-    marginRight: 6,
-  },
-  quickTabActive: {
-    backgroundColor: '#F3D27D',
-    borderColor: '#D0A23A',
-  },
-  quickTabText: {
-    color: '#8A6425',
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  quickTabTextActive: {
-    color: '#3F2713',
-  },
-  detailRow: {
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 15,
-    backgroundColor: '#FFF6DF',
-    borderWidth: 1,
-    borderColor: 'rgba(216, 177, 92, 0.34)',
-    paddingHorizontal: 11,
-    marginBottom: 8,
-    columnGap: 12,
-  },
-  detailRowName: {
-    flex: 1,
-    minWidth: 0,
-    color: '#3F2713',
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  detailRowTime: {
-    color: '#8A6425',
-    fontSize: 11,
-    fontWeight: '800',
-    textAlign: 'right',
-  },
-  primaryButton: {
-    minHeight: 41,
-    borderRadius: 21,
-    backgroundColor: '#C58C1B',
-    borderWidth: 1,
-    borderColor: '#F1CA6B',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 3,
-  },
-  primaryButtonText: {
-    color: '#FFF8E8',
-    fontSize: 13,
-    fontWeight: '900',
-  },
+const gridStyles = StyleSheet.create({
+  calendar: { borderRadius: 19, borderWidth: 1, borderColor: '#DCC28A', overflow: 'hidden', backgroundColor: '#FFF7E3' },
+  weekRow: { flexDirection: 'row', backgroundColor: '#EFD487', paddingVertical: 13 },
+  weekLabel: { width: '14.285714%', textAlign: 'center', fontWeight: '800', color: '#3F2713', fontSize: 12 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap' }, cell: { width: '14.285714%', minHeight: 100, paddingHorizontal: 4, paddingVertical: 7, borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#EADAB5' },
+  cellHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, dayNumber: { color: '#3F2713', fontWeight: '800', fontSize: 20 },
+  tithiNumber: { color: '#80520F', fontSize: 10 }, tithi: { color: '#725C38', fontSize: 9, lineHeight: 17, marginTop: 2 },
+  cellArt: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', minHeight: 27, marginTop: 3 }, eventCount: { fontSize: 9, color: '#80520F' },
+  moon: { color: '#80520F', fontSize: 23 }, sunday: { color: '#AF4339' }, todayCell: { backgroundColor: '#FFF0C8' }, selectedCell: { backgroundColor: '#EFD487', borderColor: '#A36A12', borderWidth: 1 },
+  emptyCell: { backgroundColor: '#F4EDDC' }, almanacRow: { flexDirection: 'row' }, weekdayArt: { width: 70, backgroundColor: '#EFD487', alignItems: 'center', justifyContent: 'center', borderWidth: 0.5, borderColor: '#DCC28A' },
+  almanacWeekday: { color: '#3F2713', fontSize: 13, fontWeight: '800', marginTop: 5 }, almanacCell: { flex: 1, minHeight: 157, padding: 8, borderWidth: 0.5, borderColor: '#DCC28A' },
+  almanacDate: { color: '#3F2713', fontSize: 32, fontWeight: '900' }, almanacTithi: { color: '#80520F', fontWeight: '800', fontSize: 12 },
+  almanacText: { color: '#3F2713', fontSize: 11, lineHeight: 17 }, almanacTime: { color: '#725C38', fontSize: 9, marginTop: 4, lineHeight: 15 }, almanacFestival: { color: '#9D4032', fontSize: 10, lineHeight: 14, marginTop: 4 },
 });
