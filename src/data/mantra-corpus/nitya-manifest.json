@@ -1,0 +1,103 @@
+[
+  {
+    "id": "hanuman-chalisa",
+    "title": "Hanuman Chalisa",
+    "titleHi": "हनुमान चालीसा",
+    "deityId": "hanuman",
+    "categoryId": "chalisa",
+    "language": "Awadhi",
+    "path": "hanuman/chalisa",
+    "expectedSections": 43,
+    "meaning": "The Chalisa praises Hanuman’s courage, wisdom and devotion to Rama. The devotee asks for strength, understanding and his gracious presence in the heart.",
+    "meaningHi": "चालीसा हनुमान के साहस, ज्ञान और रामभक्ति की स्तुति करती है। भक्त बल, बुद्धि और हृदय में उनके कृपामय निवास की प्रार्थना करता है।",
+    "meaningBn": "চালিসায় হনুমানের সাহস, জ্ঞান ও রামভক্তির স্তব করা হয়েছে। ভক্ত শক্তি, বুদ্ধি এবং হৃদয়ে তাঁর করুণাময় উপস্থিতি প্রার্থনা করেন।"
+  },
+  {
+    "id": "shiv-aarti",
+    "title": "Om Jai Shiv Omkara",
+    "titleHi": "ॐ जय शिव ओंकारा",
+    "deityId": "shiv",
+    "categoryId": "aarti",
+    "language": "Hindi",
+    "path": "shiva/om-jai-shiv-omkara",
+    "expectedSections": 12,
+    "meaning": "This aarti worships Shiva and recognises Brahma, Vishnu and Sadashiva as divine aspects within Om.",
+    "meaningHi": "यह आरती शिव की उपासना करती है तथा ॐ में ब्रह्मा, विष्णु और सदाशिव के दिव्य स्वरूपों की एकता देखती है।",
+    "meaningBn": "এই আরতিতে শিবের উপাসনা এবং ওঁ-এর মধ্যে ব্রহ্মা, বিষ্ণু ও সদাশিবের দিব্যরূপের ঐক্য প্রকাশ করা হয়েছে।"
+  },
+  {
+    "id": "ganesh-aarti",
+    "title": "Jai Ganesh Deva",
+    "titleHi": "जय गणेश देवा",
+    "deityId": "ganesh",
+    "categoryId": "aarti",
+    "language": "Hindi",
+    "path": "ganesh/jai-ganesh-deva",
+    "expectedSections": 6,
+    "meaning": "The aarti praises Ganesha, son of Parvati and Shiva, and offers worship with a prayer for his compassion and help.",
+    "meaningHi": "यह आरती पार्वती और शिव के पुत्र गणेश की स्तुति करती है तथा पूजा अर्पित करके उनकी करुणा और सहायता माँगती है।",
+    "meaningBn": "এই আরতিতে পার্বতী ও শিবের পুত্র গণেশের স্তব করে পূজা নিবেদন এবং তাঁর করুণা ও সহায়তা প্রার্থনা করা হয়েছে।"
+  },
+  {
+    "id": "durga-aarti",
+    "title": "Jai Ambe Gauri",
+    "titleHi": "जय अम्बे गौरी",
+    "deityId": "durga",
+    "categoryId": "aarti",
+    "language": "Hindi",
+    "path": "durga/jai-ambe-gauri",
+    "expectedSections": 13,
+    "meaning": "The aarti honours Amba as Mother of the world, describing her radiant form, compassion and defeat of destructive forces.",
+    "meaningHi": "यह आरती अम्बा को जगन्माता कहकर उनके तेजस्वी रूप, करुणा और विनाशकारी शक्तियों पर विजय की स्तुति करती है।",
+    "meaningBn": "এই আরতিতে অম্বাকে জগন্মাতা বলে তাঁর দীপ্তিময় রূপ, করুণা ও ধ্বংসকারী শক্তির উপর বিজয়ের স্তব করা হয়েছে।"
+  },
+  {
+    "id": "lakshmi-aarti",
+    "title": "Om Jai Lakshmi Mata",
+    "titleHi": "ॐ जय लक्ष्मी माता",
+    "deityId": "lakshmi",
+    "categoryId": "aarti",
+    "language": "Hindi",
+    "path": "lakshmi/om-jai-lakshmi-mata",
+    "expectedSections": 8,
+    "meaning": "The aarti honours Lakshmi as Mother of the world and source of nourishment, virtues and prosperity, offering grateful devotion.",
+    "meaningHi": "यह आरती लक्ष्मी को जगन्माता तथा अन्न, सद्गुण और समृद्धि का स्रोत मानकर कृतज्ञ भक्ति अर्पित करती है।",
+    "meaningBn": "এই আরতিতে লক্ষ্মীকে জগন্মাতা এবং অন্ন, সদ্গুণ ও সমৃদ্ধির উৎস রূপে বন্দনা করে কৃতজ্ঞ ভক্তি নিবেদন করা হয়েছে।"
+  },
+  {
+    "id": "saraswati-vandana",
+    "title": "Saraswati Vandana — Ya Kundendu",
+    "titleHi": "सरस्वती वन्दना — या कुन्देन्दु",
+    "deityId": "saraswati",
+    "categoryId": "mantras",
+    "language": "Sanskrit",
+    "path": "saraswati/saraswati-vandana",
+    "expectedSections": 3,
+    "meaning": "We bow to Saraswati, radiant in white, holding the veena and seated on a white lotus, and pray that she remove dullness and ignorance.",
+    "meaningHi": "हम श्वेतवस्त्रधारिणी, वीणावादिनी, श्वेत कमल पर विराजमान सरस्वती को नमन करते हैं और जड़ता तथा अज्ञान दूर करने की प्रार्थना करते हैं।",
+    "meaningBn": "আমরা শ্বেতবসনা, বীণাধারিণী, শ্বেতপদ্মাসনা সরস্বতীকে প্রণাম করি এবং জড়তা ও অজ্ঞতা দূর করার প্রার্থনা করি।"
+  },
+  {
+    "id": "madhurashtakam",
+    "title": "Madhurashtakam",
+    "titleHi": "मधुराष्टकम्",
+    "deityId": "krishna",
+    "categoryId": "stotra",
+    "language": "Sanskrit",
+    "path": "krishna/madhurashtakam",
+    "expectedSections": 8
+  },
+  {
+    "id": "mahalakshmi-ashtakam",
+    "title": "Mahalakshmi Ashtakam",
+    "titleHi": "महालक्ष्म्यष्टकम्",
+    "deityId": "lakshmi",
+    "categoryId": "stotra",
+    "language": "Sanskrit",
+    "path": "lakshmi/mahalakshmi-ashtakam",
+    "expectedSections": 11,
+    "meaning": "The devotee bows repeatedly to Mahalakshmi, praising her as the universal Mother who grants wisdom, auspiciousness and liberation.",
+    "meaningHi": "भक्त महालक्ष्मी को बारम्बार नमन करते हुए उन्हें ज्ञान, मंगल और मुक्ति देने वाली जगन्माता के रूप में स्तुति करता है।",
+    "meaningBn": "ভক্ত মহালক্ষ্মীকে বারবার প্রণাম করে জ্ঞান, মঙ্গল ও মুক্তিদাত্রী জগন্মাতা রূপে তাঁর স্তব করেন।"
+  }
+]

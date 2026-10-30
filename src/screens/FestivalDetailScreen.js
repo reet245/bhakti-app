@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 
 import { getFestivalById } from '../data/festivalData';
+import { MANTRA_LIBRARY } from '../data/mantrasData';
 import { enrichFestival, getFestivalDateNote, getYearFestivals } from '../features/panchang/festivals';
 import { getFeaturedYearFestivals } from '../features/panchang/featuredFestivals';
 import { usePanchangLocation, usePanchangToday } from '../features/panchang/locationStore';
@@ -103,6 +104,7 @@ export default function FestivalDetailScreen({ navigation, route }) {
   const festivalImage = festivalImages[festival?.imageKey];
   const imageSource = festivalImage || deityArt[festival?.deityId];
   const storyText = festival?.story || festival?.description || STORY_FALLBACK;
+  const relatedMantra = MANTRA_LIBRARY.find((item) => item.id === festival?.mantraId);
   const dateText = festival?.dateText || festival?.date;
   const contentWidth = Math.max(282, Math.min(width - Math.max(24, width * 0.07), 720));
   const compactWidth = Math.min(width, 520);
@@ -208,6 +210,18 @@ export default function FestivalDetailScreen({ navigation, route }) {
             <Text style={[styles.storyText, { fontSize: storySize, lineHeight: storySize * 1.66 }]}>
               {festival.story ? <>{isHindi && 'कथा अभी अंग्रेज़ी में उपलब्ध है।\n\n'}{storyText}</> : (festival.description || (isHindi ? 'यह पंचांग में दर्शाया गया व्रत या उत्सव है। इसकी विस्तृत कथा अभी उपलब्ध नहीं है।' : 'This is an observance in the Panchang. A detailed story is not available yet.'))}
             </Text>
+            {relatedMantra && (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={isHindi ? `संबंधित मंत्र पढ़ें: ${relatedMantra.titleHi || relatedMantra.title}` : `Read related mantra: ${relatedMantra.title}`}
+                activeOpacity={0.8}
+                style={styles.relatedMantraButton}
+                onPress={() => navigation.navigate('MantraDetail', { mantraId: relatedMantra.id })}
+              >
+                <Text style={styles.relatedMantraLabel}>{isHindi ? 'संबंधित मंत्र' : 'Related mantra'}</Text>
+                <Text style={styles.relatedMantraTitle}>{isHindi ? relatedMantra.titleHi || relatedMantra.title : relatedMantra.title} →</Text>
+              </TouchableOpacity>
+            )}
             {!!festival.dateISO && <TouchableOpacity accessibilityRole="button" style={[styles.floatButton, { position: 'relative', marginTop: 22, alignSelf: 'center' }]} onPress={() => navigation?.navigate?.('Calendar', { selectedDateISO: festival.dateISO })}><Text style={styles.shareIcon}>{isHindi ? 'इस दिन का पंचांग' : 'Open this day’s Panchang'}</Text></TouchableOpacity>}
           </View>
         </ScrollView>
@@ -217,6 +231,18 @@ export default function FestivalDetailScreen({ navigation, route }) {
 }
 
 const baseStyles = StyleSheet.create({
+  relatedMantraButton: {
+    marginTop: 18,
+    padding: 14,
+    gap: 5,
+    borderRadius: 16,
+    borderCurve: 'continuous',
+    backgroundColor: 'rgba(255, 248, 232, 0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(184, 121, 24, 0.28)',
+  },
+  relatedMantraLabel: { color: '#80520F', fontSize: 11, lineHeight: 16, fontWeight: '700' },
+  relatedMantraTitle: { color: '#3F2713', fontSize: 15, lineHeight: 22, fontWeight: '800' },
   background: {
     flex: 1,
   },

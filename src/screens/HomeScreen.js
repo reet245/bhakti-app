@@ -16,6 +16,7 @@ import {
 import { ThemeContext } from '../../App';
 import { useLanguage } from '../context/LanguageContext';
 import HomePanchangCard from '../components/HomePanchangCard';
+import HomeMantraCard from '../components/HomeMantraCard';
 
 // -------------------------------------------------------
 // Background image — resolved at bundle time by Metro
@@ -40,7 +41,7 @@ const ICONS = {
 
 // Feature buttons — each carries a pre-resolved image source
 const FEATURES = [
-  { labelKey: 'panchang', icon: ICONS.calendar, screen: 'Calendar', subtitle: 'Tithi, Nakshatra,\nMuhurat & more' },
+  { labelKey: 'panchang', icon: ICONS.calendar, screen: 'PanchangCalendar', subtitle: 'Monthly almanac &\ndaily Panchang' },
   { labelKey: 'kundli', icon: ICONS.kundli, screen: 'Kundli', subtitle: 'Your personal\nbirth chart' },
   { labelKey: 'puja', icon: ICONS.puja, screen: 'Puja', subtitle: 'Virtual Puja,\nAarti & Offerings' },
   { labelKey: 'mantras', icon: ICONS.mantras, screen: 'Mantras', subtitle: 'Sacred chants\nfor peace & power' },
@@ -173,7 +174,11 @@ export default function HomeScreen({ navigation }) {
                   key={item.labelKey}
                   item={item}
                   title={item.labelKey === 'panchang' ? (isHindi ? 'कैलेंडर व पंचांग' : 'Calendar & Panchang') : t(item.labelKey)}
-                  subtitle={item.labelKey === 'panchang' ? (isHindi ? 'माह, दैनिक पंचांग\nऔर पत्रिका' : 'Month, daily details\n& almanac') : undefined}
+                  subtitle={item.labelKey === 'panchang'
+                    ? (isHindi ? 'मासिक पत्रक और\nदैनिक पंचांग' : 'Monthly almanac &\ndaily Panchang')
+                    : item.labelKey === 'mantras'
+                      ? (isHindi ? 'मंत्र, श्लोक\nऔर जप' : 'Mantras, shlokas\n& Jaap')
+                      : undefined}
                   cardWidth={cardWidth}
                   cardHeight={cardHeight}
                   medallionSize={medallionSize}
@@ -182,6 +187,7 @@ export default function HomeScreen({ navigation }) {
                 />
               ))}
             </View>
+            <HomeMantraCard navigation={navigation} width={gridWidth} />
           </View>
         </ScrollView>
 

@@ -38,7 +38,7 @@ const categories = [
 ];
 export default function PujaScreen({ navigation }) {
   const styles = useDevotionalStyles(baseStyles);
-  const { t } = useLanguage();
+  const { t, currentLanguage } = useLanguage();
   const { width, height } = useWindowDimensions();
   const topPadding = useBhaktiTopPadding(width, 'title');
   const templeTopPadding = useBhaktiTopPadding(width, 'overlay', { usesCoreSafeArea: false });
@@ -854,6 +854,15 @@ export default function PujaScreen({ navigation }) {
           {!showAartiVideo && (
             <View style={styles.templeTitleWrap}>
               <Text style={styles.templeDeityName}>{t(deity.labelKey || deity.name)}</Text>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={currentLanguage === 'hi' ? `${t(deity.labelKey || deity.name)} के मंत्र देखें` : `View mantras for ${t(deity.labelKey || deity.name)}`}
+                activeOpacity={0.8}
+                style={styles.templeMantraButton}
+                onPress={() => navigation.navigate('Mantras', { deityId: deity.id })}
+              >
+                <Text style={styles.templeMantraLabel}>{currentLanguage === 'hi' ? 'मंत्र व श्लोक' : 'Mantras & shlokas'} ›</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -1181,6 +1190,23 @@ const baseStyles = StyleSheet.create({
     textShadowColor: 'rgba(58, 34, 13, 0.78)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 8,
+  },
+  templeMantraButton: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    marginTop: 6,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 140, 0.55)',
+    backgroundColor: 'rgba(45, 25, 8, 0.68)',
+  },
+  templeMantraLabel: {
+    color: '#FFF7E8',
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '800',
+    textAlign: 'center',
   },
   actionTray: {
     position: 'absolute',

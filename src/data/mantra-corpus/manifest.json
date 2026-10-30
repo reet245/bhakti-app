@@ -1,0 +1,566 @@
+[
+  {
+    "id": "hanuman-kavach",
+    "title": "Om Hanumate Namah",
+    "titleHi": "ॐ हनुमते नमः",
+    "page": "आञ्जनेयसहस्रनामावलिः",
+    "deityId": "hanuman",
+    "categoryId": "mantras",
+    "text": "ॐ हनुमते नमः ।"
+  },
+  {
+    "id": "lakshmi-mantra",
+    "title": "Om Mahalakshmyai Namah",
+    "titleHi": "ॐ महालक्ष्म्यै नमः",
+    "page": "गायत्री सहस्रनामावली",
+    "deityId": "lakshmi",
+    "categoryId": "mantras",
+    "text": "ॐ महालक्ष्म्यै नमः ।"
+  },
+  {
+    "id": "shiv-tandava",
+    "title": "Shiva Tandava Stotram",
+    "page": "शिवताण्डवस्तोत्रम्",
+    "deityId": "shiv",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "lingashtakam",
+    "title": "Lingashtakam",
+    "page": "लिङ्गाष्टकम्",
+    "deityId": "shiv",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "rudrashtakam",
+    "title": "Rudrashtakam",
+    "page": "रुद्राष्टकम्",
+    "deityId": "shiv",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "shiva-manasa-puja",
+    "title": "Shiva Manasa Puja",
+    "page": "शिवमानसपूजा",
+    "deityId": "shiv",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "shiva-shadakshara",
+    "title": "Shiva Shadakshara Stotram",
+    "page": "शिवषडाक्षरस्तोत्रम्",
+    "deityId": "shiv",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "vedasara-shiva",
+    "title": "Vedasara Shiva Stotram",
+    "page": "वेदसारशिवस्तोत्रम्",
+    "deityId": "shiv",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "kalabhairavashtakam",
+    "title": "Kalabhairava Ashtakam",
+    "page": "कालभैरवाष्टकम्",
+    "deityId": "shiv",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "ardhanarishvara",
+    "title": "Ardhanarishvara Stotram",
+    "page": "अर्धनारीश्वरस्तोत्रम्",
+    "deityId": "shiv",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "dakshinamurti",
+    "title": "Dakshinamurti Stotram",
+    "page": "दक्षिणामूर्तिस्तोत्रम्",
+    "deityId": "shiv",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "nirvana-shatkam",
+    "title": "Nirvana Shatkam",
+    "page": "निर्वाणषट्कम्",
+    "deityId": "shiv",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "shiva-bhujanga",
+    "title": "Shiva Bhujangam",
+    "page": "शिवभुजङ्गम्",
+    "deityId": "shiv",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "ganesha-pancharatnam",
+    "title": "Ganesha Pancharatnam",
+    "page": "गणेशपञ्चरत्नम्",
+    "deityId": "ganesh",
+    "categoryId": "stotra",
+    "corrections": [
+      {
+        "from": "तमेकदन्तमेव तं विचिन्तयामि सन्ततम्॥६॥",
+        "to": "तमेकदन्तमेव तं विचिन्तयामि सन्ततम्॥५॥",
+        "note": "Corrected duplicated verse number 6 on the fifth verse; the closing phalashruti remains verse 6. No verse wording changed."
+      }
+    ]
+  },
+  {
+    "id": "ganesha-bhujangam",
+    "title": "Ganesha Bhujangam",
+    "page": "गणेशभुजङ्गम्",
+    "deityId": "ganesh",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "ganesha-stotram",
+    "title": "Ganesha Stotram",
+    "page": "गणेशस्तोत्रम्",
+    "deityId": "ganesh",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "ganesha-ashtakam",
+    "title": "Ganesha Ashtakam",
+    "page": "गणेशाष्टकम्",
+    "deityId": "ganesh",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "ganapati-atharvashirsha",
+    "title": "Ganapati Atharvashirsha",
+    "page": "गणपत्यथर्वशीर्षम्",
+    "deityId": "ganesh",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "vinayaka-stotram",
+    "title": "Vinayaka Stotram",
+    "page": "विनायकस्तोत्रम्",
+    "deityId": "ganesh",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "hanuman-dvadasha-nama",
+    "title": "Hanuman Dvadasha Nama Stotram",
+    "page": "आंजनेय द्वादशनामस्तोत्रम्",
+    "deityId": "hanuman",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "hanuman-panchamukhi-kavach",
+    "title": "Panchamukhi Hanuman Kavacham",
+    "page": "पञ्चमुखिहनुमत्कवचम्",
+    "deityId": "hanuman",
+    "categoryId": "kavach"
+  },
+  {
+    "id": "hanuman-sahasranama",
+    "title": "Anjaneya Sahasranama Stotram",
+    "page": "आञ्जनेयसहस्रनामस्तोत्रम्",
+    "deityId": "hanuman",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "namami-durga-stuti",
+    "title": "Durga Stuti",
+    "page": "दुर्गास्तुतिः",
+    "deityId": "durga",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "argala-stotram",
+    "title": "Argala Stotram",
+    "page": "अर्गलास्तोत्रम्",
+    "deityId": "durga",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "kilaka-stotram",
+    "title": "Kilaka Stotram",
+    "page": "कीलकस्तोत्रम्",
+    "deityId": "durga",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "devi-aparadha-kshamapana",
+    "title": "Devi Aparadha Kshamapana",
+    "page": "देव्यपराधक्षमापनस्तोत्रम्",
+    "deityId": "durga",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "bhavani-ashtakam",
+    "title": "Bhavani Ashtakam",
+    "page": "भवान्यष्टकम्",
+    "deityId": "durga",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "annapurna-stotram",
+    "title": "Annapurna Stotram",
+    "page": "अन्नपूर्णास्तोत्रम्",
+    "deityId": "durga",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "devi-bhujangam",
+    "title": "Devi Bhujangam",
+    "page": "देवीभुजङ्गम्",
+    "deityId": "durga",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "lalita-pancharatnam",
+    "title": "Lalita Pancharatnam",
+    "page": "ललितापञ्चरत्नम्",
+    "deityId": "durga",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "tripurasundari-ashtakam",
+    "title": "Tripurasundari Ashtakam",
+    "page": "त्रिपुरसुन्दरीअष्टकम्",
+    "deityId": "durga",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "gauri-dashakam",
+    "title": "Gauri Dashakam",
+    "page": "गौरीदशकम्",
+    "deityId": "durga",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "ashtadasha-shakti-peetha",
+    "title": "Ashtadasha Shakti Peetha Stotram",
+    "page": "अष्टादशशक्तिपीठस्तोत्रम्",
+    "deityId": "durga",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "kanakadhara-stotram",
+    "title": "Kanakadhara Stotram",
+    "page": "कनकधारास्तोत्रम्",
+    "deityId": "lakshmi",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "dhanalakshmi-stotram",
+    "title": "Dhanalakshmi Stotram",
+    "page": "धनलक्ष्मीस्तोत्रम्",
+    "deityId": "lakshmi",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "lakshmi-narayana-stotram",
+    "title": "Lakshmi Narayana Stotram",
+    "page": "लक्ष्मीनारायणस्तोत्रम्",
+    "deityId": "lakshmi",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "lakshmi-shloka",
+    "title": "Lakshmi Shloka",
+    "page": "लक्ष्मी श्लोकः",
+    "deityId": "lakshmi",
+    "categoryId": "mantras"
+  },
+  {
+    "id": "krishna-bhajan",
+    "title": "Achyutashtakam",
+    "page": "अच्युताष्टकम्",
+    "deityId": "krishna",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "madhurashtakam",
+    "title": "Madhurashtakam",
+    "page": "मधुराष्टकम्",
+    "deityId": "krishna",
+    "categoryId": "stotra",
+    "corrections": [
+      {
+        "from": "मधुराधिपतेरखi\nलं",
+        "to": "मधुराधिपतेरखिलं",
+        "note": "Repaired stray Latin i and line break inside अखिलं in verse 1."
+      }
+    ]
+  },
+  {
+    "id": "govindashtakam",
+    "title": "Govindashtakam",
+    "page": "गोविन्दाष्टकम्",
+    "deityId": "krishna",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "gopala-stotram",
+    "title": "Gopala Stotram",
+    "page": "गोपालस्तोत्रम्",
+    "deityId": "krishna",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "gopala-stuti",
+    "title": "Gopala Stuti",
+    "page": "गोपालस्तुतिः",
+    "deityId": "krishna",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "gopala-vimshati",
+    "title": "Gopala Vimshati",
+    "page": "गोपालविंशतिस्तोत्रम्",
+    "deityId": "krishna",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "panduranga-ashtakam",
+    "title": "Panduranga Ashtakam",
+    "page": "पाण्डुरङ्गाष्टकम्",
+    "deityId": "krishna",
+    "categoryId": "stotra",
+    "corrections": [
+      {
+        "from": "स्wअयं",
+        "to": "स्वयं",
+        "note": "Repaired mixed Latin w in स्वयं."
+      }
+    ]
+  },
+  {
+    "id": "shikshashtakam",
+    "title": "Shikshashtakam",
+    "page": "शिक्षाष्टकम्",
+    "deityId": "krishna",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "ram-raksha",
+    "title": "Rama Raksha Stotram",
+    "page": "रामरक्षास्तोत्रम्",
+    "deityId": "ram",
+    "categoryId": "kavach"
+  },
+  {
+    "id": "nama-ramayanam",
+    "title": "Nama Ramayanam",
+    "page": "नामरामायणम्",
+    "deityId": "ram",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "eka-shloki-ramayana",
+    "title": "Eka Shloki Ramayana",
+    "page": "एकश्लोकिरामायणम्",
+    "deityId": "ram",
+    "categoryId": "mantras"
+  },
+  {
+    "id": "ahalya-rama-stotram",
+    "title": "Ahalya Krita Rama Stotram",
+    "page": "अहल्याकृतरामस्तोत्रम्",
+    "deityId": "ram",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "jatayu-rama-stotram",
+    "title": "Jatayu Krita Rama Stotram",
+    "page": "जटायुकृतरामस्तोत्रम्",
+    "deityId": "ram",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "sharada-pancharatna",
+    "title": "Sharada Pancharatna Stuti",
+    "page": "शारदापञ्चरत्नस्तुतिः",
+    "deityId": "saraswati",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "sharada-bhujanga-ashtakam",
+    "title": "Sharada Bhujanga Prayata Ashtakam",
+    "page": "शारदाभुजङ्गप्रयाताष्टकम्",
+    "deityId": "saraswati",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "narayana-stotram",
+    "title": "Narayana Stotram",
+    "page": "नारायणस्तोत्रम्",
+    "deityId": "vishnu",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "narayana-ashtakam",
+    "title": "Narayana Ashtakam",
+    "page": "नारायणाष्टकम्",
+    "deityId": "vishnu",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "nrisimha-stotram",
+    "title": "Nrisimha Stotram",
+    "page": "नृसिंहस्तोत्रम्",
+    "deityId": "vishnu",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "purusha-suktam",
+    "title": "Purusha Suktam",
+    "page": "पुरुषसूक्तम्",
+    "deityId": "vishnu",
+    "categoryId": "stotra",
+    "corrections": [
+      {
+        "from": "S",
+        "to": "ऽ",
+        "note": "Normalized the legacy ASCII S used for the Sanskrit avagraha."
+      }
+    ]
+  },
+  {
+    "id": "aditya-hridayam",
+    "title": "Aditya Hridayam",
+    "page": "आदित्यहृदयम्",
+    "deityId": "surya",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "aditya-stotram",
+    "title": "Aditya Stotram",
+    "page": "महामहिमान्वितं आदित्यस्तोत्रम्",
+    "deityId": "surya",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "gayatri-mantra",
+    "title": "Gayatri Mantra",
+    "page": "गायत्रीमन्त्रः",
+    "deityId": "universal",
+    "categoryId": "mantras"
+  },
+  {
+    "id": "shanti-mantras",
+    "title": "Saha Navavatu — Shanti Mantra",
+    "page": "शान्तिमन्त्रः",
+    "deityId": "universal",
+    "categoryId": "mantras",
+    "titleHi": "सह नाववतु — शान्तिमन्त्र"
+  },
+  {
+    "id": "kara-darshanam",
+    "title": "Kara Darshanam",
+    "page": "करदर्शनम्",
+    "deityId": "universal",
+    "categoryId": "mantras"
+  },
+  {
+    "id": "bhumi-vandana",
+    "title": "Bhumi Vandana",
+    "page": "भूमिवन्दनम्",
+    "deityId": "universal",
+    "categoryId": "mantras"
+  },
+  {
+    "id": "navagraha-stotram",
+    "title": "Navagraha Stotram",
+    "page": "नवग्रहस्तोत्रम्",
+    "deityId": "universal",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "narmada-ashtakam",
+    "title": "Narmada Ashtakam",
+    "page": "नर्मदाष्टकम्",
+    "deityId": "universal",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "ganga-ashtakam",
+    "title": "Ganga Ashtakam",
+    "page": "गंगाष्टकम् (शंकरभगवतकृतम्)",
+    "deityId": "universal",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "shani-stotram",
+    "title": "Shani Stotram",
+    "page": "शनिस्तोत्रम्",
+    "deityId": "shani",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "shani-vajra-kavach",
+    "title": "Shani Vajra Panjara Kavacham",
+    "page": "शनिवज्रपंजरकवचम्",
+    "deityId": "shani",
+    "categoryId": "kavach"
+  },
+  {
+    "id": "kali-shatanama",
+    "title": "Kali Shatanama Stotram",
+    "page": "ककारादिकालीशतनामस्तोत्रम्",
+    "deityId": "kali",
+    "categoryId": "stotra"
+  },
+  {
+    "id": "durga-stuti",
+    "title": "Ya Devi Sarvabhuteshu",
+    "page": "चण्डीपाठः",
+    "deityId": "durga",
+    "categoryId": "stotra",
+    "titleHi": "या देवी सर्वभूतेषु"
+  },
+  {
+    "id": "maha-mrityunjaya",
+    "title": "Maha Mrityunjaya Mantra",
+    "page": "महामृत्युंजय घनपाठ",
+    "deityId": "shiv",
+    "categoryId": "mantras",
+    "start": "त्र्यम्बकं यजामहे",
+    "end": "मामृतात् ॥",
+    "titleHi": "महामृत्युञ्जय मन्त्र"
+  },
+  {
+    "id": "om-namah-shivaya",
+    "title": "Om Namah Shivaya",
+    "page": "शिवषडाक्षरस्तोत्रम्",
+    "deityId": "shiv",
+    "categoryId": "mantras",
+    "text": "ॐ नमः शिवाय",
+    "titleHi": "ॐ नमः शिवाय"
+  },
+  {
+    "id": "ganesh-vakratunda",
+    "title": "Vakratunda Mahakaya",
+    "page": "पृष्ठम्:बृहत्स्तोत्ररत्नाकरः (प्रथमः भागः).pdf/१९०",
+    "deityId": "ganesh",
+    "categoryId": "mantras",
+    "start": "वक्रतुण्ड महाकाय",
+    "end": "सर्वकार्येषु सर्वदा ।।",
+    "titleHi": "वक्रतुण्ड महाकाय"
+  },
+  {
+    "id": "ganapati-mula-mantra",
+    "title": "Om Gam Ganapataye Namah",
+    "page": "गणपत्यथर्वशीर्षम्",
+    "deityId": "ganesh",
+    "categoryId": "mantras",
+    "text": "ॐ गं गणपतये नमः",
+    "titleHi": "ॐ गं गणपतये नमः"
+  },
+  {
+    "id": "ganesha-gayatri",
+    "title": "Ganesha Gayatri",
+    "page": "गणपत्यथर्वशीर्षम्",
+    "deityId": "ganesh",
+    "categoryId": "mantras",
+    "text": "एकदन्ताय विद्महे वक्रतुण्डाय धीमहि ।\nतन्नो दन्तिः प्रचोदयात् ॥ ८ ॥",
+    "titleHi": "गणेश गायत्री"
+  }
+]

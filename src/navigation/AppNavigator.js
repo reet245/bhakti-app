@@ -14,6 +14,8 @@ import KundliMatchScreen from '../screens/KundliMatchScreen';
 import PujaScreen from '../screens/PujaScreen';
 import MantrasScreen from '../screens/MantrasScreen';
 import MantraDetailScreen from '../screens/MantraDetailScreen';
+import CustomMantraScreen from '../screens/CustomMantraScreen';
+import MantraSourcesScreen from '../screens/MantraSourcesScreen';
 import JaapCounterScreen from '../screens/JaapCounterScreen';
 import UpcomingFestivalsScreen from '../screens/UpcomingFestivalsScreen';
 import FestivalDetailScreen from '../screens/FestivalDetailScreen';
@@ -128,6 +130,8 @@ export default function AppNavigator() {
         component={JaapCounterScreen}
         options={{ title: 'Jaap Counter', headerShown: false }}
       />
+      <Stack.Screen name="CustomMantra" component={CustomMantraScreen} options={{ title: 'My mantra' }} />
+      <Stack.Screen name="MantraSources" component={MantraSourcesScreen} options={{ title: 'Sources and credits' }} />
 
       <Stack.Screen
         name="UpcomingFestivals"

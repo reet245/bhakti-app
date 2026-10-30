@@ -1,10 +1,9 @@
 import useDevotionalCopy from '../hooks/useDevotionalCopy';
 import useDevotionalStyles from '../hooks/useDevotionalStyles';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Image,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,14 +11,17 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import useJaapSession from '../hooks/useJaapSession';
+import { useDevotionalState, retryDevotionalLoad, retryDevotionalSave } from '../hooks/useDevotionalState';
 
 import DevotionalBackground from '../components/DevotionalBackground';
 import BhaktiBackButton from '../components/BhaktiBackButton';
-import { useBhaktiTopPadding } from '../components/BhaktiLayout';
+import { getBhaktiTopPadding } from '../components/BhaktiLayout';
 import {
-  MANTRA_LIBRARY,
+  getMantraById,
+  getMantraScript,
   getCategoryById,
   getDeityById,
 } from '../data/mantrasData';
@@ -35,11 +37,30 @@ function formatElapsedTime(elapsedMs) {
 }
 
 export default function JaapCounterScreen({ navigation, route }) {
+  const { customMantras, ready, error } = useDevotionalState();
+  const styles = useDevotionalStyles(baseStyles);
+  const { isHindi } = useDevotionalCopy();
+  const mantra = getMantraById(route?.params?.mantraId, customMantras);
+  const personalRequest = typeof route?.params?.mantraId === 'string' && route.params.mantraId.startsWith('custom-');
+  if (!mantra) return <DevotionalBackground style={styles.background}><SafeAreaView style={styles.safeArea}><View style={styles.unavailable}>
+    <BhaktiBackButton navigation={navigation} fallbackRoute="Mantras" />
+    <Text selectable style={styles.completionText}>{!ready && personalRequest ? (isHindi ? 'आपका संग्रह लोड हो रहा है…' : 'Loading your collection…') : (isHindi ? 'यह मंत्र नहीं मिला।' : 'This mantra was not found.')}</Text>
+    {!!error && <TouchableOpacity accessibilityRole="button" onPress={retryDevotionalLoad}><Text style={styles.resetButtonText}>{isHindi ? 'फिर प्रयास करें' : 'Retry loading'}</Text></TouchableOpacity>}
+  </View></SafeAreaView></DevotionalBackground>;
+  return <JaapSession key={`${mantra.id}:${route?.params?.targetCount}`} navigation={navigation} mantra={mantra} route={route} />;
+}
+
+function JaapSession({ navigation, mantra, route }) {
   const styles = useDevotionalStyles(baseStyles);
   const { ui, isHindi } = useDevotionalCopy();
   const { width, height } = useWindowDimensions();
-  const headerTopPadding = useBhaktiTopPadding(width, 'hero');
-  const mantra = MANTRA_LIBRARY.find((item) => item.id === route?.params?.mantraId) ?? MANTRA_LIBRARY[0];
+  // SafeAreaView owns system insets; this value is only the devotional header gap.
+  const headerTopPadding = getBhaktiTopPadding(width, 0, 'hero');
+  const { readingScript } = useDevotionalState();
+  const title = isHindi ? mantra.titleHi || mantra.title : mantra.title;
+  const chant = mantra.isCustom ? mantra.text : getMantraScript(mantra, readingScript);
+  const [expandedChant, setExpandedChant] = useState(false);
+  const longChant = chant.length > 500;
   const deity = getDeityById(mantra.deityId);
   const category = getCategoryById(mantra.categoryId);
   const requestedTarget = Number.parseInt(route?.params?.targetCount, 10);
@@ -113,16 +134,18 @@ export default function JaapCounterScreen({ navigation, route }) {
           style={styles.container}
           contentContainerStyle={[styles.content, responsiveStyles.content]}
           showsVerticalScrollIndicator={false}
+          contentInsetAdjustmentBehavior="automatic"
+          keyboardShouldPersistTaps="handled"
         >
           <View style={[styles.header, responsiveStyles.header]}>
             <Image source={HANGING_BELL_IMAGE} style={[styles.headerBell, styles.leftBell, responsiveStyles.bell]} resizeMode="contain" />
             <Image source={HANGING_BELL_IMAGE} style={[styles.headerBell, styles.rightBell, responsiveStyles.bell]} resizeMode="contain" />
 
-            <BhaktiBackButton navigation={navigation} style={styles.backButton} />
+            <BhaktiBackButton navigation={navigation} fallbackRoute="Mantras" style={[styles.backButton, { top: Math.max(14, headerTopPadding - 28) }]} />
 
             <Text style={[styles.headerTitle, responsiveStyles.headerTitle]}>{ui('Jaap Counter')}</Text>
             <Text style={styles.subtitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.76}>
-              {mantra.title}
+              {title}
             </Text>
             <View style={styles.lotusDividerWrap}>
               <View style={[styles.dividerLine, styles.dividerLineLeft]} />
@@ -142,7 +165,7 @@ export default function JaapCounterScreen({ navigation, route }) {
               </View>
               <View style={styles.mantraInfoCopy}>
                 <Text style={styles.mantraName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.76}>
-                  {mantra.title}
+                  {title}
                 </Text>
                 <Text style={styles.mantraMeta} numberOfLines={1}>
                   {`${isHindi ? deity.hindiName : deity.englishName} | ${ui(category.label)}`}
@@ -150,11 +173,16 @@ export default function JaapCounterScreen({ navigation, route }) {
               </View>
             </View>
 
+            <Text selectable numberOfLines={longChant && !expandedChant ? 4 : undefined} style={styles.chantText}>{chant}</Text>
+            {longChant && <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: expandedChant }} style={styles.expandTextButton} onPress={() => setExpandedChant((value) => !value)}><Text style={styles.resetButtonText}>{isHindi ? (expandedChant ? 'पाठ संक्षिप्त करें' : 'पूरा पाठ दिखाएँ') : (expandedChant ? 'Show less text' : 'Show complete text')}</Text></TouchableOpacity>}
+
             <TouchableOpacity
               style={[styles.counterCircle, responsiveStyles.counter, isActive && styles.counterCircleActive]}
               activeOpacity={0.9}
               disabled={!ready}
-              accessibilityLabel="Add one chant"
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !ready }}
+              accessibilityLabel={ui('Add one chant')}
               onPress={incrementCount}
             >
               {Array.from({ length: 24 }).map((_, index) => {
@@ -191,7 +219,7 @@ export default function JaapCounterScreen({ navigation, route }) {
               </View>
             </TouchableOpacity>
 
-            {!!error && <Text accessibilityRole="alert" style={styles.completionText}>{ui(error)}</Text>}
+            {!!error && <><Text selectable accessibilityRole="alert" style={styles.completionText}>{ui(error)}</Text><TouchableOpacity accessibilityRole="button" onPress={ready ? retryDevotionalSave : retryDevotionalLoad}><Text style={styles.resetButtonText}>{isHindi ? 'फिर प्रयास करें' : 'Retry saving progress'}</Text></TouchableOpacity></>}
             {!ready && <Text style={styles.completionText}>{ui('Loading saved progress…')}</Text>}
             {isComplete && (
               <View style={styles.completionCard}>
@@ -201,11 +229,11 @@ export default function JaapCounterScreen({ navigation, route }) {
             )}
 
             <View style={styles.buttonRow}>
-              <TouchableOpacity style={[styles.primaryButton, styles.flexButton]} activeOpacity={0.86} disabled={!ready} onPress={isActive ? pauseJaap : startJaap}>
+              <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: !ready }} style={[styles.primaryButton, styles.flexButton]} activeOpacity={0.86} disabled={!ready} onPress={isActive ? pauseJaap : startJaap}>
                 <Text style={styles.primaryButtonText}>{ui(isActive ? 'Pause Jaap' : count > 0 ? 'Resume Jaap' : 'Start Jaap')}</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={[styles.resetButton, styles.flexButton]} activeOpacity={0.84} disabled={!ready} onPress={resetCounter}>
+              <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: !ready }} style={[styles.resetButton, styles.flexButton]} activeOpacity={0.84} disabled={!ready} onPress={resetCounter}>
                 <Text style={styles.resetButtonText}>{ui('Reset')}</Text>
               </TouchableOpacity>
             </View>
@@ -234,6 +262,9 @@ export default function JaapCounterScreen({ navigation, route }) {
 }
 
 const baseStyles = StyleSheet.create({
+  unavailable: { padding: 24, gap: 20 },
+  chantText: { color: '#4A2E14', fontSize: 18, lineHeight: 30, textAlign: 'center', marginBottom: 20 },
+  expandTextButton: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center', marginBottom: 12 },
   background: {
     flex: 1,
     width: '100%',

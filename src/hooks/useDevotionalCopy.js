@@ -25,7 +25,7 @@ const HINDI = {
   'Progress is available for this session, but could not be saved on this device.': 'इस सत्र की प्रगति उपलब्ध है, लेकिन इस डिवाइस पर सहेजी नहीं जा सकी।',
   'Read text source': 'पाठ का स्रोत देखें', 'Share': 'साझा करें', 'Read Story': 'कथा पढ़ें',
   'Mantras': 'मंत्र', 'Aarti': 'आरती', 'Chalisa': 'चालीसा', 'Bhajan': 'भजन',
-  'Stotra': 'स्तोत्र', 'Kavach': 'कवच', 'Vrat Katha': 'व्रत कथा', 'Festival Special': 'उत्सव विशेष',
+  'Stotra': 'स्तोत्र', 'Kavach': 'कवच', 'Vrat Katha': 'व्रत कथा', 'Festival Special': 'उत्सव विशेष', 'Gita Shlokas': 'गीता श्लोक',
 };
 
 export default function useDevotionalCopy() {

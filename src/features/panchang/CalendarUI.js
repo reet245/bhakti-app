@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Image, ImageBackground, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useDevotionalStyles from '../../hooks/useDevotionalStyles';
 import { useLanguage } from '../../context/LanguageContext';
 import BhaktiBackButton from '../../components/BhaktiBackButton';
@@ -26,32 +27,42 @@ export function Action({ children, onPress, label, selected, disabled, style }) 
   const s = useDevotionalStyles(calendarStyles);
   return <TouchableOpacity accessibilityRole="button" accessibilityLabel={label || (typeof children === 'string' ? children : undefined)} accessibilityState={{ selected: !!selected, disabled: !!disabled }} onPress={onPress} disabled={disabled} activeOpacity={0.78} style={[s.action, style, selected && s.actionSelected, disabled && { opacity: 0.4 }]}><Text style={s.actionText}>{children}</Text></TouchableOpacity>;
 }
-export function CalendarPage({ navigation, title, children, action, wide = false }) {
+export function CalendarPage({ navigation, title, children, action, wide = false, fitContent = false }) {
   const s = useDevotionalStyles(calendarStyles);
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const top = useBhaktiTopPadding(width, 'title');
-  return <ImageBackground source={require('../../../assets/horoscope/background/horoscope-bg.png')} style={s.background} resizeMode="cover">
+  const compact = fitContent && width > height && height < 540;
+  const content = <View style={[s.page, { maxWidth: wide ? 980 : 680 }, fitContent && { flex: 1, minHeight: 0, gap: compact ? 6 : 8 }]}>
+    <View style={[s.header, compact && { minHeight: 36 }]}><BhaktiBackButton navigation={navigation} /><Text accessibilityRole="header" style={[s.title, compact && { fontSize: 20 }]}>{title}</Text>{action || <View style={{ width: 40 }} />}</View>
+    {children}
+  </View>;
+  return <ImageBackground source={require('../../../assets/horoscope/background/horoscope-bg.png')} style={[s.background, fitContent && { overflow: 'hidden' }]}
+    imageStyle={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} resizeMode="cover">
     <View style={s.overlay} /><SafeAreaView style={s.background}>
-      <ScrollView contentContainerStyle={{ paddingTop: top, paddingBottom: getBhaktiBottomNavContentPadding(height, 35), paddingHorizontal: 14 }}>
-        <View style={[s.page, { maxWidth: wide ? 980 : 680 }]}>
-          <View style={s.header}><BhaktiBackButton navigation={navigation} /><Text accessibilityRole="header" style={s.title}>{title}</Text>{action || <View style={{ width: 40 }} />}</View>
-          {children}
-        </View>
-      </ScrollView><BhaktiBottomNav navigation={navigation} activeTab="Calendar" />
+      <ScrollView scrollEnabled={!fitContent} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" contentContainerStyle={{
+        paddingTop: compact ? insets.top + 6 : top,
+        paddingBottom: compact ? insets.bottom + 6 : getBhaktiBottomNavContentPadding(height, fitContent ? 10 : 35) + (fitContent ? insets.bottom : 0),
+        paddingLeft: (fitContent ? 10 : 14) + (compact ? insets.left : 0),
+        paddingRight: (fitContent ? 10 : 14) + (compact ? insets.right : 0),
+        ...(fitContent ? { height: '100%', flexGrow: 1 } : {}),
+      }}>{content}</ScrollView>
+      {!compact && <BhaktiBottomNav navigation={navigation} activeTab="Calendar" />}
     </SafeAreaView>
   </ImageBackground>;
 }
 export function CalendarTabs({ active, navigation, selectedDateISO }) {
   const s = useDevotionalStyles(calendarStyles); const { c } = useCalendarCopy();
-  return <View style={s.tabs}>{[['Month', c('Month', 'महीना')], ['Daily', c('Daily Panchang', 'दैनिक पंचांग')], ['Almanac', c('Almanac', 'पत्रक')]].map(([id, label]) =>
+  return <View style={s.tabs}>{[['Month', c('Month', 'महीना')], ['Daily', c('Daily Panchang', 'दैनिक पंचांग')]].map(([id, label]) =>
     <Action key={id} selected={active === id} style={s.tab} onPress={() => navigation.navigate(id === 'Daily' ? 'Calendar' : 'PanchangCalendar', { selectedDateISO, view: id })}>{label}</Action>)}</View>;
 }
-export function DateJump({ date, onChange }) {
+export function DateJump({ date, onChange, before, actions, open: controlledOpen, onOpenChange, label, triggerStyle }) {
   const s = useDevotionalStyles(calendarStyles); const { c } = useCalendarCopy();
-  const [open, setOpen] = useState(false); const [draft, setDraft] = useState(''); const [error, setError] = useState('');
-  return <View><Action onPress={() => { setDraft(dateISO(date)); setError(''); setOpen(!open); }}>{c('Go to date', 'तारीख चुनें')} ▾</Action>
+  const [internalOpen, setOpen] = useState(false); const [draft, setDraft] = useState(''); const [error, setError] = useState('');
+  const open = controlledOpen ?? internalOpen;
+  return <View><View style={s.between}>{before}<Action label={c('Go to date', 'तारीख चुनें')} style={triggerStyle} onPress={() => { setDraft(dateISO(date)); setError(''); setOpen(!open); onOpenChange?.(!open); }}>{label || c('Go to date', 'तारीख चुनें')} ▾</Action>{actions}</View>
     {open && <View style={s.card}><Text style={s.hint}>{c('Date as YYYY-MM-DD · 1900–2100', 'तारीख YYYY-MM-DD में · 1900–2100')}</Text><TextInput style={s.input} accessibilityLabel={c('Calendar date', 'कैलेंडर तारीख')} value={draft} onChangeText={setDraft} placeholder="2026-10-23" autoCapitalize="none" />
-      <Action onPress={() => { const next = parseLocalDate(draft, null); if (!next || next.getFullYear() < 1900 || next.getFullYear() > 2100) { setError(c('Enter a valid date from 1900 to 2100.', '1900 से 2100 तक की सही तारीख लिखें।')); return; } onChange(next); setOpen(false); }}>{c('Open date', 'तारीख खोलें')}</Action>{error ? <Text accessibilityRole="alert" style={s.hint}>{error}</Text> : null}</View>}
+      <Action onPress={() => { const next = parseLocalDate(draft, null); if (!next || next.getFullYear() < 1900 || next.getFullYear() > 2100) { setError(c('Enter a valid date from 1900 to 2100.', '1900 से 2100 तक की सही तारीख लिखें।')); return; } onChange(next); setOpen(false); onOpenChange?.(false); }}>{c('Open date', 'तारीख खोलें')}</Action>{error ? <Text accessibilityRole="alert" style={s.hint}>{error}</Text> : null}</View>}
   </View>;
 }
 export function CalendarArt({ festival, deity, size = 42 }) {
